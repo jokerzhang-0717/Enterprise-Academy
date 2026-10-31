@@ -37,7 +37,7 @@
           <div class="exm-metric__value exm-metric__value--purple">
             88.5 <span class="exm-metric__note">通过率 100%</span>
           </div>
-          <div class="exm-metric__foot">超过 91% 同步考生</div>
+          <div class="exm-metric__foot">本季度综合考核</div>
         </div>
         <div class="exm-metric__icon exm-metric__icon--purple">
           <Layers class="exm-icon" />
@@ -51,7 +51,7 @@
       <div class="exm-section__head">
         <div class="exm-section__title">
           <span class="exm-section__bar" />
-          <h2>待参加考试与测评安排</h2>
+          <h2>待参加考试安排</h2>
           <span class="exm-section__hint">点击对应课程考卷卡片即可即时解锁考位并加载在线作答套题</span>
         </div>
 

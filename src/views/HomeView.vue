@@ -8,9 +8,9 @@
           <span class="welcome-tag-dot"></span>
           <span>企业数字化研学季进行中 · Q2加速计划</span>
         </div>
-        <h1 class="welcome-title">欢迎来到智训云学，开启成长新旅程！</h1>
+        <h1 class="welcome-title">欢迎来到云舒艺境，在这里，遇见更好的自己！</h1>
         <p class="welcome-desc">
-          今天是 2025年5月14日 星期三。您本阶段已攻克 3 门必修专项，当前团队学习活跃度位列前 8%。
+          今天是 2025年5月14日 星期三。永远相信美好的事情即将发生！
         </p>
       </div>
     </section>

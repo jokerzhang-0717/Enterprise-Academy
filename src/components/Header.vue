@@ -59,6 +59,7 @@
 
       <!-- 签到按钮 -->
       <button
+        v-if="!isAdmin"
         :class="['checkin-btn', isCheckedIn ? 'checkin-btn--done' : 'checkin-btn--active']"
         @click="$emit('toggle-checkin')"
       >
@@ -91,6 +92,7 @@
           <div class="user-info">
             <div class="user-name">
               {{ user.name }}
+              <span v-if="isAdmin" class="admin-tag">管理端</span>
               <!-- 小箭头（CSS 画的） -->
               <span class="icon-arrow-down"></span>
             </div>
@@ -111,7 +113,7 @@
               @click="$emit('switch-user'); showUserDropdown = false"
             >
               <span class="icon-switch">⇄</span>
-              <span>切换视角 (张浩然 / 李明)</span>
+              <span>{{ isAdmin ? '返回学员端' : '切换视角 (张浩然 / 李明)' }}</span>
             </button>
             <button
               class="dropdown-action dropdown-action--logout"
@@ -132,6 +134,7 @@ import { ref } from 'vue';
 
 const props = defineProps({
   user:          { type: Object,  required: true },
+  isAdmin:       { type: Boolean, default: false },
   isCheckedIn:   { type: Boolean, default: true },
   unreadCount:   { type: Number,  default: 3 },
   searchResults: { type: Array,   default: () => [] }
@@ -638,7 +641,18 @@ input {
   color: #DC2626;
 }
 
-.dropdown-action--logout:hover {
-  background: rgba(254, 226, 226, 0.4);
+/* 管理端标签 */
+.admin-tag {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 6px;
+  padding: 1px 7px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #8A6414;
+  background: #FEF3C7;
+  border: 1px solid #FDE68A;
+  border-radius: 9999px;
+  vertical-align: 1px;
 }
 </style>

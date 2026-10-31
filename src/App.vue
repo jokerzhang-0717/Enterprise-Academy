@@ -2,7 +2,7 @@
   <Transition name="app-view">
   <!-- ============ 1. 登录全屏视图 ============ -->
   <div v-if="currentView === 'login'" class="app-login">
-    <LoginView @login-success="currentView = 'home'" />
+    <LoginView @login-success="handleLoginSuccess" />
   </div>
 
   <!-- ============ 2. 主应用布局 ============ -->
@@ -17,8 +17,21 @@
   >
     <div class="app-body">
 
-      <!-- 侧边导航 -->
+      <!-- 侧边导航:管理员 / 学员 -->
+      <AdminSidebar
+        v-if="isAdmin"
+        :current-view="currentView"
+        :user="currentUser"
+        :draft-notice-count="draftNoticeCount"
+        :active-exam-count="activeExamCount"
+        :pending-leave-count="pendingLeaveCount"
+        :pending-cert-count="pendingCertCount"
+        @select-view="handleNavigate"
+        @logout="handleLogout"
+        @switch-to-learner="handleSwitchToLearner"
+      />
       <Sidebar
+        v-else
         :current-view="currentView"
         :theme="theme"
         :user="currentUser"
@@ -26,7 +39,7 @@
         :active-exams-count="1"
         @select-view="handleNavigate"
         @change-theme="theme = $event"
-        @logout="currentView = 'login'"
+        @logout="handleLogout"
         @switch-user="handleSwitchUser"
       />
 
@@ -35,6 +48,7 @@
         <!-- 顶部栏 -->
         <Header
           :user="currentUser"
+          :is-admin="isAdmin"
           :is-checked-in="isCheckedIn"
           :unread-count="3"
           :search-results="searchResults"
@@ -54,8 +68,50 @@
               class="view-transition"
               :class="{ 'view-transition--home': currentView === 'home' }"
             >
+              <AdminDashboardView
+                v-if="currentView === 'admin-dashboard'"
+                @navigate="handleNavigate"
+              />
+
+              <AdminStudentsView
+                v-else-if="currentView === 'admin-students'"
+              />
+
+              <AdminDepartmentsView
+                v-else-if="currentView === 'admin-departments'"
+              />
+
+              <AdminCoursesView
+                v-else-if="currentView === 'admin-courses'"
+              />
+
+              <AdminExamsView
+                v-else-if="currentView === 'admin-exams'"
+                @navigate="handleNavigate"
+              />
+
+              <AdminQuestionBankView
+                v-else-if="currentView === 'admin-question-bank'"
+              />
+
+              <AdminLeaveApprovalView
+                v-else-if="currentView === 'admin-leave'"
+              />
+
+              <AdminCheckinRecordsView
+                v-else-if="currentView === 'admin-checkin'"
+              />
+
+              <AdminCertificatesView
+                v-else-if="currentView === 'admin-certificates'"
+              />
+
+              <AdminAnnouncementsView
+                v-else-if="currentView === 'admin-announcements'"
+              />
+
               <HomeView
-                v-if="currentView === 'home'"
+                v-else-if="currentView === 'home'"
                 :search-target-id="searchTargetId"
                 @navigate="handleNavigate"
                 @open-track="handleOpenTrack"
@@ -177,6 +233,10 @@ import { computed, ref } from 'vue';
 import {
   currentUserZhang,
   currentUserLi,
+  currentUserAdmin,
+  ADMIN_ANNOUNCEMENTS_DATA,
+  ADMIN_LEAVE_REQUESTS,
+  ADMIN_CERTIFICATE_ISSUES,
   CERTIFICATES_DATA,
   COURSES_DATA,
   EXAMS_DATA,
@@ -187,6 +247,7 @@ import {
 
 // Shared Components
 import Sidebar from './components/Sidebar.vue';
+import AdminSidebar from './components/AdminSidebar.vue';
 import Header from './components/Header.vue';
 import MockupViewerModal from './components/MockupViewerModal.vue';
 import CertificateModal from './components/CertificateModal.vue';
@@ -205,7 +266,16 @@ import AttendanceView from './views/AttendanceView.vue';
 import MessagesView from './views/MessagesView.vue';
 import CertificatesView from './views/CertificatesView.vue';
 import LoginView from './views/LoginView.vue';
-
+import AdminDashboardView from './views/admin/AdminDashboardView.vue';
+import AdminStudentsView from './views/admin/AdminStudentsView.vue';
+import AdminDepartmentsView from './views/admin/AdminDepartmentsView.vue';
+import AdminCoursesView from './views/admin/AdminCoursesView.vue';
+import AdminExamsView from './views/admin/AdminExamsView.vue';
+import AdminQuestionBankView from './views/admin/AdminQuestionBankView.vue';
+import AdminLeaveApprovalView from './views/admin/AdminLeaveApprovalView.vue';
+import AdminCheckinRecordsView from './views/admin/AdminCheckinRecordsView.vue';
+import AdminCertificatesView from './views/admin/AdminCertificatesView.vue';
+import AdminAnnouncementsView from './views/admin/AdminAnnouncementsView.vue';
 // Navigation State
 const currentView = ref('home');
 const mainContent = ref(null);
@@ -409,12 +479,48 @@ const handleOpenMessage = (messageId) => {
   handleNavigate('messages-detail');
 };
 
+const isAdmin = computed(() => currentUser.value.role === 'admin');
+
+const draftNoticeCount = computed(
+  () => ADMIN_ANNOUNCEMENTS_DATA.filter(a => a.status === 'draft').length
+);
+
+const activeExamCount = computed(() => EXAMS_DATA.length);
+
+const pendingLeaveCount = computed(
+  () => ADMIN_LEAVE_REQUESTS.filter(r => r.status === 'pending').length
+);
+
+const pendingCertCount = computed(
+  () => ADMIN_CERTIFICATE_ISSUES.filter(c => c.status === 'pending').length
+);
 const handleSwitchUser = () => {
-  if (currentUser.value.id === 'zhanghr') {
-    currentUser.value = currentUserLi;
-  } else {
-    currentUser.value = currentUserZhang;
+  if (currentUser.value.role === 'admin') {
+    handleSwitchToLearner();
+    return;
   }
+  currentUser.value = currentUser.value.id === 'zhanghr' ? currentUserLi : currentUserZhang;
+};
+
+const handleSwitchToLearner = () => {
+  currentUser.value = currentUserLi;
+  handleNavigate('home');
+};
+
+const handleLoginSuccess = (payload) => {
+  const employeeId = payload?.employeeId || '';
+  if (employeeId === currentUserAdmin.employeeId) {
+    currentUser.value = currentUserAdmin;
+    currentView.value = 'admin-dashboard';
+  } else {
+    currentUser.value = employeeId === currentUserZhang.employeeId ? currentUserZhang : currentUserLi;
+    currentView.value = 'home';
+  }
+};
+
+const handleLogout = () => {
+  currentUser.value = currentUserLi;
+  currentView.value = 'login';
 };
 
 const handleUpdateUser = (updatedUser) => {

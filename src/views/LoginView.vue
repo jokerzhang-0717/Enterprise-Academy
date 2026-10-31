@@ -206,6 +206,12 @@
               <ArrowRight class="h-[15px] w-[15px] transition-transform duration-300 group-hover:translate-x-1" />
             </button>
           </div>
+
+          <div class="fade-in mt-4 rounded-[9px] border border-dashed border-[#D3E4F3] bg-[#F6FBFF] px-3 py-2" style="--d:.52s">
+            <p class="mono-font text-[9.5px] leading-[1.7] text-[#5B6B80]">
+              演示账号 · 学员:EMP-2024098 / 管理员:admin(密码任意,完成滑块验证后登录)
+            </p>
+          </div>
         </form>
 
         <!-- ====== 注册 ====== -->

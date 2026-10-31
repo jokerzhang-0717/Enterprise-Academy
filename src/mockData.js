@@ -719,3 +719,388 @@ export const EXAM_QUESTIONS = [
   createExamQuestion(24, 'application', '某订单服务在调用库存服务时偶发超时，随后出现重复扣减库存。请说明你会如何排查，并提出至少两项改进措施。', 5),
   createExamQuestion(25, 'application', '设计一个高可用的文件上传服务，请简述上传链路、失败重试、文件校验及监控告警的关键方案。', 5),
 ];
+
+/* ============================================================
+   管理员端 (Admin Console) 数据
+   ============================================================ */
+
+export const currentUserAdmin = {
+  id: 'admin',
+  name: '王智远',
+  employeeId: 'admin',
+  department: '企业大学 · 平台运营部',
+  title: '平台超级管理员',
+  role: 'admin',
+  learningHours: 0,
+  completedCourses: 0,
+  avatarUrl: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=120&q=80',
+  grade: '平台管理端'
+};
+
+export const ADMIN_LEARNERS_DATA = [
+  { id: 'u-1',  name: '李明',   employeeId: 'EMP-2024098', department: '研发部',     title: '高级研发工程师',   learningHours: 18.5, completedCourses: 3,  certificateCount: 2, status: 'active',   lastActive: '今天 09:42' },
+  { id: 'u-2',  name: '张浩然', employeeId: 'EXP-70291',   department: '研发部',     title: '高级工程师',       learningHours: 42.5, completedCourses: 8,  certificateCount: 4, status: 'active',   lastActive: '今天 08:15' },
+  { id: 'u-3',  name: '陈嘉怡', employeeId: 'EMP-2024156', department: '产品部',     title: '产品经理',         learningHours: 12.0, completedCourses: 2,  certificateCount: 1, status: 'active',   lastActive: '昨天 17:30' },
+  { id: 'u-4',  name: '刘子墨', employeeId: 'EMP-2023877', department: '测试部',     title: '测试开发工程师',   learningHours: 26.0, completedCourses: 5,  certificateCount: 2, status: 'active',   lastActive: '今天 07:58' },
+  { id: 'u-5',  name: '赵思远', employeeId: 'EMP-2023512', department: '运维部',     title: 'SRE 工程师',       learningHours: 31.5, completedCourses: 6,  certificateCount: 3, status: 'active',   lastActive: '2 天前' },
+  { id: 'u-6',  name: '孙雨桐', employeeId: 'EMP-2024620', department: '市场部',     title: '品牌运营专员',     learningHours: 6.0,  completedCourses: 1,  certificateCount: 0, status: 'active',   lastActive: '今天 10:02' },
+  { id: 'u-7',  name: '周凯文', employeeId: 'EMP-2023340', department: '财务部',     title: '财务分析师',       learningHours: 9.5,  completedCourses: 2,  certificateCount: 1, status: 'active',   lastActive: '3 天前' },
+  { id: 'u-8',  name: '吴梦琪', employeeId: 'EMP-2024901', department: '人力资源部', title: 'HRBP',             learningHours: 15.0, completedCourses: 3,  certificateCount: 1, status: 'active',   lastActive: '昨天 11:20' },
+  { id: 'u-9',  name: '郑天翔', employeeId: 'EMP-2023788', department: '研发部',     title: '前端工程师',       learningHours: 3.5,  completedCourses: 0,  certificateCount: 0, status: 'inactive', lastActive: '12 天前' },
+  { id: 'u-10', name: '王若琳', employeeId: 'EMP-2024402', department: '法务部',     title: '合规专员',         learningHours: 20.0, completedCourses: 4,  certificateCount: 2, status: 'active',   lastActive: '今天 08:47' }
+];
+
+export const ADMIN_ANNOUNCEMENTS_DATA = [
+  {
+    id: 'ann-1',
+    title: '关于发布《2025年第二季度技术序列通用学分核算与晋升认定申报通知》',
+    content: '2025年Q2技术序列通用学分核算现已开启,请各部门于6月5日前完成学分录入与晋升申报材料提交。涉及职级 P5 及以上申报人员,需附上本年度技术答辩评审记录。',
+    isTop: true,
+    status: 'published',
+    author: '王智远',
+    publishTime: '2025-05-13 09:30',
+    views: 1240
+  },
+  {
+    id: 'ann-2',
+    title: '2025「智训内训师」金牌讲师团第二期招募启动',
+    content: '第二期金牌讲师团招募现已启动,面向全员开放报名。入选讲师将获得课程研发津贴与年度评优加分,报名截止5月31日。',
+    isTop: false,
+    status: 'published',
+    author: '王智远',
+    publishTime: '2025-05-11 14:00',
+    views: 860
+  },
+  {
+    id: 'ann-3',
+    title: '平台 3.8.0 版本停机维护通知(拟发布)',
+    content: '平台计划于本周五 23:00 - 次日 02:00 进行只读维护,上线 AI 智能陪练助手与知识库精准检索功能。请提前告知各部门合理安排学习时间。',
+    isTop: false,
+    status: 'draft',
+    author: '王智远',
+    publishTime: '2025-05-16 16:20',
+    views: 0
+  },
+  {
+    id: 'ann-4',
+    title: '2025 全员合规红线考核即将截止的催办提醒',
+    content: '《2025数据安全与合规》全员考核将于5月17日 18:00 关闭系统,当前仍有 87 名员工未完成作答,请各部门负责人督促落实。',
+    isTop: false,
+    status: 'published',
+    author: '系统自动',
+    publishTime: '2025-05-16 10:00',
+    views: 1560
+  }
+];
+
+export const ADMIN_ACTIVITIES_DATA = [
+  { id: 'act-1', type: 'course',  text: '上架新课程《Serverless 函数计算实战》',        operator: '王智远', time: '今天 10:20' },
+  { id: 'act-2', type: 'user',    text: '新增学员账号:孙雨桐 (EMP-2024620)',           operator: '王智远', time: '今天 09:58' },
+  { id: 'act-3', type: 'exam',    text: '发布考试「2025Q3 前端工程化认证」',             operator: '王智远', time: '昨天 18:05' },
+  { id: 'act-4', type: 'notice',  text: '置顶公告「2025Q2 学分核算与晋升申报通知」',     operator: '王智远', time: '昨天 15:40' },
+  { id: 'act-5', type: 'approve', text: '审批通过请假申请 LV-20250512-009(张浩然)',     operator: '王智远', time: '05-12 16:55' },
+  { id: 'act-6', type: 'user',    text: '禁用学员账号:郑天翔 (EMP-2023788,长期未学习)',  operator: '系统自动', time: '05-10 09:00' }
+];
+
+export const ADMIN_DEPT_STATS = [
+  { department: '研发部',     hours: 386, learners: 128 },
+  { department: '产品部',     hours: 214, learners: 64  },
+  { department: '运维部',     hours: 198, learners: 42  },
+  { department: '市场部',     hours: 96,  learners: 38  },
+  { department: '财务部',     hours: 72,  learners: 30  },
+  { department: '人力资源部', hours: 88,  learners: 26  }
+];
+
+export const ADMIN_DEPARTMENTS = [
+  { id: 'd-1', name: '研发部',     manager: '陈建邦', learners: 128, hours: 386, desc: '负责核心业务系统研发与架构治理', status: 'active' },
+  { id: 'd-2', name: '产品部',     manager: '陈嘉怡', learners: 64,  hours: 214, desc: '产品规划、需求分析与用户体验设计', status: 'active' },
+  { id: 'd-3', name: '测试部',     manager: '刘子墨', learners: 52,  hours: 168, desc: '质量保障、自动化测试与发布验收', status: 'active' },
+  { id: 'd-4', name: '运维部',     manager: '赵思远', learners: 42,  hours: 198, desc: '基础设施、SRE 与生产稳定性保障', status: 'active' },
+  { id: 'd-5', name: '市场部',     manager: '孙雨桐', learners: 38,  hours: 96,  desc: '品牌运营、市场推广与增长', status: 'active' },
+  { id: 'd-6', name: '财务部',     manager: '周凯文', learners: 30,  hours: 72,  desc: '财务核算、预算与经营分析', status: 'active' },
+  { id: 'd-7', name: '人力资源部', manager: '吴梦琪', learners: 26,  hours: 88,  desc: '组织发展、人才招聘与员工关系', status: 'active' },
+  { id: 'd-8', name: '法务部',     manager: '王若琳', learners: 12,  hours: 54,  desc: '合规审查、合同与知识产权管理', status: 'inactive' }
+];
+
+export const ADMIN_LEAVE_REQUESTS = [
+  {
+    id: 'alv-1',
+    applicant: '张浩然',
+    employeeId: 'EXP-70291',
+    department: '研发部',
+    type: '项目紧急发版',
+    timeRange: '2025-05-18',
+    days: '0.5',
+    reason: '因核心结算集群在16:30进行双机房切流验证,需现场跟进发布(工单: PROD-OPS-20250518-09)。申请缺席下午后半程实操。',
+    status: 'pending',
+    submittedTime: '2025-05-18 10:15'
+  },
+  {
+    id: 'alv-2',
+    applicant: '刘子墨',
+    employeeId: 'EMP-2023877',
+    department: '测试部',
+    type: '病假 / 身体不适',
+    timeRange: '2025-05-19',
+    days: '1',
+    reason: '急性肠胃炎就医检查及休养,附三甲医院就诊单据及病休建议。',
+    status: 'pending',
+    submittedTime: '2025-05-18 21:02'
+  },
+  {
+    id: 'alv-3',
+    applicant: '陈嘉怡',
+    employeeId: 'EMP-2024156',
+    department: '产品部',
+    type: '因公外出 / 外部交流',
+    timeRange: '2025-05-20',
+    days: '0.5',
+    reason: '赴客户现场参加产品一期验收评审,现场进行功能演示及需求答疑。',
+    status: 'pending',
+    submittedTime: '2025-05-18 17:40'
+  },
+  {
+    id: 'alv-4',
+    applicant: '赵思远',
+    employeeId: 'EMP-2023512',
+    department: '运维部',
+    type: '个人事务 / 家庭安排',
+    timeRange: '2025-05-16',
+    days: '1',
+    reason: '因个人家庭事务申请缺席全天培训。',
+    status: 'rejected',
+    submittedTime: '2025-05-15 09:20'
+  },
+  {
+    id: 'alv-5',
+    applicant: '李明',
+    employeeId: 'EMP-2024098',
+    department: '研发部',
+    type: '因公外出 / 外部交流',
+    timeRange: '2025-05-12',
+    days: '0.5',
+    reason: '赴招商银行总部参加开放平台二期架构方案评审,现场进行方案推演及技术答疑。',
+    status: 'approved',
+    submittedTime: '2025-05-11 16:30'
+  },
+  {
+    id: 'alv-6',
+    applicant: '吴梦琪',
+    employeeId: 'EMP-2024901',
+    department: '人力资源部',
+    type: '病假 / 身体不适',
+    timeRange: '2025-04-25',
+    days: '1',
+    reason: '急性肠胃炎就医检查及休养,附带三甲医院就诊单据及病休建议。',
+    status: 'approved',
+    submittedTime: '2025-04-24 14:10'
+  }
+];
+
+export const ADMIN_CERTIFICATE_ISSUES = [
+  {
+    id: 'aci-1',
+    holder: '李明',
+    employeeId: 'EMP-2024098',
+    title: '微服务高可用架构实战专家认证',
+    serialNumber: 'ZX-2024-MS-089',
+    level: 'LEVEL 4 · 专家级认证',
+    issueOrg: '企业技术委员会',
+    issueDate: '2024-03-15',
+    validity: '长期有效',
+    status: 'issued'
+  },
+  {
+    id: 'aci-2',
+    holder: '张浩然',
+    employeeId: 'EXP-70291',
+    title: 'Kubernetes 云原生容器编排认证',
+    serialNumber: 'ZX-2023-K8S-901',
+    level: '运维基建 · 认证',
+    issueOrg: '企业技术委员会',
+    issueDate: '2023-11-20',
+    validity: '长期有效',
+    status: 'issued'
+  },
+  {
+    id: 'aci-3',
+    holder: '刘子墨',
+    employeeId: 'EMP-2023877',
+    title: '企业数据安全与隐私合规 (GDPR/PIPL) 专家证书',
+    serialNumber: 'ZX-2025-SEC-128',
+    level: '法定合规 · 重点资格',
+    issueOrg: '风控与安全合规部',
+    issueDate: '2025-04-02',
+    validity: '24 个月 (2027年到期)',
+    status: 'issued'
+  },
+  {
+    id: 'aci-4',
+    holder: '孙雨桐',
+    employeeId: 'EMP-2024620',
+    title: '企业生成式 AI 研发提效工程专家',
+    serialNumber: 'ZX-2025-AI-052',
+    level: 'AI 效能 · 先锋认证',
+    issueOrg: 'AI 创新实验室',
+    issueDate: '2025-05-06',
+    validity: '长期有效',
+    status: 'issued'
+  },
+  {
+    id: 'aci-5',
+    holder: '陈嘉怡',
+    employeeId: 'EMP-2024156',
+    title: '高效跨部门沟通与敏捷项目管理实践',
+    serialNumber: 'ZX-2025-PM-077',
+    level: '管理通识 · 结课认证',
+    issueOrg: '企业大学教培中心',
+    issueDate: '—',
+    validity: '长期有效',
+    status: 'pending'
+  },
+  {
+    id: 'aci-6',
+    holder: '王若琳',
+    employeeId: 'EMP-2024402',
+    title: '金融级数据合规与业务出海跨境传输实战',
+    serialNumber: 'ZX-2025-LAW-031',
+    level: '法务合规 · 专项认证',
+    issueOrg: '风控与安全合规部',
+    issueDate: '—',
+    validity: '长期有效',
+    status: 'pending'
+  }
+];
+
+export const ADMIN_CHECKIN_RECORDS = [
+  { id: 'ck-1',  name: '李明',   employeeId: 'EMP-2024098', department: '研发部',     checkInTime: '08:52', checkOutTime: '17:36', method: '人脸识别', status: 'normal' },
+  { id: 'ck-2',  name: '张浩然', employeeId: 'EXP-70291',   department: '研发部',     checkInTime: '09:14', checkOutTime: '18:02', method: '工牌刷卡', status: 'late' },
+  { id: 'ck-3',  name: '陈嘉怡', employeeId: 'EMP-2024156', department: '产品部',     checkInTime: '08:47', checkOutTime: '17:28', method: '人脸识别', status: 'normal' },
+  { id: 'ck-4',  name: '刘子墨', employeeId: 'EMP-2023877', department: '测试部',     checkInTime: '08:58', checkOutTime: '17:41', method: '人脸识别', status: 'normal' },
+  { id: 'ck-5',  name: '赵思远', employeeId: 'EMP-2023512', department: '运维部',     checkInTime: '09:02', checkOutTime: '18:10', method: '工牌刷卡', status: 'normal' },
+  { id: 'ck-6',  name: '孙雨桐', employeeId: 'EMP-2024620', department: '市场部',     checkInTime: '08:39', checkOutTime: '17:15', method: '人脸识别', status: 'normal' },
+  { id: 'ck-7',  name: '周凯文', employeeId: 'EMP-2023340', department: '财务部',     checkInTime: '09:21', checkOutTime: '17:52', method: '工牌刷卡', status: 'late' },
+  { id: 'ck-8',  name: '吴梦琪', employeeId: 'EMP-2024901', department: '人力资源部', checkInTime: '08:45', checkOutTime: '17:30', method: '人脸识别', status: 'normal' },
+  { id: 'ck-9',  name: '王若琳', employeeId: 'EMP-2024402', department: '法务部',     checkInTime: '08:50', checkOutTime: '17:26', method: '人脸识别', status: 'normal' },
+  { id: 'ck-10', name: '郑天翔', employeeId: 'EMP-2023788', department: '研发部',     checkInTime: '—',    checkOutTime: '—',    method: '—',        status: 'missing' },
+  { id: 'ck-11', name: '陈建邦', employeeId: 'EMP-2023056', department: '研发部',     checkInTime: '09:06', checkOutTime: '18:20', method: '工牌刷卡', status: 'normal' },
+  { id: 'ck-12', name: '林欣怡', employeeId: 'EMP-2023311', department: '培训部',     checkInTime: '08:31', checkOutTime: '17:08', method: '人脸识别', status: 'normal' }
+];
+
+export const ADMIN_QUESTION_BANK = [  {
+    id: 'q-1', examId: 'exam-1', type: 'single', typeLabel: '单选题', score: 5,
+    title: '在分布式系统中,服务发现机制的主要作用是什么?',
+    options: [
+      { key: 'A', text: '自动发现可用服务实例并提供访问入口' },
+      { key: 'B', text: '统一存储所有业务数据' },
+      { key: 'C', text: '替代服务间的网络通信' },
+      { key: 'D', text: '自动生成业务代码' }
+    ],
+    answer: 'A'
+  },
+  {
+    id: 'q-2', examId: 'exam-1', type: 'single', score: 5,
+    title: '关于 Spring Boot 3 与 JDK 21 环境下的虚拟线程 (Virtual Threads) 调度机制,下列哪项描述正确?',
+    options: [
+      { key: 'A', text: '虚拟线程采用 1:1 内核级线程映射' },
+      { key: 'B', text: '虚拟线程在阻塞 I/O 时自动从 Carrier Thread 卸载,宿主线程继续处理其他任务' },
+      { key: 'C', text: '应始终对虚拟线程使用有界线程池复用实例' },
+      { key: 'D', text: 'synchronized 块阻塞时虚拟线程也能无感知卸载' }
+    ],
+    answer: 'B'
+  },
+  {
+    id: 'q-3', examId: 'exam-1', type: 'multiple', score: 8,
+    title: '以下哪些措施有助于提升微服务系统的韧性?(多选)',
+    options: [
+      { key: 'A', text: '对关键调用设置超时与合理的重试策略' },
+      { key: 'B', text: '使用熔断机制隔离持续失败的依赖' },
+      { key: 'C', text: '对所有请求无限次立即重试' },
+      { key: 'D', text: '为服务设计健康检查与故障恢复机制' }
+    ],
+    answer: 'ABD'
+  },
+  {
+    id: 'q-4', examId: 'exam-1', type: 'judgment', score: 5,
+    title: '虚拟线程在支持卸载的阻塞式 I/O 等待期间,可以释放 Carrier Thread 供其他虚拟线程使用。',
+    options: [
+      { key: 'A', text: '正确' },
+      { key: 'B', text: '错误' }
+    ],
+    answer: 'A'
+  },
+  {
+    id: 'q-5', examId: 'exam-1', type: 'application', score: 12,
+    title: '某订单服务在调用库存服务时偶发超时,随后出现重复扣减库存。请说明你会如何排查,并提出至少两项改进措施。',
+    options: [],
+    answer: ''
+  },
+  {
+    id: 'q-6', examId: 'exam-2', type: 'single', score: 5,
+    title: '使用数据库索引时,最需要关注的性能影响是什么?',
+    options: [
+      { key: 'A', text: '索引会占用额外存储并增加写入维护成本' },
+      { key: 'B', text: '索引一定会降低查询速度' },
+      { key: 'C', text: '索引会改变字段的数据类型' },
+      { key: 'D', text: '索引可以替代事务' }
+    ],
+    answer: 'A'
+  },
+  {
+    id: 'q-7', examId: 'exam-2', type: 'single', score: 5,
+    title: '缓存穿透问题通常可以通过哪种方式缓解?',
+    options: [
+      { key: 'A', text: '使用布隆过滤器或缓存空结果' },
+      { key: 'B', text: '关闭所有缓存' },
+      { key: 'C', text: '增加数据库连接数' },
+      { key: 'D', text: '延长请求超时时间' }
+    ],
+    answer: 'A'
+  },
+  {
+    id: 'q-8', examId: 'exam-2', type: 'judgment', score: 5,
+    title: '在生产环境中把所有秘密配置直接写入代码仓库,可以避免配置管理风险。',
+    options: [
+      { key: 'A', text: '正确' },
+      { key: 'B', text: '错误' }
+    ],
+    answer: 'B'
+  },
+  {
+    id: 'q-9', examId: 'exam-2', type: 'application', score: 10,
+    title: '设计一个高可用的文件上传服务,请简述上传链路、失败重试、文件校验及监控告警的关键方案。',
+    options: [],
+    answer: ''
+  },
+  {
+    id: 'q-10', examId: 'exam-3', type: 'single', score: 5,
+    title: '在 REST API 设计中,哪个 HTTP 方法通常用于读取资源?',
+    options: [
+      { key: 'A', text: 'GET' },
+      { key: 'B', text: 'POST' },
+      { key: 'C', text: 'PATCH' },
+      { key: 'D', text: 'DELETE' }
+    ],
+    answer: 'A'
+  },
+  {
+    id: 'q-11', examId: 'exam-3', type: 'multiple', score: 8,
+    title: '生产环境中管理应用密钥时,哪些做法更安全?(多选)',
+    options: [
+      { key: 'A', text: '使用专门的密钥管理服务' },
+      { key: 'B', text: '限制密钥读取权限并记录访问行为' },
+      { key: 'C', text: '将密钥提交到公开代码仓库' },
+      { key: 'D', text: '制定轮换和泄露后的撤销流程' }
+    ],
+    answer: 'ABD'
+  },
+  {
+    id: 'q-12', examId: 'exam-3', type: 'judgment', score: 5,
+    title: '为服务间调用设置超时,可以避免请求在依赖服务异常时无限期等待。',
+    options: [
+      { key: 'A', text: '正确' },
+      { key: 'B', text: '错误' }
+    ],
+    answer: 'A'
+  }
+];
