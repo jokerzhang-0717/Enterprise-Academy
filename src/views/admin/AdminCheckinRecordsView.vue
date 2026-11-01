@@ -42,7 +42,7 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="record in checkinRecords" :key="record.id">
+          <tr v-for="record in pagedRecords" :key="record.id">
             <td>
               <div class="cell-user">
                 <span class="cell-avatar">{{ record.name.charAt(0) }}</span>
@@ -65,14 +65,24 @@
       </table>
     </div>
 
+    <AdminPager
+      v-model:page="page"
+      :total="checkinRecords.length"
+      :total-pages="totalPages"
+    />
+
   </div>
 </template>
 
 <script setup>
 import { computed, ref } from 'vue';
 import { ADMIN_CHECKIN_RECORDS } from '../../mockData.js';
+import { usePager } from '../../composables/usePager.js';
+import AdminPager from '../../components/AdminPager.vue';
 
 const checkinRecords = ref(ADMIN_CHECKIN_RECORDS.map(c => ({ ...c })));
+
+const { page, totalPages, paged: pagedRecords } = usePager(checkinRecords, 6);
 
 const normalCount = computed(() => checkinRecords.value.filter(c => c.status === 'normal').length);
 const lateCount = computed(() => checkinRecords.value.filter(c => c.status === 'late').length);
@@ -97,6 +107,8 @@ const statusLabel = (status) => statusLabelMap[status] || status;
   display: flex;
   flex-direction: column;
   gap: 16px;
+  min-height: 100%;
+  height: 100%;
 }
 
 /* ========== 页头 ========== */

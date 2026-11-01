@@ -15,7 +15,7 @@
     <!-- 公告列表 -->
     <div class="notice-list">
       <article
-        v-for="notice in announcements"
+        v-for="notice in pagedAnnouncements"
         :key="notice.id"
         class="notice-card"
         :class="[`notice-card--${notice.status}`, notice.isTop ? 'notice-card--top' : '']"
@@ -60,6 +60,12 @@
       <p v-if="!announcements.length" class="empty-tip">暂无公告,点击右上角「撰写公告」创建。</p>
     </div>
 
+    <AdminPager
+      v-model:page="page"
+      :total="announcements.length"
+      :total-pages="totalPages"
+    />
+
     <!-- 撰写公告弹窗 -->
     <div v-if="modalOpen" class="modal-backdrop" @click.self="closeModal">
       <div class="modal">
@@ -91,6 +97,18 @@
       </div>
     </div>
 
+    <ConfirmDialog
+      v-if="confirmState"
+      :title="confirmState.title"
+      :subtitle="confirmState.subtitle"
+      :rows="confirmState.rows"
+      :tip="confirmState.tip"
+      :tone="confirmState.tone"
+      :confirm-text="confirmState.confirmText"
+      @cancel="cancelConfirm"
+      @confirm="acceptConfirm"
+    />
+
   </div>
 </template>
 
@@ -98,8 +116,16 @@
 import { computed, ref } from 'vue';
 import { Plus, Delete, Close } from '@element-plus/icons-vue';
 import { ADMIN_ANNOUNCEMENTS_DATA } from '../../mockData.js';
+import { usePager } from '../../composables/usePager.js';
+import { useConfirm } from '../../composables/useConfirm.js';
+import AdminPager from '../../components/AdminPager.vue';
+import ConfirmDialog from '../../components/ConfirmDialog.vue';
 
 const announcements = ref(ADMIN_ANNOUNCEMENTS_DATA.map(a => ({ ...a })));
+
+const { confirmState, askConfirm, cancelConfirm, acceptConfirm } = useConfirm();
+
+const { page, totalPages, paged: pagedAnnouncements } = usePager(announcements, 4);
 
 const publishedCount = computed(() => announcements.value.filter(a => a.status === 'published').length);
 const draftCount = computed(() => announcements.value.filter(a => a.status === 'draft').length);
@@ -153,8 +179,21 @@ const toggleTop = (notice) => {
 };
 
 const removeNotice = (notice) => {
-  if (!window.confirm(`确认删除公告「${notice.title}」?此操作不可恢复。`)) return;
-  announcements.value = announcements.value.filter(a => a.id !== notice.id);
+  askConfirm({
+    tone: 'danger',
+    title: '删除该公告？',
+    subtitle: notice.title,
+    rows: [
+      { label: '公告状态', value: notice.status === 'published' ? '已发布' : '草稿' },
+      { label: '发布时间', value: notice.publishTime },
+      { label: '浏览量', value: `${notice.views} 次` }
+    ],
+    tip: '删除后公告将从前台和列表中移除，此操作不可恢复。',
+    confirmText: '确认删除',
+    action: () => {
+      announcements.value = announcements.value.filter(a => a.id !== notice.id);
+    }
+  });
 };
 </script>
 
@@ -171,6 +210,8 @@ button { cursor: pointer; }
   display: flex;
   flex-direction: column;
   gap: 16px;
+  min-height: 100%;
+  height: 100%;
 }
 
 /* ========== 页头 ========== */

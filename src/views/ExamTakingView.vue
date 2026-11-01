@@ -33,7 +33,7 @@
           <span>考规帮助</span>
         </button>
 
-        <button type="button" class="exam-btn exam-btn--sky" @click="confirmEarlySubmit">
+        <button type="button" class="exam-btn exam-btn--sky" @click="openSubmitConfirm">
           <Award class="exam-icon exam-icon--xs" />
           <span>提前交卷</span>
         </button>
@@ -311,13 +311,40 @@
           </div>
 
           <!-- 提交试卷 -->
-          <button type="button" class="exam-btn exam-btn--submit" @click="emit('submit-exam', 95)">
+          <button type="button" class="exam-btn exam-btn--submit" @click="openSubmitConfirm">
             <Award class="exam-icon exam-icon--sm" />
             <span>提交试卷并即时出分</span>
           </button>
         </div>
       </aside>
     </div>
+
+    <!-- 交卷确认 -->
+    <ConfirmDialog
+      v-if="confirmState"
+      :title="confirmState.title"
+      :subtitle="confirmState.subtitle"
+      :rows="confirmState.rows"
+      :tip="confirmState.tip"
+      :tone="confirmState.tone"
+      :confirm-text="confirmState.confirmText"
+      @cancel="cancelConfirm"
+      @confirm="acceptConfirm"
+    />
+
+    <!-- 考场规则 -->
+    <ConfirmDialog
+      v-if="rulesOpen"
+      tone="primary"
+      title="考场规则提醒"
+      subtitle="请遵守以下规则，违规将影响成绩认定"
+      :list="examRules"
+      tip="如需再次查看，可点击右上角「考规帮助」。"
+      confirm-text="我已知晓"
+      hide-cancel
+      @cancel="rulesOpen = false"
+      @confirm="rulesOpen = false"
+    />
   </div>
 </template>
 
@@ -332,6 +359,8 @@ import {
   Award
 } from 'lucide-vue-next';
 import { EXAM_QUESTIONS, CURRENT_USER } from '../mockData.js';
+import { useConfirm } from '../composables/useConfirm.js';
+import ConfirmDialog from '../components/ConfirmDialog.vue';
 
 const props = defineProps({
   user: {
@@ -448,14 +477,37 @@ const getGridButtonClass = (qNum) => {
   return 'is-blank';
 };
 
-const confirmEarlySubmit = () => {
-  if (confirm('是否确认提前交卷并获取综合机审评分？')) {
-    emit('submit-exam', 95);
-  }
+const { confirmState, askConfirm, cancelConfirm, acceptConfirm } = useConfirm();
+
+const rulesOpen = ref(false);
+
+const examRules = [
+  '请保持全屏专注，切屏超过 3 次将触发系统强行交卷。',
+  '每题修改将实时保存至云端，中断后可继续作答。',
+  '遇到网络波动，答题进度已于本地安全存储。'
+];
+
+const openSubmitConfirm = () => {
+  const left = totalQuestions - answeredCount.value;
+  askConfirm({
+    tone: 'primary',
+    title: '确认交卷？',
+    subtitle: '交卷后将立即机审评分，无法再修改答案。',
+    rows: [
+      { label: '已作答', value: `${answeredCount.value} / ${totalQuestions} 题` },
+      { label: '已标记', value: `${flaggedQuestions.value.length} 题` },
+      { label: '剩余时间', value: formattedTimer.value }
+    ],
+    tip: left > 0
+      ? `尚有 ${left} 道题未作答，未作答题目将按 0 分计入总分。`
+      : '全部题目均已作答，可以放心交卷。',
+    confirmText: '确认交卷',
+    action: () => emit('submit-exam', 95)
+  });
 };
 
 const showRulesHint = () => {
-  alert('【考场规则提醒】\n1. 请保持全屏专注，切屏超过3次将触发系统强行交卷。\n2. 每题修改将实时保存至云端。\n3. 遇到网络波动，答题进度已于本地安全存储。');
+  rulesOpen.value = true;
 };
 </script>
 

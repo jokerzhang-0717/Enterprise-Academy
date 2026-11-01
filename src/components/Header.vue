@@ -1,8 +1,8 @@
 <template>
-  <header class="app-header">
+  <header class="app-header" :class="{ 'app-header--admin': isAdmin }">
 
-    <!-- ========== 搜索栏区域 ========== -->
-    <div class="search-zone">
+    <!-- ========== 搜索栏区域（管理端隐藏） ========== -->
+    <div v-if="!isAdmin" class="search-zone">
 
       <div class="search-box">
         <!-- 放大镜图标（CSS 画的） -->
@@ -68,8 +68,9 @@
         <span>{{ isCheckedIn ? '今日培训已签到' : '立即打卡签到' }}</span>
       </button>
 
-      <!-- 消息铃铛 -->
+      <!-- 消息铃铛（管理端隐藏） -->
       <button
+        v-if="!isAdmin"
         class="bell-btn"
         title="消息与站内信"
         @click="$emit('navigate', 'messages')"
@@ -109,17 +110,18 @@
               <div class="dropdown-user-id">{{ user.employeeId }} · {{ user.role }}</div>
             </div>
             <button
+              v-if="!isAdmin"
               class="dropdown-action dropdown-action--switch"
               @click="$emit('switch-user'); showUserDropdown = false"
             >
               <span class="icon-switch">⇄</span>
-              <span>{{ isAdmin ? '返回学员端' : '切换视角 (张浩然 / 李明)' }}</span>
+              <span>切换视角 (张浩然 / 李明)</span>
             </button>
             <button
               class="dropdown-action dropdown-action--logout"
               @click="$emit('navigate', 'login'); showUserDropdown = false"
             >
-              <span>重新登录</span>
+              <span>退出登录</span>
             </button>
           </div>
         </template>
@@ -200,6 +202,11 @@ input {
   background: #fff;
   border-bottom: 1px solid #E2E8F0;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+
+/* 管理端只有头像,靠右显示 */
+.app-header--admin {
+  justify-content: flex-end;
 }
 
 /* ========== 搜索栏区域 ========== */

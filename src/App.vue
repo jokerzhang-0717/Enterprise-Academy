@@ -1,4 +1,5 @@
 <template>
+  <ToastStack />
   <Transition name="app-view">
   <!-- ============ 1. 登录全屏视图 ============ -->
   <div v-if="currentView === 'login'" class="app-login">
@@ -28,7 +29,6 @@
         :pending-cert-count="pendingCertCount"
         @select-view="handleNavigate"
         @logout="handleLogout"
-        @switch-to-learner="handleSwitchToLearner"
       />
       <Sidebar
         v-else
@@ -45,7 +45,7 @@
 
       <!-- 主内容工作区 -->
       <div class="app-workspace">
-        <!-- 顶部栏 -->
+        <!-- 顶部栏:管理端只保留头像 -->
         <Header
           :user="currentUser"
           :is-admin="isAdmin"
@@ -61,7 +61,11 @@
         />
 
         <!-- 视图画布 -->
-        <main ref="mainContent" class="app-viewport">
+        <main
+          ref="mainContent"
+          class="app-viewport"
+          :class="{ 'app-viewport--admin': isAdmin }"
+        >
           <Transition name="view">
             <div
               :key="currentView"
@@ -70,6 +74,7 @@
             >
               <AdminDashboardView
                 v-if="currentView === 'admin-dashboard'"
+                :user="currentUser"
                 @navigate="handleNavigate"
               />
 
@@ -250,6 +255,7 @@ import Sidebar from './components/Sidebar.vue';
 import AdminSidebar from './components/AdminSidebar.vue';
 import Header from './components/Header.vue';
 import MockupViewerModal from './components/MockupViewerModal.vue';
+import ToastStack from './components/ToastStack.vue';
 import CertificateModal from './components/CertificateModal.vue';
 import ExamResultModal from './components/ExamResultModal.vue';
 
@@ -681,6 +687,48 @@ textarea {
   margin-right: auto;
   padding: 1.5rem;
   overflow-y: auto;
+}
+
+/* 管理端去掉页面滚动能力,内容固定在视口内 */
+.app-viewport.app-viewport--admin {
+  overflow: hidden;
+  padding-top: 0.75rem;
+  padding-bottom: 1rem;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.app-viewport--admin::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
+}
+
+/* 管理端:视图容器撑满视口,页面内的分页条才能固定在底部 */
+.app-viewport--admin > .view-transition {
+  height: 100%;
+}
+
+/* 管理端:内容区高度锁死,列表区可收缩,保证分页条不随数据增减上下移动 */
+.app-viewport--admin .view-transition > * {
+  height: 100%;
+}
+
+.app-viewport--admin .table-wrap,
+.app-viewport--admin .notice-list,
+.app-viewport--admin .question-list {
+  flex: 0 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.app-viewport--admin .table-wrap::-webkit-scrollbar,
+.app-viewport--admin .notice-list::-webkit-scrollbar,
+.app-viewport--admin .question-list::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
 }
 .app-view-enter-active {
   transition: opacity 300ms ease-out, transform 300ms ease-out;

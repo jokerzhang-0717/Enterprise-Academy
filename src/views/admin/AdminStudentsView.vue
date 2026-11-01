@@ -44,16 +44,14 @@
             <th>工号</th>
             <th>部门</th>
             <th>职级</th>
-            <th class="num">学时</th>
-            <th class="num">完成课程</th>
-            <th class="num">证书</th>
-            <th>状态</th>
-            <th>最近学习</th>
+            <th class="center">学时</th>
+            <th class="center">证书</th>
+            <th class="center">状态</th>
             <th class="ops">操作</th>
           </tr>
         </thead>
         <tbody>
-          <tr v-for="learner in filteredLearners" :key="learner.id">
+          <tr v-for="learner in pagedLearners" :key="learner.id">
             <td>
               <div class="cell-user">
                 <span class="cell-avatar">
@@ -66,15 +64,13 @@
             <td class="mono">{{ learner.employeeId }}</td>
             <td>{{ learner.department }}</td>
             <td class="cell-muted">{{ learner.title }}</td>
-            <td class="num">{{ learner.learningHours }}h</td>
-            <td class="num">{{ learner.completedCourses }}</td>
-            <td class="num">{{ learner.certificateCount }}</td>
-            <td>
+            <td class="center">{{ learner.learningHours }}h</td>
+            <td class="center">{{ learner.certificateCount }}</td>
+            <td class="center">
               <span class="status-pill" :class="learner.status === 'active' ? 'status-pill--on' : 'status-pill--off'">
                 {{ learner.status === 'active' ? '正常学习' : '已停用' }}
               </span>
             </td>
-            <td class="cell-muted">{{ learner.lastActive }}</td>
             <td class="ops">
               <div class="row-actions">
                 <button class="icon-btn" title="编辑" @click="openEdit(learner)">
@@ -96,10 +92,30 @@
             </td>
           </tr>
           <tr v-if="!filteredLearners.length">
-            <td colspan="10" class="empty-cell">没有匹配的学员</td>
+            <td colspan="8" class="empty-cell">没有匹配的学员</td>
           </tr>
         </tbody>
       </table>
+    </div>
+
+    <!-- 分页：始终固定在页面底部，不随记录条数上下移动 -->
+    <div class="pager">
+      <span class="pager-info">
+        共 {{ filteredLearners.length }} 条 · 第 {{ page }} / {{ totalPages }} 页
+      </span>
+      <div class="pager-controls">
+        <button class="pager-btn" :disabled="page === 1" @click="page--">上一页</button>
+        <button
+          v-for="p in pageNumbers"
+          :key="p"
+          class="pager-btn pager-btn--num"
+          :class="{ 'pager-btn--active': p === page }"
+          @click="page = p"
+        >
+          {{ p }}
+        </button>
+        <button class="pager-btn" :disabled="page === totalPages" @click="page++">下一页</button>
+      </div>
     </div>
 
     <!-- 新增 / 编辑弹窗 -->
@@ -165,15 +181,31 @@
       </div>
     </div>
 
+    <ConfirmDialog
+      v-if="confirmState"
+      :title="confirmState.title"
+      :subtitle="confirmState.subtitle"
+      :rows="confirmState.rows"
+      :tip="confirmState.tip"
+      :tone="confirmState.tone"
+      :confirm-text="confirmState.confirmText"
+      @cancel="cancelConfirm"
+      @confirm="acceptConfirm"
+    />
+
   </div>
 </template>
 
 <script setup>
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { Plus, EditPen, Delete, Close, CircleClose, CircleCheck, Search } from '@element-plus/icons-vue';
 import { ADMIN_LEARNERS_DATA } from '../../mockData.js';
+import { useConfirm } from '../../composables/useConfirm.js';
+import ConfirmDialog from '../../components/ConfirmDialog.vue';
 
 const learners = ref(ADMIN_LEARNERS_DATA.map(l => ({ ...l })));
+
+const { confirmState, askConfirm, cancelConfirm, acceptConfirm } = useConfirm();
 
 const keyword = ref('');
 const deptFilter = ref('');
@@ -192,6 +224,37 @@ const filteredLearners = computed(() => {
     const hitStatus = !statusFilter.value || l.status === statusFilter.value;
     return hitKw && hitDept && hitStatus;
   });
+});
+
+/* ---------- 分页 ---------- */
+const PAGE_SIZE = 7;
+const page = ref(1);
+
+const totalPages = computed(() =>
+  Math.max(1, Math.ceil(filteredLearners.value.length / PAGE_SIZE))
+);
+
+const pagedLearners = computed(() => {
+  const start = (page.value - 1) * PAGE_SIZE;
+  return filteredLearners.value.slice(start, start + PAGE_SIZE);
+});
+
+const pageNumbers = computed(() => {
+  const total = totalPages.value;
+  const current = page.value;
+  const max = 5;
+  let start = Math.max(1, current - 2);
+  const end = Math.min(total, start + max - 1);
+  start = Math.max(1, end - max + 1);
+  return Array.from({ length: end - start + 1 }, (_, i) => start + i);
+});
+
+/* 筛选条件变化时回到第一页 */
+watch([keyword, deptFilter, statusFilter], () => { page.value = 1; });
+
+/* 删除/筛选后页码越界时自动收拢 */
+watch(totalPages, (n) => {
+  if (page.value > n) page.value = n;
 });
 
 /* ---------- 弹窗表单 ---------- */
@@ -263,8 +326,21 @@ const toggleStatus = (learner) => {
 };
 
 const removeLearner = (learner) => {
-  if (!window.confirm(`确认删除学员「${learner.name} (${learner.employeeId})」?此操作不可恢复。`)) return;
-  learners.value = learners.value.filter(l => l.id !== learner.id);
+  askConfirm({
+    tone: 'danger',
+    title: '删除该学员？',
+    subtitle: `${learner.name} · ${learner.department}`,
+    rows: [
+      { label: '工号', value: learner.employeeId },
+      { label: '职级', value: learner.title },
+      { label: '累计学时', value: `${learner.learningHours}h` }
+    ],
+    tip: '删除后该学员的账号与学习记录将一并移除，此操作不可恢复。',
+    confirmText: '确认删除',
+    action: () => {
+      learners.value = learners.value.filter(l => l.id !== learner.id);
+    }
+  });
 };
 </script>
 
@@ -281,6 +357,8 @@ button { cursor: pointer; }
   display: flex;
   flex-direction: column;
   gap: 16px;
+  min-height: 100%;
+  height: 100%;
 }
 
 /* ========== 页头 ========== */
@@ -460,9 +538,75 @@ button { cursor: pointer; }
 th.num, td.num { text-align: right; }
 th.ops, td.ops { text-align: right; }
 
+/* 表头默认 left 优先级更高,这里提权让数字列/操作列的表头与其内容对齐 */
+.data-table thead th.num,
+.data-table thead th.ops { text-align: right; }
+
+/* 学时/证书/状态 统一居中 */
+.data-table th.center,
+.data-table td.center { text-align: center; }
+
 .mono { font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 12px; }
 .cell-muted { color: #64748B; }
 .empty-cell { text-align: center; color: #94A3B8; padding: 28px 0 !important; }
+
+/* ========== 分页 ========== */
+.pager {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: auto;
+  flex-shrink: 0;
+}
+
+.pager-info {
+  font-size: 12px;
+  color: #94A3B8;
+}
+
+.pager-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pager-btn {
+  min-width: 32px;
+  height: 32px;
+  padding: 0 12px;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  color: #475569;
+  background: #fff;
+  border: 1px solid #E2E8F0;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.pager-btn:hover:not(:disabled) {
+  background: #FDF7E7;
+  color: #8A6414;
+  border-color: #E9B949;
+}
+
+.pager-btn:disabled {
+  color: #CBD5E1;
+  background: #F8FAFC;
+  cursor: not-allowed;
+}
+
+.pager-btn--num { padding: 0; }
+
+.pager-btn--active,
+.pager-btn--active:hover:not(:disabled) {
+  color: #fff;
+  background: linear-gradient(135deg, #E9B949, #D19A2B);
+  border-color: #D19A2B;
+}
 
 .cell-user { display: flex; align-items: center; gap: 8px; }
 

@@ -8,7 +8,7 @@
         <span class="brand-logo-shield"></span>
       </div>
       <div class="brand-text">
-        <div class="brand-name">智训云学</div>
+        <div class="brand-name">云舒艺境</div>
         <div class="brand-sub">ADMIN CONSOLE · 管理端</div>
       </div>
     </div>
@@ -32,15 +32,6 @@
         </span>
       </button>
 
-      <div class="nav-divider"></div>
-
-      <!-- 返回学员端 -->
-      <button class="nav-item nav-item--back" @click="$emit('switch-to-learner')">
-        <div class="nav-item-left">
-          <SwitchButton class="sidebar-icon" />
-          <span class="nav-label">返回学员端</span>
-        </div>
-      </button>
     </nav>
 
     <!-- 底部管理员卡片 -->
@@ -53,7 +44,7 @@
         </div>
         <div class="admin-card-text">
           <div class="admin-card-name">{{ user?.name || '王智远' }}</div>
-          <div class="admin-card-title">{{ user?.title || '平台超级管理员' }}</div>
+          <div class="admin-card-title">{{ user?.title || '超级管理员' }}</div>
         </div>
         <button class="logout-btn" @click="$emit('logout')" title="退出登录">
           <SwitchButton class="sidebar-icon sidebar-logout-icon" />
@@ -325,21 +316,6 @@ button {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-/* ========== 分隔线 ========== */
-.nav-divider {
-  margin: 10px 12px;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-/* ========== 返回学员端按钮 ========== */
-.nav-item--back {
-  color: #8FA3BC;
-}
-
-.nav-item--back:hover {
-  color: #F7D98C;
 }
 
 /* ========== 徽章 ========== */

@@ -23,10 +23,6 @@
         <span class="overview-label">部门总人数</span>
       </div>
       <div class="overview-item">
-        <span class="overview-value">{{ totalHours }}</span>
-        <span class="overview-label">累计学时</span>
-      </div>
-      <div class="overview-item">
         <span class="overview-value">{{ avgLearners }}</span>
         <span class="overview-label">平均人数/部门</span>
       </div>
@@ -40,15 +36,13 @@
             <th>部门</th>
             <th>负责人</th>
             <th class="num">人数</th>
-            <th class="num">累计学时</th>
-            <th class="num">人均学时</th>
             <th>简介</th>
             <th>状态</th>
             <th class="ops">操作</th>
           </tr>
         </thead>
         <tbody>
-          <tr v-for="dept in departments" :key="dept.id">
+          <tr v-for="dept in pagedDepartments" :key="dept.id">
             <td>
               <div class="cell-user">
                 <span class="cell-avatar">{{ dept.name.charAt(0) }}</span>
@@ -57,8 +51,6 @@
             </td>
             <td class="cell-muted">{{ dept.manager }}</td>
             <td class="num">{{ dept.learners }}</td>
-            <td class="num">{{ dept.hours }}h</td>
-            <td class="num">{{ avgHours(dept) }}h</td>
             <td class="desc-cell">{{ dept.desc }}</td>
             <td>
               <span class="status-pill" :class="dept.status === 'active' ? 'status-pill--on' : 'status-pill--off'">
@@ -86,11 +78,17 @@
             </td>
           </tr>
           <tr v-if="!departments.length">
-            <td colspan="8" class="empty-cell">暂无部门数据</td>
+            <td colspan="6" class="empty-cell">暂无部门数据</td>
           </tr>
         </tbody>
       </table>
     </div>
+
+    <AdminPager
+      v-model:page="page"
+      :total="departments.length"
+      :total-pages="totalPages"
+    />
 
     <!-- 新增 / 编辑弹窗 -->
     <div v-if="modalOpen" class="modal-backdrop" @click.self="closeModal">
@@ -130,6 +128,18 @@
       </div>
     </div>
 
+    <ConfirmDialog
+      v-if="confirmState"
+      :title="confirmState.title"
+      :subtitle="confirmState.subtitle"
+      :rows="confirmState.rows"
+      :tip="confirmState.tip"
+      :tone="confirmState.tone"
+      :confirm-text="confirmState.confirmText"
+      @cancel="cancelConfirm"
+      @confirm="acceptConfirm"
+    />
+
   </div>
 </template>
 
@@ -137,19 +147,24 @@
 import { computed, ref } from 'vue';
 import { Plus, EditPen, Delete, Close, CircleClose, CircleCheck } from '@element-plus/icons-vue';
 import { ADMIN_DEPARTMENTS } from '../../mockData.js';
+import { usePager } from '../../composables/usePager.js';
+import { useConfirm } from '../../composables/useConfirm.js';
+import AdminPager from '../../components/AdminPager.vue';
+import ConfirmDialog from '../../components/ConfirmDialog.vue';
 
 const departments = ref(ADMIN_DEPARTMENTS.map(d => ({ ...d })));
 
+const { confirmState, askConfirm, cancelConfirm, acceptConfirm } = useConfirm();
+
+const { page, totalPages, paged: pagedDepartments } = usePager(departments, 6);
+
 const activeCount = computed(() => departments.value.filter(d => d.status === 'active').length);
 const totalLearners = computed(() => departments.value.reduce((s, d) => s + d.learners, 0));
-const totalHours = computed(() => departments.value.reduce((s, d) => s + d.hours, 0));
 const avgLearners = computed(() =>
   departments.value.length
     ? Math.round(totalLearners.value / departments.value.length)
     : 0
 );
-
-const avgHours = (dept) => (dept.learners ? Math.round(dept.hours / dept.learners) : 0);
 
 /* ---------- 弹窗表单 ---------- */
 const modalOpen = ref(false);
@@ -208,8 +223,19 @@ const toggleStatus = (dept) => {
 };
 
 const removeDept = (dept) => {
-  if (!window.confirm(`确认删除部门「${dept.name}」?该部门下 ${dept.learners} 名学员将变为无部门状态。`)) return;
-  departments.value = departments.value.filter(d => d.id !== dept.id);
+  askConfirm({
+    tone: 'danger',
+    title: '删除该部门？',
+    subtitle: `${dept.name} · 负责人 ${dept.manager}`,
+    rows: [
+      { label: '部门人数', value: `${dept.learners} 人` }
+    ],
+    tip: `删除后，该部门下 ${dept.learners} 名学员将变为「无部门」状态，此操作不可恢复。`,
+    confirmText: '确认删除',
+    action: () => {
+      departments.value = departments.value.filter(d => d.id !== dept.id);
+    }
+  });
 };
 </script>
 
@@ -226,6 +252,8 @@ button { cursor: pointer; }
   display: flex;
   flex-direction: column;
   gap: 16px;
+  min-height: 100%;
+  height: 100%;
 }
 
 /* ========== 页头 ========== */
@@ -282,7 +310,7 @@ button { cursor: pointer; }
 /* ========== 概览条 ========== */
 .overview-strip {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
 }
 
@@ -347,6 +375,10 @@ button { cursor: pointer; }
 
 th.num, td.num { text-align: right; white-space: nowrap; }
 th.ops, td.ops { text-align: right; white-space: nowrap; }
+
+/* 表头默认 left 优先级更高,这里提权让数字列/操作列的表头与其内容对齐 */
+.data-table thead th.num,
+.data-table thead th.ops { text-align: right; }
 
 .cell-muted { color: #64748B; }
 .empty-cell { text-align: center; color: #94A3B8; padding: 28px 0 !important; }

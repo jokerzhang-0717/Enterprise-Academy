@@ -57,8 +57,8 @@
 
     <!-- 题目列表 -->
     <div class="question-list">
-      <article v-for="(q, idx) in filteredQuestions" :key="q.id" class="question-item">
-        <div class="q-index">{{ idx + 1 }}</div>
+      <article v-for="(q, idx) in pagedQuestions" :key="q.id" class="question-item">
+        <div class="q-index">{{ (page - 1) * 4 + idx + 1 }}</div>
         <div class="q-main">
           <div class="q-top">
             <span class="q-type-chip" :class="`q-type-chip--${q.type}`">{{ q.typeLabel }}</span>
@@ -75,6 +75,12 @@
       </article>
       <p v-if="!filteredQuestions.length" class="empty-tip">没有匹配的题目,点击右上角「新增题目」添加。</p>
     </div>
+
+    <AdminPager
+      v-model:page="page"
+      :total="filteredQuestions.length"
+      :total-pages="totalPages"
+    />
 
     <!-- 新增 / 编辑题目弹窗 -->
     <div v-if="modalOpen" class="modal-backdrop" @click.self="closeModal">
@@ -146,15 +152,33 @@
       </div>
     </div>
 
+    <ConfirmDialog
+      v-if="confirmState"
+      :title="confirmState.title"
+      :subtitle="confirmState.subtitle"
+      :rows="confirmState.rows"
+      :tip="confirmState.tip"
+      :tone="confirmState.tone"
+      :confirm-text="confirmState.confirmText"
+      @cancel="cancelConfirm"
+      @confirm="acceptConfirm"
+    />
+
   </div>
 </template>
 
 <script setup>
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { Plus, EditPen, Delete, Close } from '@element-plus/icons-vue';
 import { adminStore } from '../../adminStore.js';
+import { usePager } from '../../composables/usePager.js';
+import { useConfirm } from '../../composables/useConfirm.js';
+import AdminPager from '../../components/AdminPager.vue';
+import ConfirmDialog from '../../components/ConfirmDialog.vue';
 
 const questions = adminStore.questions;
+
+const { confirmState, askConfirm, cancelConfirm, acceptConfirm } = useConfirm();
 const exams = adminStore.exams;
 
 const examFilter = ref('');
@@ -183,6 +207,9 @@ const filteredQuestions = computed(() => {
     return hitExam && hitType && hitKw;
   });
 });
+
+const { page, totalPages, paged: pagedQuestions, resetPage } = usePager(filteredQuestions, 4);
+watch([examFilter, typeFilter, keyword], resetPage);
 
 /* ---------- 弹窗表单 ---------- */
 const modalOpen = ref(false);
@@ -268,9 +295,22 @@ const saveQ = () => {
 };
 
 const removeQ = (q) => {
-  if (!window.confirm('确认删除该题目?此操作不可恢复。')) return;
-  const idx = questions.findIndex(item => item.id === q.id);
-  if (idx > -1) questions.splice(idx, 1);
+  const exam = adminStore.exams.find(e => e.id === q.examId);
+  askConfirm({
+    tone: 'danger',
+    title: '删除该题目？',
+    subtitle: `${q.typeLabel} · ${q.score} 分`,
+    rows: [
+      { label: '所属考试', value: exam ? exam.title : q.examId },
+      { label: '正确答案', value: q.answer }
+    ],
+    tip: '删除后该题目将从题库及相关考试中移除，此操作不可恢复。',
+    confirmText: '确认删除',
+    action: () => {
+      const idx = questions.findIndex(item => item.id === q.id);
+      if (idx > -1) questions.splice(idx, 1);
+    }
+  });
 };
 </script>
 
@@ -287,6 +327,8 @@ button { cursor: pointer; }
   display: flex;
   flex-direction: column;
   gap: 16px;
+  min-height: 100%;
+  height: 100%;
 }
 
 /* ========== 页头 ========== */

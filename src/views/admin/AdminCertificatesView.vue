@@ -48,7 +48,7 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="cert in certificates" :key="cert.id">
+          <tr v-for="cert in pagedCertificates" :key="cert.id">
             <td>
               <div class="cell-user">
                 <span class="cell-avatar">{{ cert.holder.charAt(0) }}</span>
@@ -93,6 +93,12 @@
       </table>
     </div>
 
+    <AdminPager
+      v-model:page="page"
+      :total="certificates.length"
+      :total-pages="totalPages"
+    />
+
     <!-- 发放证书弹窗 -->
     <div v-if="modalOpen" class="modal-backdrop" @click.self="closeModal">
       <div class="modal">
@@ -134,6 +140,18 @@
       </div>
     </div>
 
+    <ConfirmDialog
+      v-if="confirmState"
+      :title="confirmState.title"
+      :subtitle="confirmState.subtitle"
+      :rows="confirmState.rows"
+      :tip="confirmState.tip"
+      :tone="confirmState.tone"
+      :confirm-text="confirmState.confirmText"
+      @cancel="cancelConfirm"
+      @confirm="acceptConfirm"
+    />
+
   </div>
 </template>
 
@@ -141,9 +159,17 @@
 import { computed, ref } from 'vue';
 import { Plus, Delete, Close } from '@element-plus/icons-vue';
 import { ADMIN_CERTIFICATE_ISSUES, ADMIN_LEARNERS_DATA } from '../../mockData.js';
+import { usePager } from '../../composables/usePager.js';
+import { useConfirm } from '../../composables/useConfirm.js';
+import AdminPager from '../../components/AdminPager.vue';
+import ConfirmDialog from '../../components/ConfirmDialog.vue';
 
 const certificates = ref(ADMIN_CERTIFICATE_ISSUES.map(c => ({ ...c })));
+
+const { confirmState, askConfirm, cancelConfirm, acceptConfirm } = useConfirm();
 const learners = ADMIN_LEARNERS_DATA;
+
+const { page, totalPages, paged: pagedCertificates } = usePager(certificates, 6);
 
 const issuedCount = computed(() => certificates.value.filter(c => c.status === 'issued').length);
 const pendingCount = computed(() => certificates.value.filter(c => c.status === 'pending').length);
@@ -212,13 +238,36 @@ const issueCert = (cert) => {
 };
 
 const revokeCert = (cert) => {
-  if (!window.confirm(`确认撤销「${cert.holder}」的证书「${cert.title}」?`)) return;
-  cert.status = 'revoked';
+  askConfirm({
+    tone: 'primary',
+    title: '撤销该证书？',
+    subtitle: `${cert.holder} · ${cert.title}`,
+    rows: [
+      { label: '证书编号', value: cert.serialNumber },
+      { label: '颁发机构', value: cert.issueOrg },
+      { label: '颁发日期', value: cert.issueDate }
+    ],
+    tip: '撤销后该证书将失效，学员端不再展示，可用于纠错重新发放。',
+    confirmText: '确认撤销',
+    action: () => { cert.status = 'revoked'; }
+  });
 };
 
 const removeCert = (cert) => {
-  if (!window.confirm(`确认删除证书「${cert.title}」(${cert.holder})?此操作不可恢复。`)) return;
-  certificates.value = certificates.value.filter(c => c.id !== cert.id);
+  askConfirm({
+    tone: 'danger',
+    title: '删除该证书记录？',
+    subtitle: `${cert.holder} · ${cert.title}`,
+    rows: [
+      { label: '证书编号', value: cert.serialNumber },
+      { label: '颁发日期', value: cert.issueDate }
+    ],
+    tip: '删除后该发放记录将从列表中移除，此操作不可恢复。',
+    confirmText: '确认删除',
+    action: () => {
+      certificates.value = certificates.value.filter(c => c.id !== cert.id);
+    }
+  });
 };
 </script>
 
@@ -235,6 +284,8 @@ button { cursor: pointer; }
   display: flex;
   flex-direction: column;
   gap: 16px;
+  min-height: 100%;
+  height: 100%;
 }
 
 /* ========== 页头 ========== */
@@ -357,6 +408,9 @@ button { cursor: pointer; }
 .data-table tbody tr:hover { background: #F8FAFC; }
 
 th.ops, td.ops { text-align: right; white-space: nowrap; }
+
+/* 表头默认 left 优先级更高,这里提权让操作列的表头与其内容对齐 */
+.data-table thead th.ops { text-align: right; }
 
 .mono { font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 12px; }
 .cell-muted { color: #64748B; }

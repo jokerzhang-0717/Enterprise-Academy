@@ -7,8 +7,8 @@
         <School class="sidebar-icon sidebar-brand-icon" />
       </div>
       <div class="brand-text">
-        <div class="brand-name">智训云学</div>
-        <div class="brand-sub">ENTERPRISE LMS</div>
+        <div class="brand-name">云舒艺境</div>
+        <div class="brand-sub">ENTERPRISE ACADEMY</div>
       </div>
     </div>
 

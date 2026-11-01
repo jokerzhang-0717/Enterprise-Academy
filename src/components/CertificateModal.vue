@@ -25,7 +25,7 @@
           <!-- 页眉 -->
           <div class="certificate-header">
             <div class="header-title">ENTERPRISE TECHNICAL CERTIFICATION</div>
-            <div class="header-org">智训云学 · 企业数字化人才培养委员会</div>
+            <div class="header-org">云舒艺境 · 企业数字化人才培养委员会</div>
           </div>
 
           <!-- 等级徽章 -->

@@ -58,7 +58,7 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="item in filteredRequests" :key="item.id">
+          <tr v-for="item in pagedRequests" :key="item.id">
             <td>
               <div class="cell-user">
                 <span class="cell-avatar">{{ item.applicant.charAt(0) }}</span>
@@ -71,7 +71,9 @@
             <td><span class="type-chip">{{ item.type }}</span></td>
             <td class="cell-muted">{{ item.timeRange }}</td>
             <td class="num">{{ item.days }} 天</td>
-            <td class="reason-cell">{{ item.reason }}</td>
+            <td class="reason-cell">
+              <div class="reason-text">{{ item.reason }}</div>
+            </td>
             <td class="cell-muted">{{ item.submittedTime }}</td>
             <td>
               <span class="status-pill" :class="`status-pill--${item.status}`">
@@ -93,15 +95,40 @@
       </table>
     </div>
 
+    <AdminPager
+      v-model:page="page"
+      :total="filteredRequests.length"
+      :total-pages="totalPages"
+    />
+
+    <!-- 审批确认 -->
+    <ConfirmDialog
+      v-if="confirmState"
+      :title="confirmState.title"
+      :subtitle="confirmState.subtitle"
+      :rows="confirmState.rows"
+      :tip="confirmState.tip"
+      :tone="confirmState.tone"
+      :confirm-text="confirmState.confirmText"
+      @cancel="cancelConfirm"
+      @confirm="acceptConfirm"
+    />
+
   </div>
 </template>
 
 <script setup>
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { ADMIN_LEAVE_REQUESTS } from '../../mockData.js';
+import { usePager } from '../../composables/usePager.js';
+import { useConfirm } from '../../composables/useConfirm.js';
+import AdminPager from '../../components/AdminPager.vue';
+import ConfirmDialog from '../../components/ConfirmDialog.vue';
 
 const requests = ref(ADMIN_LEAVE_REQUESTS.map(r => ({ ...r })));
 const statusFilter = ref('pending');
+
+const { confirmState, askConfirm, cancelConfirm, acceptConfirm } = useConfirm();
 
 const tabs = [
   { key: '',        label: '全部' },
@@ -119,6 +146,9 @@ const filteredRequests = computed(() => {
   return requests.value.filter(r => r.status === statusFilter.value);
 });
 
+const { page, totalPages, paged: pagedRequests, resetPage } = usePager(filteredRequests, 4);
+watch(statusFilter, resetPage);
+
 const tabCount = (key) => {
   if (!key) return requests.value.length;
   return requests.value.filter(r => r.status === key).length;
@@ -132,9 +162,22 @@ const statusLabelMap = {
 const statusLabel = (status) => statusLabelMap[status] || status;
 
 const decide = (item, status) => {
-  const verb = status === 'approved' ? '通过' : '驳回';
-  if (!window.confirm(`确认${verb}「${item.applicant}」的请假申请(${item.timeRange} · ${item.days} 天)?`)) return;
-  item.status = status;
+  const approve = status === 'approved';
+  askConfirm({
+    tone: approve ? 'success' : 'danger',
+    title: approve ? '通过这条请假申请？' : '驳回这条请假申请？',
+    subtitle: `${item.applicant} · ${item.department} · ${item.employeeId}`,
+    rows: [
+      { label: '请假类型', value: item.type },
+      { label: '请假时间', value: `${item.timeRange} · ${item.days} 天` },
+      { label: '提交时间', value: item.submittedTime }
+    ],
+    tip: approve
+      ? '通过后，该学员培训考勤将按请假记录，不计入缺勤。'
+      : '驳回后，该学员将收到驳回通知，需正常参加培训。',
+    confirmText: approve ? '确认通过' : '确认驳回',
+    action: () => { item.status = status; }
+  });
 };
 </script>
 
@@ -150,6 +193,8 @@ button { font-family: inherit; cursor: pointer; }
   display: flex;
   flex-direction: column;
   gap: 16px;
+  min-height: 100%;
+  height: 100%;
 }
 
 /* ========== 页头 ========== */
@@ -291,6 +336,10 @@ button { font-family: inherit; cursor: pointer; }
 th.num, td.num { text-align: right; white-space: nowrap; }
 th.ops, td.ops { text-align: right; white-space: nowrap; }
 
+/* 表头默认 left 优先级更高,这里提权让数字列/操作列的表头与其内容对齐 */
+.data-table thead th.num,
+.data-table thead th.ops { text-align: right; }
+
 .cell-muted { color: #64748B; }
 .empty-cell { text-align: center; color: #94A3B8; padding: 28px 0 !important; }
 
@@ -341,10 +390,17 @@ th.ops, td.ops { text-align: right; white-space: nowrap; }
 }
 
 .reason-cell {
-  max-width: 320px;
+  width: 320px;
+  min-width: 260px;
   color: #475569;
+}
+
+/* 事由完整展示:由单元格自然换行,不再截断 */
+.reason-text {
+  font-size: 12.5px;
   line-height: 1.6;
   white-space: normal;
+  word-break: break-word;
 }
 
 /* ========== 状态徽标 ========== */
@@ -382,5 +438,11 @@ th.ops, td.ops { text-align: right; white-space: nowrap; }
 
 @media (max-width: 640px) {
   .overview-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+/* 窄屏下收窄事由列,避免表格横向溢出 */
+@media (max-width: 1280px) {
+  .reason-cell { width: 240px; min-width: 200px; }
+  .reason-text { font-size: 12px; }
 }
 </style>

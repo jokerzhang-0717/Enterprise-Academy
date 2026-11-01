@@ -46,7 +46,7 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="exam in exams" :key="exam.id">
+          <tr v-for="exam in pagedExams" :key="exam.id">
             <td>
               <div class="cell-exam">
                 <span class="exam-dot" :class="`exam-dot--${exam.state}`"></span>
@@ -93,6 +93,12 @@
         </tbody>
       </table>
     </div>
+
+    <AdminPager
+      v-model:page="page"
+      :total="exams.length"
+      :total-pages="totalPages"
+    />
 
     <!-- 新建考试弹窗 -->
     <div v-if="modalOpen" class="modal-backdrop" @click.self="closeModal">
@@ -145,6 +151,18 @@
       </div>
     </div>
 
+    <ConfirmDialog
+      v-if="confirmState"
+      :title="confirmState.title"
+      :subtitle="confirmState.subtitle"
+      :rows="confirmState.rows"
+      :tip="confirmState.tip"
+      :tone="confirmState.tone"
+      :confirm-text="confirmState.confirmText"
+      @cancel="cancelConfirm"
+      @confirm="acceptConfirm"
+    />
+
   </div>
 </template>
 
@@ -152,10 +170,21 @@
 import { computed, ref } from 'vue';
 import { Plus, Delete, Close } from '@element-plus/icons-vue';
 import { adminStore, questionCount } from '../../adminStore.js';
+import { usePager } from '../../composables/usePager.js';
+import { useConfirm } from '../../composables/useConfirm.js';
+import { useToast } from '../../composables/useToast.js';
+import AdminPager from '../../components/AdminPager.vue';
+import ConfirmDialog from '../../components/ConfirmDialog.vue';
+
+const { show: showToast } = useToast();
 
 defineEmits(['navigate']);
 
 const exams = adminStore.exams;
+
+const { confirmState, askConfirm, cancelConfirm, acceptConfirm } = useConfirm();
+
+const { page, totalPages, paged: pagedExams } = usePager(exams, 6);
 
 const runningCount = computed(() => exams.filter(e => e.state === 'running').length);
 const scheduledCount = computed(() => exams.filter(e => e.state === 'scheduled').length);
@@ -249,21 +278,45 @@ const saveExam = () => {
 
 const publishExam = (exam) => {
   if (!questionCount(exam.id)) {
-    window.alert('该考试暂无题目,请先到「题库管理」为该考试添加题目后再发布。');
+    showToast('该考试暂无题目，请先到「题库管理」为该考试添加题目后再发布。', 'info');
     return;
   }
   exam.state = 'scheduled';
 };
 
 const revokeExam = (exam) => {
-  if (!window.confirm(`确认撤回考试「${exam.title}」?撤回后学员端不再展示。`)) return;
-  exam.state = 'draft';
+  askConfirm({
+    tone: 'primary',
+    title: '撤回该考试？',
+    subtitle: exam.title,
+    rows: [
+      { label: '当前状态', value: stateLabel(exam.state) },
+      { label: '时间窗', value: exam.timeWindow },
+      { label: '题目数', value: `${questionCount(exam.id)} 题` }
+    ],
+    tip: '撤回后考试将回到「待发布」状态，学员端不再展示该考试。',
+    confirmText: '确认撤回',
+    action: () => { exam.state = 'draft'; }
+  });
 };
 
 const removeExam = (exam) => {
-  if (!window.confirm(`确认删除考试「${exam.title}」?此操作不可恢复。`)) return;
-  const idx = exams.findIndex(e => e.id === exam.id);
-  if (idx > -1) exams.splice(idx, 1);
+  askConfirm({
+    tone: 'danger',
+    title: '删除该考试？',
+    subtitle: exam.title,
+    rows: [
+      { label: '考试状态', value: stateLabel(exam.state) },
+      { label: '时间窗', value: exam.timeWindow },
+      { label: '参考人数', value: `${(exam.participants || 0).toLocaleString()} 人` }
+    ],
+    tip: '删除后考试信息、题目关联与成绩记录将一并移除，此操作不可恢复。',
+    confirmText: '确认删除',
+    action: () => {
+      const idx = exams.findIndex(e => e.id === exam.id);
+      if (idx > -1) exams.splice(idx, 1);
+    }
+  });
 };
 </script>
 
@@ -280,6 +333,8 @@ button { cursor: pointer; }
   display: flex;
   flex-direction: column;
   gap: 16px;
+  min-height: 100%;
+  height: 100%;
 }
 
 /* ========== 页头 ========== */
@@ -402,6 +457,10 @@ button { cursor: pointer; }
 
 th.num, td.num { text-align: right; }
 th.ops, td.ops { text-align: right; }
+
+/* 表头默认 left 优先级更高,这里提权让数字列/操作列的表头与其内容对齐 */
+.data-table thead th.num,
+.data-table thead th.ops { text-align: right; }
 
 .cell-muted { color: #64748B; }
 .empty-cell { text-align: center; color: #94A3B8; padding: 28px 0 !important; }

@@ -1,6 +1,6 @@
 {
-  "name": "智训云学 Enterprise LMS",
-  "description": "智训云学 (Clarity Enterprise Learning) - 企业数字化智能人才培养体系平台，涵盖个人研学看板、课程中心、互动考场、考勤与请假联动、荣誉证书及消息通知体系。",
+  "name": "云舒艺境 ENTERPRISE ACADEMY",
+  "description": "云舒艺境 (Clarity Enterprise Learning) - 企业数字化智能人才培养体系平台，涵盖个人研学看板、课程中心、互动考场、考勤与请假联动、荣誉证书及消息通知体系。",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

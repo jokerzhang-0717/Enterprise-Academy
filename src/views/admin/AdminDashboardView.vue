@@ -3,7 +3,7 @@
 
     <!-- 页头 -->
     <div class="page-head">
-      <div>
+      <div class="head-copy">
         <h1 class="page-title">管理总览</h1>
         <p class="page-sub">平台运营数据全景 · 数据更新于 {{ todayText }}</p>
       </div>
@@ -11,11 +11,25 @@
         <button class="btn btn--ghost" @click="$emit('navigate', 'admin-announcements')">
           <Promotion class="btn-icon" /> 发布公告
         </button>
-        <button class="btn btn--primary" @click="$emit('navigate', 'admin-students')">
-          <Plus class="btn-icon" /> 新增学员
-        </button>
       </div>
     </div>
+
+    <!-- 欢迎卡 -->
+    <section class="welcome-card">
+      <div class="welcome-copy">
+        <div class="welcome-title">
+          {{ greeting }}，{{ userName }}
+          <span class="welcome-wave">👋</span>
+        </div>
+        <p class="welcome-desc">
+          平台数据已更新，愿今天的每项工作都推进顺利。
+        </p>
+      </div>
+      <div class="welcome-clock">
+        <div class="clock-time">{{ clockTime }}</div>
+        <div class="clock-date">{{ clockDate }}</div>
+      </div>
+    </section>
 
     <!-- 统计卡片 -->
     <section class="stat-grid">
@@ -107,10 +121,10 @@
 </template>
 
 <script setup>
-import { computed } from 'vue';
+import { computed, onMounted, onUnmounted, ref } from 'vue';
 import {
   UserFilled, Collection, Tickets, Medal, Calendar, Promotion,
-  Plus, RefreshRight, Warning, Check, EditPen, OfficeBuilding
+  RefreshRight, Warning, Check, EditPen, OfficeBuilding
 } from '@element-plus/icons-vue';
 import {
   ADMIN_LEARNERS_DATA,
@@ -122,10 +136,45 @@ import {
   CERTIFICATES_DATA
 } from '../../mockData.js';
 
+const props = defineProps({
+  user: { type: Object, default: () => ({ name: '王智远' }) }
+});
+
 defineEmits(['navigate']);
 
 const todayText = new Date().toLocaleDateString('zh-CN', {
   year: 'numeric', month: '2-digit', day: '2-digit'
+});
+
+/* ===== 欢迎卡 ===== */
+const now = ref(new Date());
+const userName = computed(() => props.user?.name || '管理员');
+
+const greeting = computed(() => {
+  const h = now.value.getHours();
+  if (h < 6) return '夜深了';
+  if (h < 9) return '早上好';
+  if (h < 12) return '上午好';
+  if (h < 14) return '中午好';
+  if (h < 18) return '下午好';
+  return '晚上好';
+});
+
+const pad = (n) => String(n).padStart(2, '0');
+const clockTime = computed(
+  () => `${pad(now.value.getHours())}:${pad(now.value.getMinutes())}:${pad(now.value.getSeconds())}`
+);
+const clockDate = computed(() => {
+  const d = now.value;
+  return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日星期${'日一二三四五六'[d.getDay()]}`;
+});
+
+let clockTimer = null;
+onMounted(() => {
+  clockTimer = setInterval(() => { now.value = new Date(); }, 1000);
+});
+onUnmounted(() => {
+  if (clockTimer) clearInterval(clockTimer);
 });
 
 const activeLearners = ADMIN_LEARNERS_DATA.filter(l => l.status === 'active').length;
@@ -190,9 +239,6 @@ const activityIcon = (type) => activityIconMap[type] || activityIconMap.default;
 </script>
 
 <style scoped>
-/* ============================================================
-   AdminDashboard · 管理总览 · 纯原生 CSS
-   ============================================================ */
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
 button { font-family: inherit; cursor: pointer; }
@@ -201,6 +247,17 @@ button { font-family: inherit; cursor: pointer; }
   display: flex;
   flex-direction: column;
   gap: 20px;
+  height: 100%;
+  min-height: 100%;
+  overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.admin-dashboard::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
 }
 
 /* ========== 页头 ========== */
@@ -210,6 +267,12 @@ button { font-family: inherit; cursor: pointer; }
   justify-content: space-between;
   gap: 16px;
   flex-wrap: wrap;
+  padding-bottom: 4px;
+}
+
+.head-copy {
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .page-title {
@@ -229,6 +292,67 @@ button { font-family: inherit; cursor: pointer; }
 .head-actions {
   display: flex;
   gap: 10px;
+}
+
+/* ========== 欢迎卡 ========== */
+.welcome-card {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 22px 26px;
+  background: #fff;
+  border: 1px solid #E8EDF3;
+  border-radius: 16px;
+}
+
+.welcome-copy {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.welcome-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 21px;
+  font-weight: 700;
+  color: #0F1E33;
+  letter-spacing: -0.015em;
+  line-height: 1.35;
+}
+
+.welcome-wave {
+  font-size: 19px;
+  line-height: 1;
+}
+
+.welcome-desc {
+  margin-top: 6px;
+  font-size: 14px;
+  color: #64748B;
+}
+
+.welcome-clock {
+  flex-shrink: 0;
+  padding-left: 26px;
+  border-left: 1px solid #EEF2F7;
+  text-align: right;
+}
+
+.clock-time {
+  font-size: 34px;
+  font-weight: 700;
+  line-height: 1.1;
+  color: #0F1E33;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.clock-date {
+  margin-top: 5px;
+  font-size: 12.5px;
+  color: #94A3B8;
+  font-variant-numeric: tabular-nums;
 }
 
 .btn {
@@ -554,5 +678,14 @@ button { font-family: inherit; cursor: pointer; }
 
 @media (max-width: 640px) {
   .stat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .welcome-card { flex-wrap: wrap; }
+  .welcome-clock {
+    width: 100%;
+    padding-left: 0;
+    padding-top: 10px;
+    border-left: 0;
+    border-top: 1px solid #EEF2F7;
+    text-align: left;
+  }
 }
 </style>

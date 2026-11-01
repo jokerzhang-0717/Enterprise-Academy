@@ -35,7 +35,7 @@
         <div class="video-frame">
           <!-- Watermark -->
           <div class="video-frame__watermark">
-            智训云学 · 研发工号 094821 张浩然
+            云舒艺境 · 研发工号 094821 张浩然
           </div>
 
           <!-- Video Background Simulation -->

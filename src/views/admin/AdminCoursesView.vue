@@ -48,7 +48,7 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="course in filteredCourses" :key="course.id">
+          <tr v-for="course in pagedCourses" :key="course.id">
             <td>
               <div class="cell-course">
                 <img :src="course.thumbnail" alt="" class="cell-thumb" />
@@ -96,6 +96,12 @@
         </tbody>
       </table>
     </div>
+
+    <AdminPager
+      v-model:page="page"
+      :total="filteredCourses.length"
+      :total-pages="totalPages"
+    />
 
     <!-- 新增 / 编辑弹窗 -->
     <div v-if="modalOpen" class="modal-backdrop" @click.self="closeModal">
@@ -234,17 +240,38 @@
       </div>
     </div>
 
+    <ConfirmDialog
+      v-if="confirmState"
+      :title="confirmState.title"
+      :subtitle="confirmState.subtitle"
+      :rows="confirmState.rows"
+      :tip="confirmState.tip"
+      :tone="confirmState.tone"
+      :confirm-text="confirmState.confirmText"
+      @cancel="cancelConfirm"
+      @confirm="acceptConfirm"
+    />
+
   </div>
 </template>
 
 <script setup>
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { Plus, EditPen, Delete, Close } from '@element-plus/icons-vue';
 import { COURSE_CATEGORIES } from '../../mockData.js';
 import { adminStore, PRESET_COVERS } from '../../adminStore.js';
+import { usePager } from '../../composables/usePager.js';
+import { useConfirm } from '../../composables/useConfirm.js';
+import { useToast } from '../../composables/useToast.js';
+import AdminPager from '../../components/AdminPager.vue';
+import ConfirmDialog from '../../components/ConfirmDialog.vue';
+
+const { show: showToast } = useToast();
 
 const courses = adminStore.courses;
 const presetCovers = PRESET_COVERS;
+
+const { confirmState, askConfirm, cancelConfirm, acceptConfirm } = useConfirm();
 
 const keyword = ref('');
 const categoryFilter = ref('');
@@ -266,6 +293,9 @@ const filteredCourses = computed(() => {
     return hitKw && hitCat && hitPub;
   });
 });
+
+const { page, totalPages, paged: pagedCourses, resetPage } = usePager(filteredCourses, 6);
+watch([keyword, categoryFilter, publishFilter], resetPage);
 
 /* ---------- 弹窗表单 ---------- */
 const modalOpen = ref(false);
@@ -370,15 +400,26 @@ const addChapter = () => {
 };
 
 const removeChapter = (chapter) => {
-  if (!window.confirm(`确认删除章节「${chapter.title}」及其所有课时?`)) return;
-  form.value.syllabus = form.value.syllabus.filter(ch => ch.id !== chapter.id);
+  askConfirm({
+    tone: 'danger',
+    title: '删除该章节？',
+    subtitle: chapter.title,
+    rows: [
+      { label: '本章课时', value: `${chapter.lessons?.length || 0} 个` }
+    ],
+    tip: '删除后本章及其所有课时将一并移除，请确认内容已备份。',
+    confirmText: '确认删除',
+    action: () => {
+      form.value.syllabus = form.value.syllabus.filter(ch => ch.id !== chapter.id);
+    }
+  });
 };
 
 const handleLessonUpload = (chapter) => (e) => {
   const file = e.target.files && e.target.files[0];
   if (!file) return;
   if (file.size > 30 * 1024 * 1024) {
-    window.alert('视频超过 30MB,本演示环境仅支持小文件上传。');
+    showToast('视频超过 30MB，本演示环境仅支持小文件上传。', 'error');
     return;
   }
   const reader = new FileReader();
@@ -404,7 +445,7 @@ const handleCoverUpload = (e) => {
   const file = e.target.files && e.target.files[0];
   if (!file) return;
   if (file.size > 5 * 1024 * 1024) {
-    window.alert('封面图片超过 5MB,请压缩后重试。');
+    showToast('封面图片超过 5MB，请压缩后重试。', 'error');
     return;
   }
   const reader = new FileReader();
@@ -415,9 +456,22 @@ const handleCoverUpload = (e) => {
 };
 
 const removeCourse = (course) => {
-  if (!window.confirm(`确认删除课程「${course.title}」?此操作不可恢复。`)) return;
-  const idx = courses.findIndex(c => c.id === course.id);
-  if (idx > -1) courses.splice(idx, 1);
+  askConfirm({
+    tone: 'danger',
+    title: '删除该课程？',
+    subtitle: course.title,
+    rows: [
+      { label: '课程分类', value: course.categoryLabel },
+      { label: '课时数', value: `${course.totalLessons} 课时` },
+      { label: '在学人数', value: `${(course.students || 0).toLocaleString()} 人` }
+    ],
+    tip: '删除后课程内容、章节与学员学习进度将一并移除，此操作不可恢复。',
+    confirmText: '确认删除',
+    action: () => {
+      const idx = courses.findIndex(c => c.id === course.id);
+      if (idx > -1) courses.splice(idx, 1);
+    }
+  });
 };
 </script>
 
@@ -434,6 +488,8 @@ button { cursor: pointer; }
   display: flex;
   flex-direction: column;
   gap: 16px;
+  min-height: 100%;
+  height: 100%;
 }
 
 /* ========== 页头 ========== */
@@ -612,6 +668,10 @@ button { cursor: pointer; }
 
 th.num, td.num { text-align: right; }
 th.ops, td.ops { text-align: right; }
+
+/* 表头默认 left 优先级更高,这里提权让数字列/操作列的表头与其内容对齐 */
+.data-table thead th.num,
+.data-table thead th.ops { text-align: right; }
 
 .mono { font-family: 'JetBrains Mono', ui-monospace, monospace; }
 .cell-muted { color: #64748B; }

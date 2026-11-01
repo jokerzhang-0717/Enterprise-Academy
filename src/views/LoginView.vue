@@ -31,7 +31,7 @@
           </div>
           <div>
             <div class="flex items-center gap-2">
-              <span class="brand-title text-[17px] text-[#0B1B33]">智训云学</span>
+              <span class="brand-title text-[17px] text-[#0B1B33]">云舒艺境</span>
               <span class="brand-badge">ENTERPRISE</span>
             </div>
             <div class="mono-font mt-[3px] text-[8.5px] uppercase tracking-[.28em] text-[#5B6B80]">
@@ -96,7 +96,7 @@
             <GraduationCap class="h-[17px] w-[17px]" />
           </div>
           <div>
-            <div class="brand-title text-[15px] text-[#0B1B33]">智训云学</div>
+            <div class="brand-title text-[15px] text-[#0B1B33]">云舒艺境</div>
             <div class="mono-font text-[8px] uppercase tracking-[.22em] text-[#5B6B80]">Enterprise L&amp;D Platform</div>
           </div>
         </div>
@@ -136,25 +136,47 @@
 
           <div class="fade-in" style="--d:.22s">
             <label class="form-label">Employee ID · 企业工号</label>
-            <div class="input-wrap">
+            <div class="input-wrap" :class="loginErrors.employeeId ? 'input-wrap-error' : ''">
               <User class="input-icon" />
-              <input v-model.trim="employeeId" type="text" placeholder="EMP-2024098" class="input-box mono-font" />
+              <input
+                v-model.trim="employeeId"
+                @input="clearLoginError('employeeId')"
+                type="text"
+                placeholder="EMP-2024098"
+                class="input-box mono-font"
+                :aria-invalid="Boolean(loginErrors.employeeId)"
+                aria-describedby="login-err-employeeId"
+              />
             </div>
+            <p v-if="loginErrors.employeeId" id="login-err-employeeId" class="login-error">
+              {{ loginErrors.employeeId }}
+            </p>
           </div>
 
           <div class="fade-in" style="--d:.28s">
             <div class="flex items-center justify-between">
               <label class="form-label">Password · 登录密码</label>
-              <a href="#forgot" class="form-link" @click.prevent="alert('请联系企业 IT 运维部工单重置密码')">忘记密码？</a>
+              <a href="#forgot" class="form-link" @click.prevent="handleForgot">忘记密码？</a>
             </div>
-            <div class="input-wrap mt-2">
+            <div class="input-wrap mt-2" :class="loginErrors.password ? 'input-wrap-error' : ''">
               <Lock class="input-icon" />
-              <input :type="showPassword ? 'text' : 'password'" v-model="password" placeholder="请输入登录密码" class="input-box" />
+              <input
+                :type="showPassword ? 'text' : 'password'"
+                v-model="password"
+                @input="clearLoginError('password')"
+                placeholder="请输入登录密码"
+                class="input-box"
+                :aria-invalid="Boolean(loginErrors.password)"
+                aria-describedby="login-err-password"
+              />
               <button type="button" class="password-toggle" @click="showPassword = !showPassword" aria-label="切换密码可见性">
                 <EyeOff v-if="showPassword" class="h-[15px] w-[15px]" />
                 <Eye v-else class="h-[15px] w-[15px]" />
               </button>
             </div>
+            <p v-if="loginErrors.password" id="login-err-password" class="login-error">
+              {{ loginErrors.password }}
+            </p>
           </div>
 
           <!-- ====== 滑块行为验证 ====== -->
@@ -169,7 +191,7 @@
             <div
               ref="sliderRef"
               class="slider-track mt-2"
-              :class="sliderVerified ? 'verified' : ''"
+              :class="{ verified: sliderVerified, 'slider-track--error': loginErrors.slider && !sliderVerified }"
               @pointerdown="startDrag"
             >
               <div class="slider-progress" :style="{ width: `${sliderPosition + 44}px` }"></div>
@@ -187,6 +209,9 @@
                 <ChevronsRight v-else class="h-[16px] w-[16px]" />
               </div>
             </div>
+            <p v-if="loginErrors.slider && !sliderVerified" class="login-error">
+              {{ loginErrors.slider }}
+            </p>
           </div>
 
           <!-- 记住设备 -->
@@ -242,7 +267,7 @@
 
         <div class="fade-in mt-7 border-t border-[#DCE7F2] pt-4" style="--d:.56s">
           <div class="mono-font flex items-center justify-between text-[8.5px] tracking-[.16em] text-[#7C8FA3]">
-            <span class="whitespace-nowrap">© 2024 智训云学 LMS</span>
+            <span class="whitespace-nowrap">© 2024 云舒艺境 LMS</span>
             <span class="flex items-center gap-2.5 whitespace-nowrap">
               <a href="#privacy" class="footer-link" @click.prevent>隐私策略</a>
               <span class="h-[3px] w-[3px] rounded-full bg-[#C9D8E6]"></span>
@@ -263,6 +288,7 @@ import {
   Eye, EyeOff, ArrowRight, Check, ChevronsRight,
   Lock, User, Gauge, KeyRound
 } from 'lucide-vue-next';
+import { useToast } from '../composables/useToast.js';
 
 const emit = defineEmits(['login-success']);
 
@@ -290,6 +316,15 @@ const employeeId = ref('EMP-2024098');
 const password = ref('');
 const showPassword = ref(false);
 const rememberDevice = ref(true);
+
+const loginErrors = ref({});
+const { show: showToast } = useToast();
+
+const clearLoginError = (field) => {
+  if (!loginErrors.value[field]) return;
+  const { [field]: _drop, ...rest } = loginErrors.value;
+  loginErrors.value = rest;
+};
 
 /* ---------- 滑块行为验证 ---------- */
 const sliderVerified = ref(false);
@@ -322,6 +357,7 @@ const onDrag = (e) => {
   if (pos >= max - 6) {
     sliderVerified.value = true;
     sliderPosition.value = max;
+    clearLoginError('slider');
     stopDrag();
   }
 };
@@ -357,10 +393,19 @@ const clearRegisterError = (field) => {
 };
 
 const handleSubmit = () => {
-  if (!employeeId.value) return alert('请输入企业工号');
-  if (!password.value) return alert('请输入登录密码');
-  if (!sliderVerified.value) return alert('请先完成滑块安全验证');
+  const errors = {};
+  if (!employeeId.value) errors.employeeId = '请输入企业工号。';
+  if (!password.value) errors.password = '请输入登录密码。';
+  if (!sliderVerified.value) errors.slider = '请先完成滑块安全验证。';
+
+  loginErrors.value = errors;
+  if (Object.keys(errors).length) return;
+
   emit('login-success', { employeeId: employeeId.value, rememberDevice: rememberDevice.value });
+};
+
+const handleForgot = () => {
+  showToast('请联系企业 IT 运维部工单重置密码', 'info');
 };
 
 const handleRegister = () => {
@@ -386,7 +431,7 @@ const handleRegister = () => {
 
 <style scoped>
 /* ============================================================
-   智训云学 · 登录 / 注册页样式
+   云舒艺境 · 登录 / 注册页样式
    ------------------------------------------------------------
    目录
      01  字体排版            08  表单标签 / 链接
@@ -551,6 +596,14 @@ const handleRegister = () => {
   border-color: #F0B4CC !important;
   background: #FDF4F8 !important;
 }
+
+/* 登录字段错误提示（与注册一致的内联提示风格） */
+.login-error {
+  margin-top: 5px;
+  font-size: 10px;
+  line-height: 1.5;
+  color: #C2417C;
+}
 .input-icon {
   height: 15px; width: 15px; flex: none;
   color: #6FA9E0; transition: color .18s;
@@ -580,6 +633,10 @@ const handleRegister = () => {
   transition: border-color .25s, background .25s;
 }
 .slider-track:hover { border-color: #B9D7F0; }
+.slider-track--error {
+  border-color: #F0B4CC;
+  background: #FDF4F8;
+}
 .slider-track.verified {
   border-color: rgba(47, 191, 143, .5);
   background: rgba(233, 248, 242, .9);

@@ -228,6 +228,145 @@ export const COURSES_DATA = [
     badgeType: 'primary',
     thumbnail: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=600&q=80',
     summary: '系统解读 GDPR、新加坡 PDPA 与国内数据出境评估申报全流程，避开海外隐私保护巨额罚单。'
+  },
+  {
+    id: 'c7',
+    title: 'AI 大模型应用开发: 从 Prompt 工程到 RAG 实战',
+    category: 'tech',
+    isRequired: false,
+    categoryLabel: '人工智能',
+    level: '进阶技术',
+    hours: 20,
+    students: 780,
+    progress: 45,
+    totalLessons: 20,
+    completedLessons: 9,
+    instructor: {
+      name: '郑亦辰',
+      title: '算法平台负责人'
+    },
+    tags: ['人工智能', 'RAG 检索增强'],
+    status: 'studying',
+    badge: '学习中 · 45%',
+    badgeType: 'primary',
+    thumbnail: 'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?auto=format&fit=crop&w=600&q=80',
+    summary: '从提示词设计、向量检索到知识库切分与召回评估,完整搭建企业级 RAG 应用链路。'
+  },
+  {
+    id: 'c8',
+    title: '产品需求分析与用户旅程地图实战',
+    category: 'product',
+    isRequired: false,
+    categoryLabel: '产品与业务',
+    level: '产品进阶',
+    hours: 12,
+    students: 520,
+    progress: 0,
+    totalLessons: 12,
+    completedLessons: 0,
+    instructor: {
+      name: '许清和',
+      title: '资深产品专家'
+    },
+    tags: ['需求分析', '用户体验'],
+    status: 'not_started',
+    badge: '新课上线',
+    badgeType: 'warning',
+    thumbnail: 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=600&q=80',
+    summary: '拆解真实业务场景下的需求澄清、优先级排序与用户旅程地图绘制方法,提升需求交付质量。'
+  },
+  {
+    id: 'c9',
+    title: '高绩效团队目标管理与 OKR 落地',
+    category: 'leadership',
+    isRequired: false,
+    categoryLabel: '领导力与管理',
+    level: '管理通识',
+    hours: 10,
+    students: 640,
+    progress: 100,
+    totalLessons: 10,
+    completedLessons: 10,
+    score: 92,
+    instructor: {
+      name: '林欣怡',
+      title: 'PMP 专家教练'
+    },
+    tags: ['目标管理', '团队协作'],
+    status: 'completed',
+    badge: '已结课 · 成绩优秀 92分',
+    badgeType: 'success',
+    thumbnail: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=600&q=80',
+    summary: '围绕 OKR 制定、对齐与复盘,结合团队激励与反馈机制,帮助管理者把目标真正落到日常执行。'
+  },
+  {
+    id: 'c10',
+    title: '数据可视化与 BI 报表体系搭建',
+    category: 'tech',
+    isRequired: false,
+    categoryLabel: '数据分析',
+    level: '进阶技术',
+    hours: 16,
+    students: 430,
+    progress: 25,
+    totalLessons: 16,
+    completedLessons: 4,
+    instructor: {
+      name: '赵明哲',
+      title: '数据平台架构师'
+    },
+    tags: ['数据可视化', '指标体系'],
+    status: 'studying',
+    badge: '学习中 · 25%',
+    badgeType: 'primary',
+    thumbnail: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=600&q=80',
+    summary: '从指标体系设计、数据建模到可视化图表选型,搭建可持续迭代的企业 BI 报表体系。'
+  },
+  {
+    id: 'c11',
+    title: '商务演讲与结构化表达训练营',
+    category: 'core',
+    isRequired: false,
+    categoryLabel: '通识素养',
+    level: '素养选修',
+    hours: 8,
+    students: 910,
+    progress: 0,
+    totalLessons: 8,
+    completedLessons: 0,
+    instructor: {
+      name: '周文雅',
+      title: '资深表达教练'
+    },
+    tags: ['结构化表达', '商务沟通'],
+    status: 'not_started',
+    badge: '情境互动微课',
+    badgeType: 'warning',
+    thumbnail: 'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?auto=format&fit=crop&w=600&q=80',
+    summary: '用金字塔结构与故事化表达组织内容,在汇报、路演与跨部门沟通中清晰传递关键信息。'
+  },
+  {
+    id: 'c12',
+    title: '个人信息保护法与员工数据合规实务',
+    category: 'compliance',
+    isRequired: true,
+    categoryLabel: '法务合规',
+    level: '全员必修',
+    hours: 6,
+    students: 1520,
+    progress: 60,
+    totalLessons: 6,
+    completedLessons: 4,
+    instructor: {
+      name: '王若琳',
+      title: '数据合规法务顾问'
+    },
+    tags: ['个人信息保护', '数据合规'],
+    status: 'studying',
+    badge: '学习中 · 60%',
+    badgeType: 'primary',
+    thumbnail: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=600&q=80',
+    summary: '结合《个人信息保护法》与内部员工数据管理场景,讲清收集、存储、使用与删除的合规边界。'
   }
 ];
 
@@ -347,6 +486,54 @@ export const EXAMS_DATA = [
     isDoubleCameraProctored: false,
     relatedCourse: '《大模型应用安全与生成式AI提示词规范》 (已结课)',
     questionCount: 30
+  },
+  {
+    id: 'exam-4',
+    code: 'ZK-20250506-12',
+    title: '2025Q3 前端工程化与页面性能优化认证',
+    category: '前端技术委员会',
+    status: 'not_started',
+    location: '线上隔离沙箱 (IDE内联)',
+    timeWindow: '2025-05-28 14:00 ~ 15:30',
+    durationMinutes: 90,
+    totalScore: 100,
+    passScore: 80,
+    remainingTimeText: '倒计时: 9天 6小时',
+    isDoubleCameraProctored: false,
+    relatedCourse: '《前端工程化与构建优化实战》 (进度 72%)',
+    questionCount: 20
+  },
+  {
+    id: 'exam-5',
+    code: 'ZK-20250428-03',
+    title: '2025年度信息安全意识全员测评',
+    category: '信息安全部',
+    status: 'anytime',
+    location: '在线网页自适应考试端',
+    timeWindow: '2025-05-01 ~ 05-31',
+    durationMinutes: 30,
+    totalScore: 100,
+    passScore: 80,
+    remainingTimeText: '剩余考评机会: 3次',
+    isDoubleCameraProctored: false,
+    relatedCourse: '《企业网络安全防护规范》 (必修)',
+    questionCount: 18
+  },
+  {
+    id: 'exam-6',
+    code: 'ZK-20250512-07',
+    title: '2025Q2 数据库性能调优与慢查询治理实战认证',
+    category: '基础架构委员会',
+    status: 'in_progress',
+    location: '线上实训环境',
+    timeWindow: '2025-05-12 09:30 ~ 11:00',
+    durationMinutes: 90,
+    totalScore: 100,
+    passScore: 85,
+    remainingTimeText: '剩余作答: 26 分钟',
+    isDoubleCameraProctored: true,
+    relatedCourse: '《分布式数据库与高可用单元化架构》 (进度 90%)',
+    questionCount: 22
   }
 ];
 
@@ -386,6 +573,42 @@ export const PAST_EXAMS = [
     status: 'passed_qualified',
     wrongCount: 4,
     relatedCourse: '《云原生运维》'
+  },
+  {
+    id: 'past-4',
+    code: 'CER-202503-TRN-1206',
+    title: '2025Q1 企业内训师授课能力认证',
+    type: '内训师认证',
+    completionDate: '2025-03-12 11:20',
+    score: 88,
+    passScore: 80,
+    status: 'passed_excellent',
+    wrongCount: 3,
+    relatedCourse: '《课程设计与讲授技巧》'
+  },
+  {
+    id: 'past-5',
+    code: 'CER-202502-FIN-4417',
+    title: '2025Q1 财务共享与费用报销规范考核',
+    type: '全员合规必修',
+    completionDate: '2025-02-21 14:10',
+    score: 94,
+    passScore: 85,
+    status: 'passed_excellent',
+    wrongCount: 1,
+    relatedCourse: '《财务报销制度解读》'
+  },
+  {
+    id: 'past-6',
+    code: 'CER-202412-DEV-6602',
+    title: '研发效能与代码评审规范专项测评',
+    type: '专业技能考级',
+    completionDate: '2024-12-18 17:30',
+    score: 79,
+    passScore: 80,
+    status: 'failed',
+    wrongCount: 7,
+    relatedCourse: '《研发效能与工程规范》'
   }
 ];
 
@@ -790,6 +1013,46 @@ export const ADMIN_ANNOUNCEMENTS_DATA = [
     author: '系统自动',
     publishTime: '2025-05-16 10:00',
     views: 1560
+  },
+  {
+    id: 'ann-5',
+    title: '2025 年第二季度「学习之星」评选结果公示',
+    content: '经部门推荐与学时数据核算,本季度共评选出 12 名「学习之星」,公示期为 5 月 19 日至 5 月 23 日。如有异议请在公示期内联系企业大学运营组。',
+    isTop: false,
+    status: 'published',
+    author: '王智远',
+    publishTime: '2025-05-19 10:20',
+    views: 680
+  },
+  {
+    id: 'ann-6',
+    title: '关于新增「云原生运维」系列课程上架的通知',
+    content: '「云原生运维」系列 6 门课程已完成内容评审并正式上架,涵盖容器编排、可观测性、故障演练等主题,欢迎各技术团队按需选学。',
+    isTop: false,
+    status: 'published',
+    author: '王智远',
+    publishTime: '2025-05-18 15:40',
+    views: 420
+  },
+  {
+    id: 'ann-7',
+    title: '端午节假期培训安排调整说明(拟发布)',
+    content: '端午节假期期间线上课程正常开放,直播课与集中考试顺延至节后首个工作日,具体调整安排以各部门通知为准。',
+    isTop: false,
+    status: 'draft',
+    author: '王智远',
+    publishTime: '2025-05-20 09:10',
+    views: 0
+  },
+  {
+    id: 'ann-8',
+    title: '培训考勤规则更新:迟到与缺勤判定口径说明',
+    content: '自 6 月 1 日起,线上签到以课程开始后 10 分钟为界线,超过 10 分钟记为迟到;未签到且未提交请假单的记为缺勤,请各位同事留意。',
+    isTop: false,
+    status: 'published',
+    author: '系统自动',
+    publishTime: '2025-05-17 11:05',
+    views: 890
   }
 ];
 
@@ -894,6 +1157,78 @@ export const ADMIN_LEAVE_REQUESTS = [
     reason: '急性肠胃炎就医检查及休养,附带三甲医院就诊单据及病休建议。',
     status: 'approved',
     submittedTime: '2025-04-24 14:10'
+  },
+  {
+    id: 'alv-7',
+    applicant: '孙雨桐',
+    employeeId: 'EMP-2024620',
+    department: '市场部',
+    type: '因公外出 / 外部交流',
+    timeRange: '2025-05-21',
+    days: '0.5',
+    reason: '赴品牌合作方参加年度联合推广方案沟通会,需现场确认物料排期与投放节奏。',
+    status: 'pending',
+    submittedTime: '2025-05-19 09:35'
+  },
+  {
+    id: 'alv-8',
+    applicant: '周凯文',
+    employeeId: 'EMP-2023340',
+    department: '财务部',
+    type: '个人事务 / 家庭安排',
+    timeRange: '2025-05-22',
+    days: '1',
+    reason: '家中老人需要陪同到院复查,当天无法参加集中培训,相关课程将在课后通过回放补齐并提交学习笔记。',
+    status: 'pending',
+    submittedTime: '2025-05-20 08:50'
+  },
+  {
+    id: 'alv-9',
+    applicant: '郑天翔',
+    employeeId: 'EMP-2023788',
+    department: '研发部',
+    type: '项目紧急发版',
+    timeRange: '2025-05-22',
+    days: '0.5',
+    reason: '核心交易链路灰度发布需要全程值守,申请缺席下午的架构实操课程,发布完成后补看录播。',
+    status: 'pending',
+    submittedTime: '2025-05-20 13:12'
+  },
+  {
+    id: 'alv-10',
+    applicant: '许清和',
+    employeeId: 'EMP-2023115',
+    department: '产品部',
+    type: '因公外出 / 外部交流',
+    timeRange: '2025-05-23',
+    days: '1',
+    reason: '赴行业峰会参加产品创新论坛并做主题分享,行程与当天培训时间冲突,申请事后补学。',
+    status: 'pending',
+    submittedTime: '2025-05-21 10:05'
+  },
+  {
+    id: 'alv-11',
+    applicant: '韩立言',
+    employeeId: 'EMP-2022890',
+    department: '法务部',
+    type: '病假 / 身体不适',
+    timeRange: '2025-05-15',
+    days: '1',
+    reason: '感冒发热需居家休息,已提交社区医院就诊记录。',
+    status: 'approved',
+    submittedTime: '2025-05-14 19:20'
+  },
+  {
+    id: 'alv-12',
+    applicant: '林欣怡',
+    employeeId: 'EMP-2022551',
+    department: '人力资源部',
+    type: '个人事务 / 家庭安排',
+    timeRange: '2025-05-09',
+    days: '0.5',
+    reason: '临时需要处理子女入学材料提交事宜,申请缺席半天课程。',
+    status: 'rejected',
+    submittedTime: '2025-05-08 16:45'
   }
 ];
 
