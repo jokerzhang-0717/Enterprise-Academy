@@ -1,5 +1,20 @@
 <template>
   <div class="crs-page">
+    <!-- 0. 视频课程分类筛选条 -->
+    <div class="crs-category-bar">
+      <button
+        v-for="tab in categoryTabs"
+        :key="tab.key"
+        type="button"
+        class="crs-category-pill"
+        :class="{ 'crs-category-pill--active': activeCategory === tab.key }"
+        @click="activeCategory = tab.key"
+      >
+        <span>{{ tab.label }}</span>
+        <span class="crs-category-count">{{ tab.count }}</span>
+      </button>
+    </div>
+
     <!-- 1. Course Cards Grid -->
     <div class="crs-grid">
       <article
@@ -11,6 +26,9 @@
         <!-- Thumbnail -->
         <div class="crs-card__thumb">
           <img :src="course.thumbnail" :alt="course.title" class="crs-card__img" />
+          <span v-if="course.categoryLabel" class="crs-card__category-tag">
+            {{ course.categoryLabel }}
+          </span>
         </div>
 
         <!-- Content -->
@@ -33,14 +51,15 @@
 
             <!-- Action -->
             <div class="crs-card__actions">
-              <!-- 已完成：温故复习 -->
+              <!-- 已完成：重新学习（替代原先温故复习） -->
               <button
                 v-if="course.status === 'completed'"
                 type="button"
                 class="crs-btn crs-btn--review"
-                @click="$emit('navigate', 'course-player')"
+                @click="$emit('open-course', course)"
               >
-                温故复习
+                <Play class="crs-icon crs-icon--sm crs-icon--fill" />
+                <span>重新学习</span>
               </button>
 
               <!-- 未开始：立即学习 -->
@@ -48,7 +67,7 @@
                 v-else-if="course.status === 'not_started'"
                 type="button"
                 class="crs-btn crs-btn--start"
-                @click="$emit('navigate', 'course-player')"
+                @click="$emit('open-course', course)"
               >
                 <span>立即学习</span>
               </button>
@@ -58,7 +77,7 @@
                 v-else
                 type="button"
                 class="crs-btn crs-btn--continue"
-                @click="$emit('navigate', 'course-player')"
+                @click="$emit('open-course', course)"
               >
                 <Play class="crs-icon crs-icon--sm crs-icon--fill" />
                 <span>继续学习</span>
@@ -67,21 +86,24 @@
           </div>
         </div>
       </article>
+      <div v-if="!filteredCourses.length" class="crs-empty">
+        暂无该分类下的课程视频
+      </div>
     </div>
 
     <!-- 2. Pagination Footer -->
     <footer class="crs-footer">
       <div>
-        当前筛选 {{ filteredCourses.length }} 门课程，课程库共 {{ COURSES_DATA.length }} 门
+        当前分类 {{ filteredCourses.length }} 门课程，课程库共 {{ courses.length }} 门
       </div>
     </footer>
   </div>
 </template>
 
 <script setup>
-import { computed, nextTick, watch } from 'vue';
+import { computed, ref, nextTick, watch } from 'vue';
 import { Play } from 'lucide-vue-next';
-import { COURSES_DATA } from '../mockData.js';
+import { adminStore } from '../adminStore.js';
 
 const props = defineProps({
   searchTargetId: {
@@ -89,12 +111,36 @@ const props = defineProps({
     default: '',
   },
 });
-defineEmits(['navigate']);
+defineEmits(['open-course']);
+
+const activeCategory = ref('all');
+
+/** 与管理端同一份课程数据：新建档并发布后这里就出现，下架即消失 */
+const courses = computed(() => adminStore.courses.filter(c => c.published));
+
+const categoryTabs = computed(() => {
+  const counts = {};
+  courses.value.forEach(c => {
+    const cat = c.categoryLabel || '通识课程';
+    counts[cat] = (counts[cat] || 0) + 1;
+  });
+  const tabs = [{ key: 'all', label: '全部视频课程', count: courses.value.length }];
+  Object.keys(counts).forEach(key => {
+    tabs.push({ key, label: key, count: counts[key] });
+  });
+  return tabs;
+});
 
 const filteredCourses = computed(() => {
-  if (!props.searchTargetId) return COURSES_DATA;
-  const courseId = props.searchTargetId.replace('course-card-', '');
-  return COURSES_DATA.filter(course => course.id === courseId);
+  let list = courses.value;
+  if (props.searchTargetId) {
+    const courseId = props.searchTargetId.replace('course-card-', '');
+    list = list.filter(course => course.id === courseId);
+  }
+  if (activeCategory.value !== 'all') {
+    list = list.filter(course => (course.categoryLabel || '通识课程') === activeCategory.value);
+  }
+  return list;
 });
 
 watch(
@@ -128,6 +174,76 @@ watch(
   gap: 20px;
   padding-bottom: 48px;
   font-family: 'PingFang SC', 'Microsoft YaHei', 'Helvetica Neue', sans-serif;
+}
+
+/* ============ Category Filter Bar ============ */
+.crs-category-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 12px 16px;
+  background: #fff;
+  border: 1px solid var(--c-border);
+  border-radius: 12px;
+}
+
+.crs-category-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--c-text-soft);
+  background: var(--c-border-soft);
+  border: 1px solid transparent;
+  border-radius: 9999px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.crs-category-pill:hover {
+  background: #e2e8f0;
+  color: var(--c-text);
+}
+
+.crs-category-pill--active {
+  background: linear-gradient(135deg, #005576, #003B52) !important;
+  color: #fff !important;
+  box-shadow: 0 2px 8px rgba(0, 85, 118, 0.25);
+}
+
+.crs-category-count {
+  font-size: 11px;
+  padding: 1px 6px;
+  border-radius: 9999px;
+  background: rgba(0, 0, 0, 0.08);
+}
+.crs-category-pill--active .crs-category-count {
+  background: rgba(255, 255, 255, 0.25);
+  color: #fff;
+}
+
+.crs-card__category-tag {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  padding: 3px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #fff;
+  background: rgba(15, 23, 42, 0.7);
+  backdrop-filter: blur(4px);
+  border-radius: 6px;
+}
+
+.crs-empty {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 48px 0;
+  color: var(--c-muted);
+  font-size: 14px;
 }
 
 /* ============ Icons (lucide) ============ */

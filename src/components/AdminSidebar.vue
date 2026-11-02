@@ -27,16 +27,17 @@
           <component :is="item.icon" class="sidebar-icon" />
           <span class="nav-label">{{ item.label }}</span>
         </div>
-        <span v-if="item.badge !== undefined" :class="['nav-badge', item.badgeClass]">
-          {{ item.badge }}
-        </span>
       </button>
 
     </nav>
 
     <!-- 底部管理员卡片 -->
     <div class="sidebar-footer">
-      <div class="admin-card">
+      <div
+        class="admin-card"
+        title="点击修改个人信息"
+        @click="$emit('select-view', 'admin-profile')"
+      >
         <div class="admin-card-avatar">
           <img v-if="user?.avatarUrl" :src="user.avatarUrl" alt="" class="admin-card-img" />
           <User v-else class="sidebar-icon sidebar-user-icon" />
@@ -46,7 +47,7 @@
           <div class="admin-card-name">{{ user?.name || '王智远' }}</div>
           <div class="admin-card-title">{{ user?.title || '超级管理员' }}</div>
         </div>
-        <button class="logout-btn" @click="$emit('logout')" title="退出登录">
+        <button class="logout-btn" @click.stop="$emit('logout')" title="退出登录">
           <SwitchButton class="sidebar-icon sidebar-logout-icon" />
         </button>
       </div>
@@ -82,49 +83,26 @@ const props = defineProps({
     type: Object,
     default: () => ({
       name: '王智远',
-      title: '平台超级管理员',
-      department: '企业大学 · 平台运营部'
+      title: '超级管理员',
+      department: '平台运营部'
     })
   }
 });
 
-defineEmits(['select-view', 'logout', 'switch-to-learner']);
+defineEmits(['select-view', 'logout']);
 
 const navItems = [
   { id: 'admin-dashboard',      label: '管理总览',   icon: Odometer },
   { id: 'admin-students',       label: '学员管理',   icon: UserFilled },
   { id: 'admin-departments',    label: '部门管理',   icon: OfficeBuilding },
   { id: 'admin-courses',        label: '课程管理',   icon: Collection },
-  {
-    id: 'admin-exams',
-    label: '考试管理',
-    icon: Tickets,
-    badge: props.activeExamCount > 0 ? props.activeExamCount : undefined,
-    badgeClass: 'nav-badge--gold'
-  },
+  { id: 'admin-exams',          label: '考试管理',   icon: Tickets },
   { id: 'admin-question-bank',  label: '题库管理',   icon: Memo },
-  {
-    id: 'admin-leave',
-    label: '请假审批',
-    icon: Calendar,
-    badge: props.pendingLeaveCount > 0 ? props.pendingLeaveCount : undefined,
-    badgeClass: 'nav-badge--gold'
-  },
+  { id: 'admin-leave',          label: '请假审批',   icon: Calendar },
   { id: 'admin-checkin',        label: '签到记录',   icon: Clock },
-  {
-    id: 'admin-certificates',
-    label: '证书管理',
-    icon: Medal,
-    badge: props.pendingCertCount > 0 ? props.pendingCertCount : undefined,
-    badgeClass: 'nav-badge--gold'
-  },
-  {
-    id: 'admin-announcements',
-    label: '公告管理',
-    icon: Promotion,
-    badge: props.draftNoticeCount > 0 ? props.draftNoticeCount : undefined,
-    badgeClass: 'nav-badge--red'
-  }
+  { id: 'admin-certificates',   label: '证书管理',   icon: Medal },
+  { id: 'admin-announcements',  label: '公告管理',   icon: Promotion },
+  { id: 'admin-profile',        label: '个人信息',   icon: User }
 ];
 
 function isItemActive(id) {
@@ -136,11 +114,10 @@ function isItemActive(id) {
 /* ============================================================
    AdminSidebar · 管理员导航栏 · 纯原生 CSS
    ------------------------------------------------------------
-   配色速查
-     底色   #0E1B2E / #13233A (深海军蓝)
-     描边   #1E3550
-     主色   金色 #E9B949 / 浅金 #F7D98C
-     文字   #E7EEF7 / #8FA3BC
+   配色全部走 App.vue 的主题 token,随「换主题」按钮整体切换
+     导航面   --app-nav-1 / -2 / -3 (深色渐变) --app-nav-ink
+     身份色   --app-brand / -deep / -soft / -glow / -a12 / -a14
+     文字     --app-nav-text / -text-hi / -text-active / -muted
    ============================================================ */
 
 * {
@@ -161,8 +138,8 @@ button {
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
-  background: linear-gradient(180deg, #0E1B2E 0%, #122035 60%, #0D1929 100%);
-  color: #E7EEF7;
+  background: linear-gradient(180deg, var(--app-nav-ink) 0%, var(--app-nav-2) 60%, var(--app-nav-3) 100%);
+  color: var(--app-nav-text-hi);
   user-select: none;
   z-index: 20;
   overflow: hidden;
@@ -174,7 +151,7 @@ button {
   align-items: center;
   gap: 12px;
   padding: 20px;
-  border-bottom: 1px solid rgba(233, 185, 73, 0.14);
+  border-bottom: 1px solid var(--app-brand-a14);
   cursor: pointer;
   transition: background 0.15s;
 }
@@ -190,9 +167,10 @@ button {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #E9B949 0%, #C89A2E 100%);
+  background: linear-gradient(135deg, var(--app-brand) 0%, var(--app-brand-deep) 100%);
+  color: var(--app-nav-ink);
   border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(233, 185, 73, 0.35);
+  box-shadow: 0 2px 8px var(--app-brand-glow);
   flex-shrink: 0;
 }
 
@@ -203,7 +181,7 @@ button {
   width: 12px;
   height: 12px;
   background: #2FBF8F;
-  border: 2px solid #0E1B2E;
+  border: 2px solid var(--app-nav-ink);
   border-radius: 50%;
 }
 
@@ -217,13 +195,13 @@ button {
 .sidebar-brand-icon {
   width: 22px;
   height: 22px;
-  color: #0E1B2E;
+  color: var(--app-nav-ink);
 }
 
 .sidebar-user-icon {
   width: 20px;
   height: 20px;
-  color: #E9B949;
+  color: var(--app-brand);
 }
 
 .sidebar-logout-icon {
@@ -246,7 +224,7 @@ button {
 .brand-sub {
   font-size: 9px;
   font-weight: 600;
-  color: #E9B949;
+  color: var(--app-brand);
   letter-spacing: 0.12em;
   text-transform: uppercase;
   white-space: nowrap;
@@ -267,7 +245,7 @@ button {
   font-size: 10px;
   font-weight: 600;
   letter-spacing: 0.18em;
-  color: #5C7290;
+  color: var(--app-nav-muted);
   text-transform: uppercase;
 }
 
@@ -279,7 +257,7 @@ button {
   padding: 10px 14px;
   font-size: 14px;
   font-weight: 500;
-  color: #9FB2C9;
+  color: var(--app-nav-text);
   background: transparent;
   border: none;
   border-left: 3px solid transparent;
@@ -290,19 +268,19 @@ button {
 
 .nav-item:hover {
   background: rgba(255, 255, 255, 0.06);
-  color: #E7EEF7;
+  color: var(--app-nav-text-hi);
 }
 
 .nav-item--active {
-  background: rgba(233, 185, 73, 0.12);
-  border-left-color: #E9B949;
-  color: #F7D98C;
+  background: var(--app-brand-a12);
+  border-left-color: var(--app-brand);
+  color: var(--app-nav-text-active);
   font-weight: 600;
 }
 
 .nav-item--active:hover {
-  background: rgba(233, 185, 73, 0.16);
-  color: #F7D98C;
+  background: var(--app-brand-a14);
+  color: var(--app-nav-text-active);
 }
 
 .nav-item-left {
@@ -319,29 +297,6 @@ button {
 }
 
 /* ========== 徽章 ========== */
-.nav-badge {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 20px;
-  height: 20px;
-  padding: 0 6px;
-  font-size: 11px;
-  font-weight: 700;
-  border-radius: 9999px;
-  flex-shrink: 0;
-}
-
-.nav-badge--gold {
-  background: #E9B949;
-  color: #0E1B2E;
-}
-
-.nav-badge--red {
-  background: #E85D75;
-  color: #fff;
-}
-
 /* ========== 底部管理员卡片 ========== */
 .sidebar-footer {
   margin-top: auto;
@@ -373,8 +328,8 @@ button {
   justify-content: center;
   overflow: visible;
   border-radius: 50%;
-  background: linear-gradient(135deg, #E9B949, #C89A2E);
-  color: #0E1B2E;
+  background: linear-gradient(135deg, var(--app-brand), var(--app-brand-deep));
+  color: var(--app-nav-ink);
   flex-shrink: 0;
 }
 
@@ -392,7 +347,7 @@ button {
   width: 10px;
   height: 10px;
   background: #2FBF8F;
-  border: 2px solid #122035;
+  border: 2px solid var(--app-nav-2);
   border-radius: 50%;
 }
 
@@ -415,7 +370,7 @@ button {
 .admin-card-title {
   margin-top: 2px;
   font-size: 11px;
-  color: #8FA3BC;
+  color: var(--app-nav-text);
   line-height: 1.25;
   white-space: nowrap;
   overflow: hidden;
@@ -428,7 +383,7 @@ button {
   align-items: center;
   justify-content: center;
   padding: 6px;
-  color: #8FA3BC;
+  color: var(--app-nav-text);
   background: transparent;
   border: none;
   border-radius: 8px;

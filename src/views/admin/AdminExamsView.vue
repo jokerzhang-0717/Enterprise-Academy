@@ -46,7 +46,7 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="exam in pagedExams" :key="exam.id">
+          <tr v-for="exam in pagedExams" :key="exam.id" @click="openDetail(exam)">
             <td>
               <div class="cell-exam">
                 <span class="exam-dot" :class="`exam-dot--${exam.state}`"></span>
@@ -65,19 +65,14 @@
               </span>
             </td>
             <td class="ops">
-              <div class="row-actions">
-                <button
-                  class="text-btn text-btn--bank"
-                  title="在题库管理中查看该考试题目"
-                  @click="$emit('navigate', 'admin-question-bank')"
-                >题库</button>
+              <div class="row-actions" @click.stop>
                 <button
                   v-if="exam.state === 'draft'"
                   class="text-btn text-btn--primary"
                   @click="publishExam(exam)"
                 >发布</button>
                 <button
-                  v-else-if="exam.state === 'scheduled' || exam.state === 'open'"
+                  v-else-if="exam.state === 'scheduled'"
                   class="text-btn text-btn--warn"
                   @click="revokeExam(exam)"
                 >撤回</button>
@@ -98,6 +93,24 @@
       v-model:page="page"
       :total="exams.length"
       :total-pages="totalPages"
+    />
+
+    <!-- 考试详情 -->
+    <AdminDetailModal
+      v-if="detailExam"
+      title="考试详情"
+      :subtitle="detailExam.title"
+      :tags="[stateLabel(detailExam.state), `${questionCount(detailExam.id)} 道题`]"
+      :rows="[
+        { label: '组织方', value: detailExam.category },
+        { label: '考试时间', value: detailExam.timeWindow, wide: true },
+        { label: '考试时长', value: `${detailExam.durationMinutes} 分钟` },
+        { label: '题目数量', value: `${questionCount(detailExam.id)} 道` },
+        { label: '总分 / 及格分', value: `${detailExam.totalScore} / ${detailExam.passScore}` },
+        { label: '参考人数', value: `${detailExam.participants} 人` },
+        { label: '当前状态', value: stateLabel(detailExam.state) }
+      ]"
+      @close="detailExam = null"
     />
 
     <!-- 新建考试弹窗 -->
@@ -174,6 +187,7 @@ import { usePager } from '../../composables/usePager.js';
 import { useConfirm } from '../../composables/useConfirm.js';
 import { useToast } from '../../composables/useToast.js';
 import AdminPager from '../../components/AdminPager.vue';
+import AdminDetailModal from '../../components/AdminDetailModal.vue';
 import ConfirmDialog from '../../components/ConfirmDialog.vue';
 
 const { show: showToast } = useToast();
@@ -194,11 +208,14 @@ const draftCount = computed(() => exams.filter(e => e.state === 'draft').length)
 const stateLabelMap = {
   running: '进行中',
   scheduled: '待开始',
-  open: '报名中',
   ended: '已结束',
   draft: '待发布'
 };
 const stateLabel = (state) => stateLabelMap[state] || state;
+
+/* ---------- 考试详情 ---------- */
+const detailExam = ref(null);
+const openDetail = (exam) => { detailExam.value = exam; };
 
 /* ---------- 新建考试表单 ---------- */
 const modalOpen = ref(false);
@@ -349,14 +366,14 @@ button { cursor: pointer; }
 .page-title {
   font-size: 24px;
   font-weight: 700;
-  color: #0F1E33;
+  color: var(--app-heading);
   letter-spacing: -0.02em;
 }
 
 .page-sub {
   margin-top: 4px;
   font-size: 13px;
-  color: #64748B;
+  color: var(--app-text-4);
 }
 
 .btn {
@@ -374,19 +391,19 @@ button { cursor: pointer; }
 .btn-icon { width: 15px; height: 15px; }
 
 .btn--primary {
-  background: linear-gradient(135deg, #E9B949, #D19A2B);
-  color: #241A04;
-  border-color: #D19A2B;
-  box-shadow: 0 2px 6px rgba(233, 185, 73, 0.35);
+  background: linear-gradient(135deg, var(--app-brand), var(--app-brand-deep));
+  color: var(--app-brand-on);
+  border-color: var(--app-brand-deep);
+  box-shadow: 0 2px 6px var(--app-brand-glow);
 }
-.btn--primary:hover { background: linear-gradient(135deg, #F0C45E, #D19A2B); }
+.btn--primary:hover { background: linear-gradient(135deg, var(--app-brand-hi), var(--app-brand-deep)); }
 
 .btn--ghost {
-  background: #fff;
-  color: #334155;
-  border-color: #E2E8F0;
+  background: var(--app-surface);
+  color: var(--app-text-2);
+  border-color: var(--app-text-6);
 }
-.btn--ghost:hover { border-color: #E9B949; color: #8A6414; }
+.btn--ghost:hover { border-color: var(--app-brand); color: var(--app-brand-ink); }
 
 /* ========== 概览条 ========== */
 .overview-strip {
@@ -401,28 +418,28 @@ button { cursor: pointer; }
   align-items: center;
   gap: 2px;
   padding: 14px;
-  background: #fff;
-  border: 1px solid #E2E8F0;
+  background: var(--app-surface);
+  border: 1px solid var(--app-border);
   border-radius: 12px;
 }
 
 .overview-value {
   font-size: 22px;
   font-weight: 800;
-  color: #0F1E33;
+  color: var(--app-heading);
   font-variant-numeric: tabular-nums;
 }
-.overview-value--gold { color: #B45309; }
+.overview-value--gold { color: var(--app-amber-fg); }
 
 .overview-label {
   font-size: 12px;
-  color: #64748B;
+  color: var(--app-text-4);
 }
 
 /* ========== 表格 ========== */
 .table-wrap {
-  background: #fff;
-  border: 1px solid #E2E8F0;
+  background: var(--app-surface);
+  border: 1px solid var(--app-border);
   border-radius: 12px;
   overflow-x: auto;
 }
@@ -438,22 +455,31 @@ button { cursor: pointer; }
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.06em;
-  color: #64748B;
+  color: var(--app-text-4);
   text-align: left;
-  background: #F8FAFC;
-  border-bottom: 1px solid #E2E8F0;
+  background: var(--app-surface-2);
+  border-bottom: 1px solid var(--app-border);
   white-space: nowrap;
 }
 
 .data-table tbody td {
   padding: 12px 14px;
-  color: #1E293B;
-  border-bottom: 1px solid #F1F5F9;
+  color: var(--app-text);
+  border-bottom: 1px solid var(--app-border-soft);
   white-space: nowrap;
 }
 
 .data-table tbody tr:last-child td { border-bottom: none; }
-.data-table tbody tr:hover { background: #F8FAFC; }
+.data-table tbody tr { cursor: pointer; }
+.data-table tbody td { transition: background 0.15s, color 0.15s, box-shadow 0.15s; }
+.data-table tbody tr:hover td { background: var(--app-accent-soft); }
+.data-table tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--app-accent); }
+.data-table tbody tr:hover td,
+.data-table tbody tr:hover .cell-exam-title,
+.data-table tbody tr:hover .cell-exam-meta,
+.data-table tbody tr:hover .cell-muted {
+  color: var(--app-accent-deep);
+}
 
 th.num, td.num { text-align: right; }
 th.ops, td.ops { text-align: right; }
@@ -462,8 +488,8 @@ th.ops, td.ops { text-align: right; }
 .data-table thead th.num,
 .data-table thead th.ops { text-align: right; }
 
-.cell-muted { color: #64748B; }
-.empty-cell { text-align: center; color: #94A3B8; padding: 28px 0 !important; }
+.cell-muted { color: var(--app-text-4); }
+.empty-cell { text-align: center; color: var(--app-text-5); padding: 28px 0 !important; }
 
 .cell-exam {
   display: flex;
@@ -481,12 +507,12 @@ th.ops, td.ops { text-align: right; }
 .exam-dot--running   { background: #2FBF8F; }
 .exam-dot--scheduled { background: #2E8BD6; }
 .exam-dot--open      { background: #9381FF; }
-.exam-dot--ended     { background: #94A3B8; }
+.exam-dot--ended     { background: var(--app-text-5); }
 .exam-dot--draft     { background: #E9B949; }
 
 .cell-exam-title {
   font-weight: 600;
-  color: #1E293B;
+  color: var(--app-text);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -495,7 +521,7 @@ th.ops, td.ops { text-align: right; }
 .cell-exam-meta {
   margin-top: 2px;
   font-size: 11px;
-  color: #94A3B8;
+  color: var(--app-text-5);
 }
 
 /* ========== 状态徽标 ========== */
@@ -507,11 +533,11 @@ th.ops, td.ops { text-align: right; }
   font-weight: 700;
   border-radius: 9999px;
 }
-.status-pill--running   { color: #047857; background: #D1FAE5; }
-.status-pill--scheduled { color: #005576; background: #D9F0FF; }
-.status-pill--open      { color: #6555B0; background: #EDE9FE; }
-.status-pill--ended     { color: #64748B; background: #E2E8F0; }
-.status-pill--draft     { color: #8A6414; background: #FEF3C7; }
+.status-pill--running   { color: var(--app-emerald-fg); background: var(--app-emerald-bg); }
+.status-pill--scheduled { color: var(--app-accent-deep); background: var(--app-accent-soft); }
+.status-pill--open      { color: var(--app-violet-fg); background: var(--app-violet-bg); }
+.status-pill--ended     { color: var(--app-text-4); background: var(--app-chip); }
+.status-pill--draft     { color: var(--app-amber-fg); background: var(--app-amber-bg); }
 
 /* ========== 行操作 ========== */
 .row-actions {
@@ -529,12 +555,12 @@ th.ops, td.ops { text-align: right; }
   border-radius: 9999px;
   transition: background 0.15s;
 }
-.text-btn--primary { color: #005576; background: #D9F0FF; }
-.text-btn--primary:hover { background: #C2E4FA; }
-.text-btn--warn { color: #8A6414; background: #FEF3C7; }
-.text-btn--warn:hover { background: #FDE68A; }
-.text-btn--bank { color: #6555B0; background: #EDE9FE; }
-.text-btn--bank:hover { background: #DDD6FE; }
+.text-btn--primary { color: var(--app-accent-deep); background: var(--app-accent-soft); }
+.text-btn--primary:hover { background: var(--app-accent-hover); }
+.text-btn--warn { color: var(--app-brand-ink); background: var(--app-brand-tint); }
+.text-btn--warn:hover { background: var(--app-brand-tint-line); }
+.text-btn--bank { color: var(--app-violet-fg); background: var(--app-violet-bg); }
+.text-btn--bank:hover { background: var(--app-violet-line); }
 
 .icon-btn {
   display: inline-flex;
@@ -542,14 +568,14 @@ th.ops, td.ops { text-align: right; }
   justify-content: center;
   width: 28px;
   height: 28px;
-  color: #475569;
-  background: #F8FAFC;
-  border: 1px solid #E2E8F0;
+  color: var(--app-text-3);
+  background: var(--app-surface-2);
+  border: 1px solid var(--app-border);
   border-radius: 8px;
   transition: background 0.15s, color 0.15s, border-color 0.15s;
 }
 .icon-btn svg { width: 14px; height: 14px; }
-.icon-btn--danger:hover { background: #FFE4E6; color: #BE123C; border-color: #FECDD3; }
+.icon-btn--danger:hover { background: var(--app-rose-bg); color: var(--app-rose-fg); border-color: var(--app-rose-line); }
 
 /* ========== 弹窗 ========== */
 .modal-backdrop {
@@ -567,7 +593,7 @@ th.ops, td.ops { text-align: right; }
 .modal {
   width: 100%;
   max-width: 520px;
-  background: #fff;
+  background: var(--app-surface);
   border-radius: 16px;
   box-shadow: 0 24px 48px rgba(15, 30, 51, 0.25);
   overflow: hidden;
@@ -584,13 +610,13 @@ th.ops, td.ops { text-align: right; }
   align-items: center;
   justify-content: space-between;
   padding: 16px 20px;
-  border-bottom: 1px solid #F1F5F9;
+  border-bottom: 1px solid var(--app-border-soft);
 }
 
 .modal-title {
   font-size: 16px;
   font-weight: 700;
-  color: #0F1E33;
+  color: var(--app-heading);
 }
 
 .modal-close {
@@ -599,14 +625,14 @@ th.ops, td.ops { text-align: right; }
   justify-content: center;
   width: 30px;
   height: 30px;
-  color: #64748B;
+  color: var(--app-text-4);
   background: transparent;
   border: none;
   border-radius: 8px;
   transition: background 0.15s, color 0.15s;
 }
 .modal-close svg { width: 16px; height: 16px; }
-.modal-close:hover { background: #F1F5F9; color: #0F1E33; }
+.modal-close:hover { background: var(--app-surface-3); color: var(--app-heading); }
 
 .modal-body {
   display: flex;
@@ -630,23 +656,23 @@ th.ops, td.ops { text-align: right; }
 .field-label {
   font-size: 12px;
   font-weight: 600;
-  color: #475569;
+  color: var(--app-text-3);
 }
 
 .field-input {
   width: 100%;
   padding: 10px 12px;
   font-size: 13px;
-  color: #1E293B;
-  background: #F8FAFC;
-  border: 1px solid #E2E8F0;
+  color: var(--app-text);
+  background: var(--app-surface-2);
+  border: 1px solid var(--app-border);
   border-radius: 10px;
   outline: none;
   transition: border-color 0.15s, box-shadow 0.15s;
 }
 .field-input:focus {
-  border-color: #2E8BD6;
-  box-shadow: 0 0 0 3px rgba(46, 139, 214, 0.12);
+  border-color: var(--app-accent-strong);
+  box-shadow: 0 0 0 3px var(--app-accent-a12);
 }
 
 /* ========== 时间窗预览 ========== */
@@ -655,8 +681,8 @@ th.ops, td.ops { text-align: right; }
   align-items: center;
   gap: 10px;
   padding: 10px 14px;
-  background: #F6FBFF;
-  border: 1px dashed #A3D5FF;
+  background: var(--app-surface);
+  border: 1px dashed var(--app-accent-border);
   border-radius: 10px;
   flex-wrap: wrap;
 }
@@ -664,25 +690,25 @@ th.ops, td.ops { text-align: right; }
 .window-preview-label {
   font-size: 12px;
   font-weight: 700;
-  color: #005576;
+  color: var(--app-accent-deep);
 }
 
 .window-preview-value {
   font-size: 13px;
   font-weight: 600;
-  color: #0F1E33;
+  color: var(--app-heading);
   font-variant-numeric: tabular-nums;
 }
 
 .window-preview-duration {
   margin-left: auto;
   font-size: 11px;
-  color: #64748B;
+  color: var(--app-text-4);
 }
 
 .form-error {
   font-size: 12px;
-  color: #BE123C;
+  color: var(--app-rose-fg);
 }
 
 .modal-actions {

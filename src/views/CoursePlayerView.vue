@@ -9,7 +9,7 @@
 
         <div class="player-header__info">
           <h1 class="player-header__title">
-            Spring Boot 3 企业级微服务实战与高并发架构
+            {{ courseTitle }}
           </h1>
           <div class="player-header__meta">
             <span class="live-status">
@@ -17,7 +17,7 @@
               自动学时打卡生效中
             </span>
             <span class="meta-sep">·</span>
-            <span>第 3 章 · 第 2 节: Redis 集群分布式锁与缓存击穿防护</span>
+            <span>{{ currentLessonLabel }}</span>
           </div>
         </div>
       </div>
@@ -38,29 +38,33 @@
             云舒艺境 · 研发工号 094821 张浩然
           </div>
 
-          <!-- Video Background Simulation -->
+          <!-- 有片源时直接播管理端为该小节绑定的视频，用原生控件 -->
           <div class="video-screen">
-            <img
-              class="video-screen__bg"
-              src="https://images.unsplash.com/photo-1517694712202-14dd9538aa97?auto=format&fit=crop&w=1200&q=80"
-              alt="Video backdrop"
+            <video
+              v-if="currentLesson && currentLesson.url"
+              :key="currentLesson.url"
+              class="video-screen__video"
+              :src="currentLesson.url"
+              controls
             />
 
-            <!-- Status Overlay -->
-            <div class="video-screen__status">
-              <span class="video-screen__status-dot"></span>
-              <span>上次学至 18:42 · 已自动为您续播</span>
-            </div>
+            <template v-else>
+              <img class="video-screen__bg" :src="courseCover" alt="Video backdrop" />
 
-            <!-- Big Center Play/Pause Button -->
-            <button class="video-screen__play" type="button" @click="isPlaying = !isPlaying">
-              <Pause v-if="isPlaying" class="video-screen__play-icon" />
-              <Play v-else class="video-screen__play-icon video-screen__play-icon--play" />
-            </button>
+              <div class="video-screen__status">
+                <span class="video-screen__status-dot"></span>
+                <span>{{ currentLesson ? '本节尚未上传视频' : '本课尚未编排小节' }}</span>
+              </div>
+
+              <button class="video-screen__play" type="button" @click="isPlaying = !isPlaying">
+                <Pause v-if="isPlaying" class="video-screen__play-icon" />
+                <Play v-else class="video-screen__play-icon video-screen__play-icon--play" />
+              </button>
+            </template>
           </div>
 
           <!-- Player Controls Bar -->
-          <div class="video-controls">
+          <div v-if="!hasVideo" class="video-controls">
             <!-- Scrub line -->
             <div class="scrub-bar">
               <div class="scrub-bar__fill"></div>
@@ -89,7 +93,7 @@
                   </div>
                 </div>
 
-                <span class="video-controls__time">18:42 / 28:15</span>
+                <span class="video-controls__time">未开始 / {{ currentDuration }}</span>
               </div>
 
               <div class="video-controls__group">
@@ -116,10 +120,8 @@
             <h2 class="panel__title">课程详情</h2>
           </div>
           <div class="panel__body">
-            <h3 class="detail-title">Redis 集群分布式锁与缓存击穿防护</h3>
-            <p class="detail-text">
-              本节讲解 Redis Cluster 环境下分布式锁的实现与安全边界，涵盖 Redisson 看门狗续期、Lua 脚本原子释放锁，以及缓存击穿的常见防护思路。
-            </p>
+            <h3 class="detail-title">{{ currentLesson ? currentLesson.name : '本课尚未编排小节' }}</h3>
+            <p class="detail-text">{{ courseSummary }}</p>
           </div>
         </section>
       </div>
@@ -132,103 +134,88 @@
               <FileText class="icon icon--blue" />
               <h3 class="panel__title">课程目录 (Syllabus)</h3>
             </div>
-            <span class="syllabus__count">共 5 章</span>
+            <span class="syllabus__count">共 {{ chapters.length }} 章 · {{ totalLessons }} 节</span>
           </div>
 
           <div class="chapter-list">
-            <!-- Chapter 1 -->
-            <div class="chapter">
-              <div class="chapter__head">
-                <div class="chapter__name">
-                  <CheckCircle2 class="icon icon--done" />
-                  <span class="chapter__title">第 1 章: 微服务架构选型与升级</span>
-                </div>
-                <span class="chapter__progress chapter__progress--done">3/3</span>
-              </div>
-            </div>
+            <p v-if="!chapters.length" class="syllabus__empty">
+              这门课还没有章节，请到管理端 · 课程管理里编排目录。
+            </p>
 
-            <!-- Chapter 2 -->
-            <div class="chapter">
-              <div class="chapter__head">
-                <div class="chapter__name">
-                  <CheckCircle2 class="icon icon--done" />
-                  <span class="chapter__title">第 2 章: 高并发削峰与消息事务实战</span>
+            <div
+              v-for="(chapter, ci) in chapters"
+              :key="chapter.id"
+              class="chapter"
+              :class="{
+                'chapter--active': chapterState(ci) === 'active',
+                'chapter--locked': chapterState(ci) === 'locked'
+              }"
+            >
+              <div
+                class="chapter__head"
+                :class="{ 'chapter__head--active': chapterState(ci) === 'active' }"
+                @click="toggleChapter(ci)"
+              >
+                <div
+                  class="chapter__name"
+                  :class="{ 'chapter__name--muted': chapterState(ci) === 'locked' }"
+                >
+                  <CheckCircle2 v-if="chapterState(ci) === 'done'" class="icon icon--done" />
+                  <span v-else-if="chapterState(ci) === 'active'" class="chapter__bar"></span>
+                  <Lock v-else class="icon icon--sm" />
+                  <span
+                    class="chapter__title"
+                    :class="{ 'chapter__title--active': chapterState(ci) === 'active' }"
+                  >{{ chapter.title }}</span>
                 </div>
-                <span class="chapter__progress chapter__progress--done">5/5</span>
-              </div>
-            </div>
 
-            <!-- Chapter 3 (Active) -->
-            <div class="chapter chapter--active">
-              <div class="chapter__head chapter__head--active" @click="activeChapter = activeChapter === 3 ? 0 : 3">
-                <div class="chapter__name">
-                  <span class="chapter__bar"></span>
-                  <span class="chapter__title chapter__title--active">第 3 章: 分布式缓存与数据一致性</span>
+                <span v-if="chapterState(ci) === 'locked'" class="chapter__progress">待解锁</span>
+                <div v-else-if="chapterState(ci) === 'active'" class="chapter__toggle">
+                  <span>{{ doneInChapter(ci) }}/{{ lessonsOf(ci).length }} 学习中</span>
+                  <ChevronUp v-if="expandedChapter === ci" class="icon icon--sm" />
+                  <ChevronDown v-else class="icon icon--sm" />
                 </div>
-                <div class="chapter__toggle">
-                  <span>3/6 学习中</span>
-                  <ChevronUp v-if="activeChapter === 3" class="icon icon--sm" />
+                <div v-else class="chapter__toggle">
+                  <span class="chapter__progress chapter__progress--done">
+                    {{ lessonsOf(ci).length }}/{{ lessonsOf(ci).length }}
+                  </span>
+                  <ChevronUp v-if="expandedChapter === ci" class="icon icon--sm" />
                   <ChevronDown v-else class="icon icon--sm" />
                 </div>
               </div>
 
-              <div v-if="activeChapter === 3" class="lesson-list">
-                <div class="lesson">
-                  <div class="lesson__name">
-                    <CheckCircle2 class="icon icon--done icon--sm" />
-                    <span>3.1 Redis 哨兵与 Cluster 集群架构选型</span>
-                  </div>
-                  <span class="lesson__dur">22分</span>
-                </div>
-
-                <div class="lesson lesson--active">
+              <div v-if="expandedChapter === ci" class="lesson-list">
+                <p v-if="!lessonsOf(ci).length" class="lesson-empty">本章还没有小节</p>
+                <div
+                  v-for="(lesson, li) in lessonsOf(ci)"
+                  :key="lesson.id"
+                  class="lesson"
+                  :class="{ 'lesson--active': isCurrent(ci, li) }"
+                  @click="openLesson(ci, li)"
+                >
                   <div>
                     <div class="lesson__name">
-                      <Play class="icon icon--sm icon--fill icon--blue" />
-                      <span class="lesson__title">3.2 Redis 集群分布式锁与缓存击穿防护</span>
-                      <span class="lesson__tag">正在学</span>
+                      <CheckCircle2
+                        v-if="lessonState(ci, li) === 'done'"
+                        class="icon icon--done icon--sm"
+                      />
+                      <Play
+                        v-else-if="isCurrent(ci, li)"
+                        class="icon icon--sm icon--fill icon--blue"
+                      />
+                      <span v-else class="lesson__ring"></span>
+                      <span :class="isCurrent(ci, li) ? 'lesson__title' : 'lesson__label'">
+                        {{ lessonLabel(lesson.name, ci, li) }}
+                      </span>
+                      <span v-if="isCurrent(ci, li)" class="lesson__tag">播放中</span>
                     </div>
-                    <div class="lesson__meta">时长 28:15 · 进度 66%</div>
+                    <div v-if="isCurrent(ci, li)" class="lesson__meta">
+                      时长 {{ lesson.duration || '未填' }}
+                      <template v-if="!lesson.url">· 管理端尚未上传视频</template>
+                    </div>
                   </div>
+                  <span v-if="!isCurrent(ci, li)" class="lesson__dur">{{ lesson.duration }}</span>
                 </div>
-
-                <div class="lesson">
-                  <div class="lesson__name">
-                    <span class="lesson__ring"></span>
-                    <span class="lesson__label">3.3 缓存穿透布隆过滤器实战</span>
-                  </div>
-                  <span class="lesson__dur">20分</span>
-                </div>
-
-                <div class="lesson">
-                  <div class="lesson__name">
-                    <span class="lesson__ring"></span>
-                    <span class="lesson__label">3.4 缓存雪崩双层防护与多级缓存体系</span>
-                  </div>
-                  <span class="lesson__dur">35分</span>
-                </div>
-              </div>
-            </div>
-
-            <!-- Chapter 4 (Locked) -->
-            <div class="chapter chapter--locked">
-              <div class="chapter__head">
-                <div class="chapter__name chapter__name--muted">
-                  <Lock class="icon icon--sm" />
-                  <span>第 4 章: 全链路分布式追踪与可观测性实战</span>
-                </div>
-                <span class="chapter__progress">待解锁</span>
-              </div>
-            </div>
-
-            <!-- Chapter 5 (Exam Final) -->
-            <div class="chapter chapter--locked">
-              <div class="chapter__head">
-                <div class="chapter__name chapter__name--purple">
-                  <Award class="icon icon--sm" />
-                  <span>第 5 章: 期末综合考核与实操答辩</span>
-                </div>
-                <span class="chapter__progress chapter__progress--purple">实战答辩</span>
               </div>
             </div>
           </div>
@@ -239,7 +226,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import {
   ArrowLeft,
   Play,
@@ -252,15 +239,112 @@ import {
   CheckCircle2,
   ChevronDown,
   ChevronUp,
-  Lock,
-  Award
+  Lock
 } from 'lucide-vue-next';
+import { adminStore } from '../adminStore.js';
+
+const props = defineProps({
+  courseId: {
+    type: String,
+    default: '',
+  },
+});
 
 defineEmits(['back', 'navigate']);
 
 const isPlaying = ref(false);
 const playbackSpeed = ref('1.25x');
-const activeChapter = ref(3);
+
+/* 目录与管理端同一份 adminStore.courses，管理端一改这里就跟着变 */
+const course = computed(() => {
+  const list = adminStore.courses;
+  return list.find(c => c.id === props.courseId)
+    || list.find(c => (c.syllabus || []).length)
+    || list[0];
+});
+
+const chapters = computed(() => course.value?.syllabus || []);
+const lessonsOf = (ci) => chapters.value[ci]?.lessons || [];
+const totalLessons = computed(() => chapters.value.reduce((n, ch) => n + (ch.lessons || []).length, 0));
+
+/** 学习位置:进度落在哪一节,决定章/节的 已完成·学习中·待解锁 三态 */
+const positionOfProgress = () => {
+  if (!chapters.value.length) return { ci: 0, li: 0 };
+  const pct = Math.min(100, Math.max(0, Number(course.value?.progress) || 0));
+  let remaining = Math.round((totalLessons.value * pct) / 100);
+  for (let ci = 0; ci < chapters.value.length; ci += 1) {
+    const size = lessonsOf(ci).length;
+    if (remaining < size) return { ci, li: remaining };
+    remaining -= size;
+  }
+  const lastCi = chapters.value.length - 1;
+  return { ci: lastCi, li: Math.max(0, lessonsOf(lastCi).length - 1) };
+};
+
+/** progress = 学到哪一节(三态依据)，playing = 正在播哪一节：回看已完成小节不会把进度倒退回滚 */
+const progress = ref(positionOfProgress());
+const playing = ref({ ...progress.value });
+const expandedChapter = ref(progress.value.ci);
+
+const clampSpot = (spot) => {
+  if (!chapters.value.length) return { ci: 0, li: 0 };
+  const ci = Math.min(spot.ci, chapters.value.length - 1);
+  return { ci, li: Math.min(spot.li, Math.max(0, lessonsOf(ci).length - 1)) };
+};
+
+/* 管理端删章/删节后，位置可能落到已经不存在的条目上 */
+watch(chapters, () => {
+  progress.value = clampSpot(progress.value);
+  playing.value = clampSpot(playing.value);
+  if (expandedChapter.value >= chapters.value.length) expandedChapter.value = progress.value.ci;
+});
+
+const currentLesson = computed(() => lessonsOf(playing.value.ci)[playing.value.li] || null);
+const hasVideo = computed(() => !!currentLesson.value?.url);
+const courseTitle = computed(() => course.value?.title || '未命名课程');
+const courseSummary = computed(() => course.value?.summary || '管理端还没有填写课程简介。');
+const courseCover = computed(
+  () => course.value?.thumbnail
+    || 'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?auto=format&fit=crop&w=1200&q=80'
+);
+const currentDuration = computed(() => currentLesson.value?.duration || '未定时长');
+const currentLessonLabel = computed(() => {
+  const lesson = currentLesson.value;
+  if (!lesson) return '本课尚未编排小节';
+  return `第 ${playing.value.ci + 1} 章 · 第 ${playing.value.li + 1} 节: ${lesson.name}`;
+});
+
+const isCurrent = (ci, li) => playing.value.ci === ci && playing.value.li === li;
+
+const chapterState = (ci) => {
+  if (ci < progress.value.ci) return 'done';
+  if (ci === progress.value.ci) return 'active';
+  return 'locked';
+};
+
+const lessonState = (ci, li) => {
+  if (isCurrent(ci, li)) return 'current';
+  if (ci < progress.value.ci || (ci === progress.value.ci && li < progress.value.li)) return 'done';
+  return 'todo';
+};
+
+const doneInChapter = (ci) =>
+  ci === progress.value.ci ? progress.value.li : lessonsOf(ci).length;
+
+/* 管理端手填的小节名一般不带编号，这里补;数据里已带 "3.1" 的不再重复 */
+const lessonLabel = (name, ci, li) =>
+  /^\d+\.\d+/.test(name) ? name : `${ci + 1}.${li + 1} ${name}`;
+
+const toggleChapter = (ci) => {
+  if (chapterState(ci) === 'locked') return;
+  expandedChapter.value = expandedChapter.value === ci ? -1 : ci;
+};
+
+const openLesson = (ci, li) => {
+  playing.value = { ci, li };
+  expandedChapter.value = ci;
+  isPlaying.value = false;
+};
 </script>
 
 <style scoped>
@@ -458,6 +542,14 @@ const activeChapter = ref(3);
   height: 100%;
   object-fit: cover;
   opacity: 0.35;
+}
+
+.video-screen__video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  background: #0b132b;
 }
 
 .video-screen__status {
@@ -708,6 +800,20 @@ const activeChapter = ref(3);
   flex-direction: column;
   gap: 12px;
   font-size: 12px;
+}
+
+.syllabus__empty {
+  padding: 12px;
+  border: 1px dashed var(--c-border);
+  border-radius: 10px;
+  font-size: 12px;
+  color: var(--c-muted);
+}
+
+.lesson-empty {
+  padding: 10px 12px 12px;
+  font-size: 12px;
+  color: var(--c-muted);
 }
 
 .chapter {

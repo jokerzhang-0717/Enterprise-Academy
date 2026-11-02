@@ -48,10 +48,11 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="course in pagedCourses" :key="course.id">
+          <tr v-for="course in pagedCourses" :key="course.id" @click="openEdit(course)">
             <td>
               <div class="cell-course">
-                <img :src="course.thumbnail" alt="" class="cell-thumb" />
+                <img v-if="course.thumbnail" :src="course.thumbnail" alt="" class="cell-thumb" />
+                <span v-else class="cell-thumb cell-thumb--empty">无</span>
                 <div class="cell-course-text">
                   <div class="cell-course-title">{{ course.title }}</div>
                   <div class="cell-course-meta">
@@ -74,13 +75,13 @@
                 :class="course.published ? 'switch--on' : ''"
                 role="switch"
                 :aria-checked="course.published"
-                @click="togglePublish(course)"
+                @click.stop="togglePublish(course)"
               >
                 <span class="switch-knob"></span>
               </button>
             </td>
             <td class="ops">
-              <div class="row-actions">
+              <div class="row-actions" @click.stop>
                 <button class="icon-btn" title="编辑" @click="openEdit(course)">
                   <EditPen />
                 </button>
@@ -111,76 +112,67 @@
           <button class="modal-close" @click="closeModal"><Close /></button>
         </div>
         <form class="modal-body" @submit.prevent="saveCourse">
-          <label class="field">
-            <span class="field-label">课程名称</span>
-            <input v-model.trim="form.title" type="text" class="field-input" placeholder="请输入课程名称" />
-          </label>
-          <div class="field-row">
-            <label class="field">
-              <span class="field-label">分类</span>
-              <select v-model="form.category" class="field-input" @change="syncCategoryLabel">
-                <option v-for="cat in categories" :key="cat.id" :value="cat.id">{{ cat.label }}</option>
-              </select>
-            </label>
-            <label class="field">
-              <span class="field-label">讲师</span>
-              <input v-model.trim="form.instructorName" type="text" class="field-input" placeholder="讲师姓名" />
-            </label>
-          </div>
-          <label class="field">
-            <span class="field-label">课程简介</span>
-            <textarea v-model.trim="form.summary" rows="3" class="field-input field-textarea" placeholder="一句话描述课程内容"></textarea>
-          </label>
 
-          <!-- 课程封面 -->
-          <div class="field">
-            <span class="field-label">课程封面</span>
-            <div class="cover-section">
-              <div class="cover-preview">
-                <img v-if="form.thumbnail" :src="form.thumbnail" alt="" class="cover-preview-img" />
-                <span v-else class="cover-preview-empty">暂无封面</span>
+          <!-- ── 基础信息 ── -->
+          <div class="section-block">
+            <div class="section-header">
+              <span class="section-dot"></span>
+              <span class="section-title">基础信息</span>
+            </div>
+            <div class="section-fields">
+              <label class="field">
+                <span class="field-label">课程名称</span>
+                <input v-model.trim="form.title" type="text" class="field-input" placeholder="请输入课程名称" />
+              </label>
+              <div class="field-row">
+                <label class="field">
+                  <span class="field-label">所属分类</span>
+                  <select v-model="form.category" class="field-input" @change="syncCategoryLabel">
+                    <option v-for="cat in categories" :key="cat.id" :value="cat.id">{{ cat.label }}</option>
+                  </select>
+                </label>
+                <label class="field">
+                  <span class="field-label">主讲讲师</span>
+                  <input v-model.trim="form.instructorName" type="text" class="field-input" placeholder="讲师姓名" />
+                </label>
               </div>
-              <div class="cover-controls">
-                <div class="cover-grid">
-                  <button
-                    v-for="(cover, i) in presetCovers"
-                    :key="i"
-                    type="button"
-                    class="cover-option"
-                    :class="form.thumbnail === cover ? 'cover-option--active' : ''"
-                    :title="`预设封面 ${i + 1}`"
-                    @click="form.thumbnail = cover"
-                  >
-                    <img :src="cover" alt="" class="cover-option-img" />
-                  </button>
-                </div>
-                <div class="cover-url-row">
-                  <input
-                    v-model.trim="form.thumbnail"
-                    type="text"
-                    class="field-input"
-                    placeholder="或粘贴封面图片 URL"
-                  />
-                  <label class="upload-btn">
-                    <input type="file" accept="image/*" class="file-input-hidden" @change="handleCoverUpload" />
-                    上传图片
-                  </label>
-                </div>
-              </div>
+              <label class="field">
+                <span class="field-label">课程简介</span>
+                <textarea v-model.trim="form.summary" rows="3" class="field-input field-textarea" placeholder="一句话描述课程内容，让学员快速了解学习收获"></textarea>
+              </label>
             </div>
           </div>
 
-          <!-- 课程目录(章节 → 课时视频) -->
-          <div class="field">
-            <span class="field-label">课程目录({{ form.syllabus.length }} 章 · {{ lessonCount }} 节)</span>
+          <!-- ── 课程封面 ── -->
+          <div class="section-block">
+            <div class="section-header">
+              <span class="section-dot section-dot--blue"></span>
+              <span class="section-title">课程封面</span>
+            </div>
+            <div class="cover-section">
+              <label
+                class="cover-hero"
+                :class="{ 'cover-hero--empty': !form.thumbnail }"
+                :title="form.thumbnail ? '点击更换封面' : '点击上传封面'"
+              >
+                <input type="file" accept="image/*" class="file-input-hidden" @change="handleCoverUpload" />
+                <img v-if="form.thumbnail" :src="form.thumbnail" alt="课程封面" class="cover-hero-img" />
+                <span v-if="form.thumbnail" class="cover-hero-overlay">更换封面</span>
+                <span v-else class="cover-hero-empty">
+                  <span class="cover-empty-icon">🖼</span>
+                  <span class="cover-empty-title">点击上传封面</span>
+                  <span class="cover-empty-hint">建议 16:9 尺寸 · JPG / PNG · 不超过 5MB</span>
+                </span>
+              </label>
+            </div>
+          </div>
 
-            <!-- 视频预览 -->
-            <div v-if="previewLesson" class="syl-preview">
-              <video :src="previewLesson.url" controls preload="metadata" class="video-player"></video>
-              <div class="syl-preview-info">
-                <div class="video-name">{{ previewLesson.name }}</div>
-                <button type="button" class="text-btn text-btn--danger" @click="previewLesson = null">关闭预览</button>
-              </div>
+          <!-- ── 课程目录 ── -->
+          <div class="section-block">
+            <div class="section-header">
+              <span class="section-dot section-dot--green"></span>
+              <span class="section-title">课程目录</span>
+              <span class="section-badge">{{ form.syllabus.length }} 章 · {{ lessonCount }} 节</span>
             </div>
 
             <div v-if="form.syllabus.length" class="syl-editor">
@@ -191,39 +183,37 @@
                     v-model.trim="chapter.title"
                     type="text"
                     class="field-input syl-chapter-title"
-                    placeholder="章节名称,如 微服务架构选型与升级"
+                    placeholder="章节名称，如：微服务架构选型与升级"
                   />
-                  <label class="upload-btn upload-btn--small">
-                    <input type="file" accept="video/*" class="file-input-hidden" @change="handleLessonUpload(chapter)" />
-                    上传视频到本章
-                  </label>
-                  <button type="button" class="text-btn text-btn--danger" @click="removeChapter(chapter)">删除章节</button>
+                  <div class="chapter-head-actions">
+                    <button type="button" class="del-chapter-btn" title="删除此章节" @click="removeChapter(chapter)">
+                      <span class="del-icon">✕</span> 删除章节
+                    </button>
+                  </div>
                 </div>
 
                 <div v-if="chapter.lessons.length" class="syl-lessons">
                   <div v-for="(lesson, li) in chapter.lessons" :key="lesson.id" class="syl-lesson">
                     <span class="syl-lesson-no">{{ ci + 1 }}.{{ li + 1 }}</span>
-                    <input v-model.trim="lesson.name" type="text" class="field-input syl-lesson-name" placeholder="课时名称" />
-                    <input v-model.trim="lesson.duration" type="text" class="field-input syl-lesson-dur" placeholder="时长,如 22分" />
-                    <button
-                      v-if="lesson.url"
-                      type="button"
-                      class="icon-btn"
-                      title="预览视频"
-                      @click="previewLesson = lesson"
-                    >▶</button>
-                    <span v-else class="syl-no-video">未上传</span>
-                    <button type="button" class="icon-btn icon-btn--danger" title="删除课时" @click="removeLesson(chapter, lesson)">×</button>
+                    <input v-model.trim="lesson.name" type="text" class="field-input syl-lesson-name" placeholder="小节名称" />
+                    <label class="upload-btn upload-btn--video upload-btn--sm">
+                      <input type="file" accept="video/*" class="file-input-hidden" @change="handleLessonFile(lesson, $event)" />
+                      <span>↑</span> 上传视频
+                    </label>
+                    <button type="button" class="del-lesson-btn" title="删除小节" @click="removeLesson(chapter, lesson)">
+                      <Delete class="del-lesson-icon" /> 删除
+                    </button>
                   </div>
                 </div>
-                <p v-else class="syl-lessons-empty">本章暂无课时,点「上传视频到本章」添加。</p>
+                <p v-else class="syl-lessons-empty">本章暂无小节，点「＋ 添加小节」先填写小节名称，再在小节行上传视频。</p>
+
+                <button type="button" class="add-lesson-btn" @click="addLesson(chapter)">＋ 添加小节</button>
               </div>
             </div>
-            <p v-else class="video-empty">暂无章节,点击下方「添加章节」创建课程目录。</p>
+            <p v-else class="video-empty">暂无章节，点击下方「添加章节」创建课程目录。</p>
 
             <div class="syl-actions">
-              <button type="button" class="btn btn--ghost btn--small" @click="addChapter">添加章节</button>
-              <span class="video-upload-tip">课时 = 一个视频,上传后自动以文件名命名,支持 mp4,≤30MB</span>
+              <button type="button" class="btn btn--ghost btn--small" @click="addChapter">＋ 添加章节</button>
             </div>
           </div>
 
@@ -259,7 +249,7 @@
 import { computed, ref, watch } from 'vue';
 import { Plus, EditPen, Delete, Close } from '@element-plus/icons-vue';
 import { COURSE_CATEGORIES } from '../../mockData.js';
-import { adminStore, PRESET_COVERS } from '../../adminStore.js';
+import { adminStore } from '../../adminStore.js';
 import { usePager } from '../../composables/usePager.js';
 import { useConfirm } from '../../composables/useConfirm.js';
 import { useToast } from '../../composables/useToast.js';
@@ -269,7 +259,6 @@ import ConfirmDialog from '../../components/ConfirmDialog.vue';
 const { show: showToast } = useToast();
 
 const courses = adminStore.courses;
-const presetCovers = PRESET_COVERS;
 
 const { confirmState, askConfirm, cancelConfirm, acceptConfirm } = useConfirm();
 
@@ -303,10 +292,8 @@ const editingId = ref(null);
 const formError = ref('');
 const form = ref({
   title: '', category: 'tech', categoryLabel: '', instructorName: '', summary: '', published: true,
-  thumbnail: PRESET_COVERS[0], syllabus: []
+  thumbnail: '', syllabus: []
 });
-
-const previewLesson = ref(null);
 
 const lessonCount = computed(() =>
   form.value.syllabus.reduce((sum, ch) => sum + (ch.lessons ? ch.lessons.length : 0), 0)
@@ -321,7 +308,7 @@ const openCreate = () => {
   formError.value = '';
   form.value = {
     title: '', category: 'tech', categoryLabel: '技术研发', instructorName: '', summary: '', published: true,
-    thumbnail: PRESET_COVERS[0], syllabus: []
+    thumbnail: '', syllabus: []
   };
   modalOpen.value = true;
 };
@@ -329,7 +316,6 @@ const openCreate = () => {
 const openEdit = (course) => {
   editingId.value = course.id;
   formError.value = '';
-  previewLesson.value = null;
   form.value = {
     title: course.title,
     category: course.category,
@@ -337,7 +323,7 @@ const openEdit = (course) => {
     instructorName: course.instructor?.name || '',
     summary: course.summary || '',
     published: course.published,
-    thumbnail: course.thumbnail || PRESET_COVERS[0],
+    thumbnail: course.thumbnail || '',
     syllabus: (course.syllabus || []).map(ch => ({
       ...ch,
       lessons: (ch.lessons || []).map(ls => ({ ...ls }))
@@ -362,8 +348,14 @@ const saveCourse = () => {
     instructor: { name: form.value.instructorName, title: '企业认证讲师' },
     summary: form.value.summary,
     published: form.value.published,
-    thumbnail: form.value.thumbnail || PRESET_COVERS[0],
-    syllabus: form.value.syllabus
+    thumbnail: form.value.thumbnail || '',
+    syllabus: form.value.syllabus.map(ch => ({
+      ...ch,
+      lessons: (ch.lessons || []).map(ls => ({
+        ...ls,
+        name: (ls.name || '').trim() || '未命名小节'
+      }))
+    }))
   };
 
   if (editingId.value) {
@@ -390,7 +382,7 @@ const togglePublish = (course) => {
   course.published = !course.published;
 };
 
-/* ---------- 课程目录(章节 → 课时) ---------- */
+/* ---------- 课程目录(章节 → 小节) ---------- */
 const addChapter = () => {
   form.value.syllabus.push({
     id: `ch-${Date.now()}`,
@@ -399,41 +391,79 @@ const addChapter = () => {
   });
 };
 
+const addLesson = (chapter) => {
+  const lessons = chapter.lessons || (chapter.lessons = []);
+  lessons.push({ id: `ls-${Date.now()}`, name: '', duration: '', url: '' });
+};
+
+/* 导出/转码后的视频文件名常是哈希串，直接照抄会变成一长串乱码 */
+const isMeaninglessName = (name) =>
+  !/[\u4e00-\u9fa5]/.test(name) && /^[0-9a-f]{12,}$/i.test(name.replace(/[\s_-]/g, ''));
+
+const formatDuration = (seconds) => {
+  if (!Number.isFinite(seconds) || seconds <= 0) return '';
+  const total = Math.round(seconds);
+  if (total < 60) return `${total}秒`;
+  const min = Math.floor(total / 60);
+  const sec = total % 60;
+  return sec ? `${min}分${sec}秒` : `${min}分`;
+};
+
+const handleLessonFile = (lesson, e) => {
+  const input = e.target;
+  const file = input.files && input.files[0];
+  if (!file || !lesson) return;
+  const reset = () => { input.value = ''; };
+  if (file.size > 30 * 1024 * 1024) {
+    showToast('视频超过 30MB，本演示环境仅支持小文件上传。', 'error');
+    reset();
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = () => {
+    const stem = file.name.replace(/\.[^.]+$/, '').trim();
+    const url = String(reader.result || '');
+    lesson.url = url;
+    if (!lesson.name || lesson.name === '未命名小节' || isMeaninglessName(lesson.name)) {
+      if (!isMeaninglessName(stem)) {
+        lesson.name = stem;
+      } else if (!lesson.name || lesson.name === '未命名小节') {
+        lesson.name = '未命名小节';
+      }
+    }
+    showToast(`已上传视频：${lesson.name}`, 'success');
+    const probe = document.createElement('video');
+    probe.preload = 'metadata';
+    probe.onloadedmetadata = () => {
+      const text = formatDuration(probe.duration);
+      if (text && !lesson.duration) lesson.duration = text;
+      probe.src = '';
+    };
+    probe.onerror = () => { probe.src = ''; };
+    probe.src = url;
+    reset();
+  };
+  reader.onerror = () => {
+    showToast('视频读取失败，请重试或换一个小文件。', 'error');
+    reset();
+  };
+  reader.readAsDataURL(file);
+};
+
 const removeChapter = (chapter) => {
   askConfirm({
     tone: 'danger',
     title: '删除该章节？',
     subtitle: chapter.title,
     rows: [
-      { label: '本章课时', value: `${chapter.lessons?.length || 0} 个` }
+      { label: '本章小节', value: `${chapter.lessons?.length || 0} 个` }
     ],
-    tip: '删除后本章及其所有课时将一并移除，请确认内容已备份。',
+    tip: '删除后本章及其所有小节将一并移除，请确认内容已备份。',
     confirmText: '确认删除',
     action: () => {
       form.value.syllabus = form.value.syllabus.filter(ch => ch.id !== chapter.id);
     }
   });
-};
-
-const handleLessonUpload = (chapter) => (e) => {
-  const file = e.target.files && e.target.files[0];
-  if (!file) return;
-  if (file.size > 30 * 1024 * 1024) {
-    showToast('视频超过 30MB，本演示环境仅支持小文件上传。', 'error');
-    return;
-  }
-  const reader = new FileReader();
-  reader.onload = () => {
-    const lessons = chapter.lessons || (chapter.lessons = []);
-    lessons.push({
-      id: `ls-${Date.now()}`,
-      name: file.name.replace(/\.[^.]+$/, ''),
-      duration: '',
-      url: String(reader.result || '')
-    });
-  };
-  reader.readAsDataURL(file);
-  e.target.value = '';
 };
 
 const removeLesson = (chapter, lesson) => {
@@ -504,14 +534,14 @@ button { cursor: pointer; }
 .page-title {
   font-size: 24px;
   font-weight: 700;
-  color: #0F1E33;
+  color: var(--app-heading);
   letter-spacing: -0.02em;
 }
 
 .page-sub {
   margin-top: 4px;
   font-size: 13px;
-  color: #64748B;
+  color: var(--app-text-4);
 }
 
 .btn {
@@ -529,19 +559,19 @@ button { cursor: pointer; }
 .btn-icon { width: 15px; height: 15px; }
 
 .btn--primary {
-  background: linear-gradient(135deg, #E9B949, #D19A2B);
-  color: #241A04;
-  border-color: #D19A2B;
-  box-shadow: 0 2px 6px rgba(233, 185, 73, 0.35);
+  background: linear-gradient(135deg, var(--app-brand), var(--app-brand-deep));
+  color: var(--app-brand-on);
+  border-color: var(--app-brand-deep);
+  box-shadow: 0 2px 6px var(--app-brand-glow);
 }
-.btn--primary:hover { background: linear-gradient(135deg, #F0C45E, #D19A2B); }
+.btn--primary:hover { background: linear-gradient(135deg, var(--app-brand-hi), var(--app-brand-deep)); }
 
 .btn--ghost {
-  background: #fff;
-  color: #334155;
-  border-color: #E2E8F0;
+  background: var(--app-surface);
+  color: var(--app-text-2);
+  border-color: var(--app-text-6);
 }
-.btn--ghost:hover { border-color: #E9B949; color: #8A6414; }
+.btn--ghost:hover { border-color: var(--app-brand); color: var(--app-brand-ink); }
 
 /* ========== 工具栏 ========== */
 .toolbar {
@@ -549,8 +579,8 @@ button { cursor: pointer; }
   align-items: center;
   gap: 10px;
   padding: 12px 14px;
-  background: #fff;
-  border: 1px solid #E2E8F0;
+  background: var(--app-surface);
+  border: 1px solid var(--app-border);
   border-radius: 12px;
   flex-wrap: wrap;
 }
@@ -562,14 +592,14 @@ button { cursor: pointer; }
   flex: 1;
   min-width: 200px;
   padding: 0 12px;
-  background: #F8FAFC;
-  border: 1px solid #E2E8F0;
+  background: var(--app-surface-2);
+  border: 1px solid var(--app-border);
   border-radius: 10px;
   transition: border-color 0.15s, box-shadow 0.15s;
 }
 .search-box:focus-within {
-  border-color: #2E8BD6;
-  box-shadow: 0 0 0 3px rgba(46, 139, 214, 0.12);
+  border-color: var(--app-accent-strong);
+  box-shadow: 0 0 0 3px var(--app-accent-a12);
 }
 
 .search-icon {
@@ -585,7 +615,7 @@ button { cursor: pointer; }
   left: 0;
   width: 9px;
   height: 9px;
-  border: 2px solid #64748B;
+  border: 2px solid var(--app-text-4);
   border-radius: 50%;
 }
 .search-icon::after {
@@ -595,7 +625,7 @@ button { cursor: pointer; }
   right: 0;
   width: 6px;
   height: 2px;
-  background: #64748B;
+  background: var(--app-text-4);
   border-radius: 1px;
   transform: rotate(45deg);
   transform-origin: right center;
@@ -606,7 +636,7 @@ button { cursor: pointer; }
   min-width: 0;
   padding: 9px 0;
   font-size: 13px;
-  color: #1E293B;
+  color: var(--app-text);
   background: transparent;
   border: none;
   outline: none;
@@ -615,25 +645,25 @@ button { cursor: pointer; }
 .select {
   padding: 9px 12px;
   font-size: 13px;
-  color: #334155;
-  background: #F8FAFC;
-  border: 1px solid #E2E8F0;
+  color: var(--app-text-2);
+  background: var(--app-surface-2);
+  border: 1px solid var(--app-border);
   border-radius: 10px;
   outline: none;
   transition: border-color 0.15s;
 }
-.select:focus { border-color: #2E8BD6; }
+.select:focus { border-color: var(--app-accent-strong); }
 
 .toolbar-result {
   margin-left: auto;
   font-size: 12px;
-  color: #94A3B8;
+  color: var(--app-text-5);
 }
 
 /* ========== 表格 ========== */
 .table-wrap {
-  background: #fff;
-  border: 1px solid #E2E8F0;
+  background: var(--app-surface);
+  border: 1px solid var(--app-border);
   border-radius: 12px;
   overflow-x: auto;
 }
@@ -649,22 +679,30 @@ button { cursor: pointer; }
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.06em;
-  color: #64748B;
+  color: var(--app-text-4);
   text-align: left;
-  background: #F8FAFC;
-  border-bottom: 1px solid #E2E8F0;
+  background: var(--app-surface-2);
+  border-bottom: 1px solid var(--app-border);
   white-space: nowrap;
 }
 
 .data-table tbody td {
   padding: 12px 14px;
-  color: #1E293B;
-  border-bottom: 1px solid #F1F5F9;
+  color: var(--app-text);
+  border-bottom: 1px solid var(--app-border-soft);
   white-space: nowrap;
 }
 
 .data-table tbody tr:last-child td { border-bottom: none; }
-.data-table tbody tr:hover { background: #F8FAFC; }
+.data-table tbody tr { cursor: pointer; }
+.data-table tbody td { transition: background 0.15s, color 0.15s, box-shadow 0.15s; }
+.data-table tbody tr:hover td { background: var(--app-accent-soft); }
+.data-table tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--app-accent); }
+.data-table tbody tr:hover td,
+.data-table tbody tr:hover .cell-course-title,
+.data-table tbody tr:hover .cell-course-meta {
+  color: var(--app-accent-deep);
+}
 
 th.num, td.num { text-align: right; }
 th.ops, td.ops { text-align: right; }
@@ -674,8 +712,8 @@ th.ops, td.ops { text-align: right; }
 .data-table thead th.ops { text-align: right; }
 
 .mono { font-family: 'JetBrains Mono', ui-monospace, monospace; }
-.cell-muted { color: #64748B; }
-.empty-cell { text-align: center; color: #94A3B8; padding: 28px 0 !important; }
+.cell-muted { color: var(--app-text-4); }
+.empty-cell { text-align: center; color: var(--app-text-5); padding: 28px 0 !important; }
 
 .cell-course {
   display: flex;
@@ -691,12 +729,21 @@ th.ops, td.ops { text-align: right; }
   border-radius: 8px;
   flex-shrink: 0;
 }
+.cell-thumb--empty {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  color: var(--app-text-5);
+  background: var(--app-surface-3);
+  border: 1px dashed var(--app-border-strong);
+}
 
 .cell-course-text { min-width: 0; }
 
 .cell-course-title {
   font-weight: 600;
-  color: #1E293B;
+  color: var(--app-text);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -705,7 +752,7 @@ th.ops, td.ops { text-align: right; }
 .cell-course-meta {
   margin-top: 2px;
   font-size: 11px;
-  color: #94A3B8;
+  color: var(--app-text-5);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -717,8 +764,8 @@ th.ops, td.ops { text-align: right; }
   padding: 3px 10px;
   font-size: 11px;
   font-weight: 600;
-  color: #005576;
-  background: #D9F0FF;
+  color: var(--app-accent-deep);
+  background: var(--app-accent-soft);
   border-radius: 9999px;
 }
 
@@ -731,15 +778,15 @@ th.ops, td.ops { text-align: right; }
   font-weight: 700;
   border-radius: 9999px;
 }
-.status-pill--on  { color: #047857; background: #D1FAE5; }
-.status-pill--off { color: #64748B; background: #E2E8F0; }
+.status-pill--on  { color: var(--app-emerald-fg); background: var(--app-emerald-bg); }
+.status-pill--off { color: var(--app-text-4); background: var(--app-chip); }
 
 /* ========== 上架开关 ========== */
 .switch {
   position: relative;
   width: 40px;
   height: 22px;
-  background: #CBD5E1;
+  background: var(--app-surface-3);
   border: none;
   border-radius: 9999px;
   transition: background 0.2s;
@@ -752,7 +799,7 @@ th.ops, td.ops { text-align: right; }
   left: 3px;
   width: 16px;
   height: 16px;
-  background: #fff;
+  background: var(--app-surface);
   border-radius: 50%;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
   transition: left 0.2s;
@@ -771,15 +818,15 @@ th.ops, td.ops { text-align: right; }
   justify-content: center;
   width: 28px;
   height: 28px;
-  color: #475569;
-  background: #F8FAFC;
-  border: 1px solid #E2E8F0;
+  color: var(--app-text-3);
+  background: var(--app-surface-2);
+  border: 1px solid var(--app-border);
   border-radius: 8px;
   transition: background 0.15s, color 0.15s, border-color 0.15s;
 }
 .icon-btn svg { width: 14px; height: 14px; }
-.icon-btn:hover { background: #D9F0FF; color: #005576; border-color: #A3D5FF; }
-.icon-btn--danger:hover { background: #FFE4E6; color: #BE123C; border-color: #FECDD3; }
+.icon-btn:hover { background: var(--app-accent-soft); color: var(--app-accent-deep); border-color: var(--app-accent-border); }
+.icon-btn--danger:hover { background: var(--app-rose-bg); color: var(--app-rose-fg); border-color: var(--app-rose-line); }
 
 /* ========== 弹窗 ========== */
 .modal-backdrop {
@@ -790,38 +837,60 @@ th.ops, td.ops { text-align: right; }
   align-items: center;
   justify-content: center;
   padding: 20px;
-  background: rgba(15, 30, 51, 0.45);
-  backdrop-filter: blur(2px);
+  background: rgba(15, 30, 51, 0.50);
+  backdrop-filter: blur(4px);
 }
 
 .modal {
   width: 100%;
-  max-width: 520px;
-  max-height: 90vh;
+  max-width: 560px;
+  max-height: 92vh;
   overflow-y: auto;
-  background: #fff;
-  border-radius: 16px;
-  box-shadow: 0 24px 48px rgba(15, 30, 51, 0.25);
+  background: var(--app-surface);
+  border-radius: 18px;
+  box-shadow: 0 32px 64px rgba(15, 30, 51, 0.28);
   animation: modal-in 0.22s ease-out;
+  scrollbar-width: thin;
+  scrollbar-color: var(--app-text-6) transparent;
 }
+.modal::-webkit-scrollbar { width: 5px; }
+.modal::-webkit-scrollbar-thumb { background: var(--app-chip); border-radius: 9999px; }
+.modal::-webkit-scrollbar-track { background: transparent; }
 
 @keyframes modal-in {
-  from { opacity: 0; transform: translateY(10px) scale(0.98); }
+  from { opacity: 0; transform: translateY(12px) scale(0.97); }
   to   { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 .modal-head {
+  position: sticky;
+  top: 0;
+  z-index: 2;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 20px;
-  border-bottom: 1px solid #F1F5F9;
+  padding: 18px 22px 16px;
+  background: var(--app-surface);
+  border-bottom: 1px solid var(--app-border-soft);
+  border-radius: 18px 18px 0 0;
 }
 
 .modal-title {
   font-size: 16px;
   font-weight: 700;
-  color: #0F1E33;
+  letter-spacing: 0.01em;
+  color: var(--app-heading);
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+.modal-title::before {
+  content: '';
+  display: inline-block;
+  width: 3px;
+  height: 16px;
+  background: linear-gradient(180deg, var(--app-accent), var(--app-brand));
+  border-radius: 9999px;
 }
 
 .modal-close {
@@ -830,20 +899,71 @@ th.ops, td.ops { text-align: right; }
   justify-content: center;
   width: 30px;
   height: 30px;
-  color: #64748B;
+  color: var(--app-text-4);
   background: transparent;
-  border: none;
+  border: 1px solid transparent;
   border-radius: 8px;
-  transition: background 0.15s, color 0.15s;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
 }
 .modal-close svg { width: 16px; height: 16px; }
-.modal-close:hover { background: #F1F5F9; color: #0F1E33; }
+.modal-close:hover {
+  background: var(--app-surface-3);
+  border-color: var(--app-border);
+  color: var(--app-heading);
+}
 
 .modal-body {
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  padding: 20px;
+  gap: 0;
+  padding: 0;
+}
+
+/* ========== 表单分区 ========== */
+.section-block {
+  padding: 18px 22px;
+  border-bottom: 1px solid var(--app-border-soft);
+}
+.section-block:last-of-type { border-bottom: none; }
+
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.section-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--app-brand);
+  flex-shrink: 0;
+}
+.section-dot--blue  { background: #2E8BD6; }
+.section-dot--green { background: #10B981; }
+
+.section-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--app-text);
+  letter-spacing: 0.02em;
+}
+
+.section-badge {
+  margin-left: auto;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #10B981;
+  background: var(--app-emerald-bg);
+  border-radius: 9999px;
+}
+
+.section-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
 .field-row {
@@ -861,23 +981,23 @@ th.ops, td.ops { text-align: right; }
 .field-label {
   font-size: 12px;
   font-weight: 600;
-  color: #475569;
+  color: var(--app-text-3);
 }
 
 .field-input {
   width: 100%;
   padding: 10px 12px;
   font-size: 13px;
-  color: #1E293B;
-  background: #F8FAFC;
-  border: 1px solid #E2E8F0;
+  color: var(--app-text);
+  background: var(--app-surface-2);
+  border: 1px solid var(--app-border);
   border-radius: 10px;
   outline: none;
   transition: border-color 0.15s, box-shadow 0.15s;
 }
 .field-input:focus {
-  border-color: #2E8BD6;
-  box-shadow: 0 0 0 3px rgba(46, 139, 214, 0.12);
+  border-color: var(--app-accent-strong);
+  box-shadow: 0 0 0 3px var(--app-accent-a12);
 }
 
 .field-textarea {
@@ -890,126 +1010,141 @@ th.ops, td.ops { text-align: right; }
   display: flex;
   align-items: center;
   gap: 8px;
+  padding: 14px 22px;
   font-size: 13px;
-  color: #334155;
+  color: var(--app-text-2);
   cursor: pointer;
   user-select: none;
+  border-bottom: 1px solid var(--app-border-soft);
 }
 
 .checkbox {
   width: 16px;
   height: 16px;
-  accent-color: #D19A2B;
+  accent-color: var(--app-brand-deep);
   cursor: pointer;
 }
 
 .form-error {
+  padding: 0 22px;
   font-size: 12px;
-  color: #BE123C;
+  color: var(--app-rose-fg);
 }
 
 .modal-actions {
   display: flex;
   justify-content: flex-end;
   gap: 10px;
-  margin-top: 4px;
+  padding: 16px 22px 20px;
 }
 
 /* ========== 封面管理 ========== */
 .cover-section {
   display: flex;
-  gap: 14px;
-  align-items: flex-start;
+  flex-direction: column;
+  gap: 12px;
 }
 
-.cover-preview {
-  width: 150px;
-  height: 92px;
-  background: #F1F5F9;
-  border: 1px solid #E2E8F0;
-  border-radius: 10px;
+.cover-hero {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background: var(--app-surface-2);
+  border: 1px solid var(--app-border);
+  border-radius: 14px;
   overflow: hidden;
-  flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
+  cursor: pointer;
+  transition: border-color 0.18s, background 0.18s, box-shadow 0.18s;
+}
+.cover-hero:hover {
+  border-color: var(--app-accent-border);
+  background: var(--app-surface-3);
+  box-shadow: 0 2px 10px rgb(15 30 51 / 5%);
 }
 
-.cover-preview-img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
+.cover-hero--empty {
+  border: 1.5px dashed var(--app-border-strong);
+}
+.cover-hero--empty:hover {
+  border-color: var(--app-accent);
+  background: var(--app-surface-2);
 }
 
-.cover-preview-empty {
-  font-size: 12px;
-  color: #94A3B8;
-}
-
-.cover-controls {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.cover-grid {
-  display: grid;
-  grid-template-columns: repeat(6, 1fr);
-  gap: 8px;
-}
-
-.cover-option {
-  position: relative;
-  padding: 0;
-  aspect-ratio: 16 / 10;
-  border: 2px solid #E2E8F0;
-  border-radius: 8px;
-  overflow: hidden;
-  background: #F1F5F9;
-  transition: border-color 0.15s, box-shadow 0.15s;
-}
-
-.cover-option:hover {
-  border-color: #A3D5FF;
-}
-
-.cover-option--active {
-  border-color: #2E8BD6;
-  box-shadow: 0 0 0 3px rgba(46, 139, 214, 0.2);
-}
-
-.cover-option-img {
+.cover-hero-img {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
   display: block;
 }
 
-.cover-url-row {
+/* 已有封面时，悬停居中提示更换 */
+.cover-hero-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
   display: flex;
   align-items: center;
-  gap: 8px;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: #fff;
+  background: rgb(15 30 51 / 28%);
+  opacity: 0;
+  transition: opacity 0.18s;
+  pointer-events: none;
+}
+.cover-hero:hover .cover-hero-overlay,
+.cover-hero:focus-within .cover-hero-overlay {
+  opacity: 1;
 }
 
+.cover-hero-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 12px;
+  text-align: center;
+  color: var(--app-text-4);
+  transition: color 0.18s;
+}
+.cover-hero:hover .cover-hero-empty { color: var(--app-accent-deep); }
+
+.cover-empty-icon { font-size: 28px; opacity: 0.55; }
+.cover-empty-title { font-size: 13px; font-weight: 600; }
+.cover-empty-hint { font-size: 11px; color: var(--app-text-5); }
+
+/* ========== 上传按钮 ========== */
 .upload-btn {
   display: inline-flex;
   align-items: center;
+  gap: 5px;
   padding: 9px 14px;
   font-size: 12px;
   font-weight: 600;
-  color: #005576;
-  background: #D9F0FF;
-  border: 1px solid #A3D5FF;
+  color: var(--app-accent-deep);
+  background: var(--app-accent-soft);
+  border: 1px solid var(--app-accent-border);
   border-radius: 10px;
   cursor: pointer;
   white-space: nowrap;
-  transition: background 0.15s;
+  transition: background 0.15s, box-shadow 0.15s;
+}
+.upload-btn:hover {
+  background: var(--app-accent-hover);
+  box-shadow: 0 2px 6px var(--app-accent-a20);
 }
 
-.upload-btn:hover {
-  background: #C2E4FA;
+.upload-btn--video {
+  padding: 6px 11px;
+  font-size: 11px;
+  border-radius: 8px;
 }
 
 .file-input-hidden {
@@ -1021,40 +1156,106 @@ th.ops, td.ops { text-align: right; }
   display: flex;
   flex-direction: column;
   gap: 10px;
+  margin-bottom: 12px;
 }
 
 .syl-chapter {
-  border: 1px solid #E2E8F0;
+  position: relative;
+  border: 1px solid var(--app-border);
   border-radius: 12px;
   overflow: hidden;
+  background: var(--app-surface);
+  transition: border-color 0.18s, box-shadow 0.18s;
+}
+.syl-chapter:hover {
+  border-color: var(--app-border-strong);
+  box-shadow: 0 2px 10px rgb(15 30 51 / 5%);
+}
+.syl-chapter:focus-within {
+  border-color: var(--app-accent-border);
+  box-shadow: 0 0 0 3px var(--app-accent-a10);
 }
 
 .syl-chapter-head {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 10px 12px;
-  background: #F6FBFF;
-  border-bottom: 1px solid #E9F2FA;
+  padding: 9px 14px;
+  background: linear-gradient(90deg, var(--app-surface) 0%, var(--app-surface-2) 100%);
+  border-bottom: 1px solid var(--app-border);
   flex-wrap: wrap;
+}
+.syl-chapter-head::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 9px;
+  bottom: 9px;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: var(--app-accent);
+  opacity: 0.75;
 }
 
 .syl-chapter-index {
-  padding: 3px 9px;
+  padding: 2px 7px;
   font-size: 11px;
   font-weight: 700;
-  color: #005576;
-  background: #D9F0FF;
-  border-radius: 9999px;
+  letter-spacing: 0.03em;
+  color: var(--app-accent-deep);
+  background: var(--app-surface);
+  border: 1px solid var(--app-accent-border);
+  border-radius: 6px;
   white-space: nowrap;
   flex-shrink: 0;
 }
 
 .syl-chapter-title {
   flex: 1;
-  min-width: 180px;
+  min-width: 160px;
+  padding: 5px 8px;
   font-weight: 600;
+  font-size: 13px;
+  color: var(--app-heading);
+  background: transparent;
+  border-color: transparent;
+  border-radius: 7px;
 }
+.syl-chapter-title:hover { background: var(--app-surface-3); }
+.syl-chapter-title:focus {
+  background: var(--app-surface);
+  border-color: var(--app-accent-border);
+  box-shadow: 0 0 0 3px var(--app-accent-a10);
+}
+
+.chapter-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+/* 删除章节按钮 — 静默样式，悬停才显出危险色 */
+.del-chapter-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--app-text-4);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+.del-chapter-btn:hover {
+  color: var(--app-rose-fg);
+  border-color: var(--app-rose-line);
+  background: var(--app-rose-bg);
+}
+.del-icon { font-size: 10px; }
 
 /* ========== 课时 ========== */
 .syl-lessons {
@@ -1067,17 +1268,19 @@ th.ops, td.ops { text-align: right; }
   align-items: center;
   gap: 8px;
   padding: 8px 12px;
-  background: #fff;
+  background: var(--app-surface);
+  transition: background 0.12s;
 }
+.syl-lesson:hover { background: var(--app-surface); }
 .syl-lesson + .syl-lesson {
-  border-top: 1px solid #F1F5F9;
+  border-top: 1px solid var(--app-border-soft);
 }
 
 .syl-lesson-no {
-  width: 34px;
+  width: 32px;
   font-size: 11px;
   font-weight: 700;
-  color: #64748B;
+  color: var(--app-text-5);
   font-variant-numeric: tabular-nums;
   flex-shrink: 0;
 }
@@ -1089,26 +1292,55 @@ th.ops, td.ops { text-align: right; }
   font-size: 12px;
 }
 
-.syl-lesson-dur {
-  width: 96px;
-  padding: 7px 10px;
-  font-size: 12px;
+.upload-btn--sm {
+  padding: 5px 9px;
+  font-size: 11px;
+  border-radius: 7px;
   flex-shrink: 0;
 }
 
-.syl-no-video {
-  width: 44px;
+/* 删除课时按钮 */
+.del-lesson-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 9px;
   font-size: 11px;
-  color: #94A3B8;
-  text-align: center;
+  font-weight: 600;
+  color: var(--app-text-4);
+  background: var(--app-surface);
+  border: 1px solid var(--app-border);
+  border-radius: 7px;
   flex-shrink: 0;
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s, border-color 0.15s;
 }
+.del-lesson-btn:hover {
+  color: var(--app-rose-fg);
+  background: var(--app-rose-bg);
+  border-color: var(--app-rose-line);
+}
+.del-lesson-icon { width: 12px; height: 12px; }
 
 .syl-lessons-empty {
-  padding: 12px;
+  padding: 12px 14px;
   font-size: 12px;
-  color: #94A3B8;
+  color: var(--app-text-5);
+  background: var(--app-surface);
 }
+
+.add-lesson-btn {
+  width: 100%;
+  padding: 9px 12px;
+  font-size: 12px;
+  color: var(--app-accent-deep);
+  background: var(--app-surface);
+  border: 1px dashed var(--app-accent-border);
+  border-top: none;
+  border-radius: 0 0 10px 10px;
+  transition: background 0.15s, border-color 0.15s;
+}
+.add-lesson-btn:hover { background: var(--app-page-bg); border-color: var(--app-accent); }
 
 .syl-actions {
   display: flex;
@@ -1117,69 +1349,15 @@ th.ops, td.ops { text-align: right; }
   flex-wrap: wrap;
 }
 
-/* ========== 视频预览 ========== */
-.syl-preview {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  padding: 10px;
-  background: #0F1E33;
-  border-radius: 12px;
-}
-
-.syl-preview .video-player {
-  width: 200px;
-  height: 112px;
-}
-
-.syl-preview-info {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 8px;
-}
-
-.syl-preview-info .video-name {
-  color: #E7EEF7;
-}
-
-.video-player {
-  width: 180px;
-  height: 100px;
-  object-fit: cover;
-  background: #0F1E33;
-  border-radius: 8px;
-  flex-shrink: 0;
-}
-
-.video-name {
-  font-size: 13px;
-  font-weight: 600;
-  color: #1E293B;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
 .video-empty {
-  padding: 14px;
+  padding: 16px;
   text-align: center;
   font-size: 12px;
-  color: #94A3B8;
-  background: #F8FAFC;
-  border: 1px dashed #E2E8F0;
+  color: var(--app-text-5);
+  background: var(--app-surface-2);
+  border: 1px dashed var(--app-border);
   border-radius: 10px;
-}
-
-.video-upload-tip {
-  font-size: 11px;
-  color: #94A3B8;
-  line-height: 1.5;
-}
-
-.upload-btn--small {
-  padding: 6px 12px;
-  font-size: 11px;
+  margin-bottom: 10px;
 }
 
 .btn--small {
@@ -1187,29 +1365,10 @@ th.ops, td.ops { text-align: right; }
   font-size: 12px;
 }
 
-.text-btn {
-  padding: 5px 12px;
-  font-size: 12px;
-  font-weight: 700;
-  border: 1px solid transparent;
-  border-radius: 9999px;
-  transition: background 0.15s;
-}
-
-.text-btn--danger {
-  color: #BE123C;
-  background: #FFE4E6;
-  flex-shrink: 0;
-}
-.text-btn--danger:hover { background: #FECDD3; }
 @media (max-width: 640px) {
   .field-row { grid-template-columns: 1fr; }
-  .cover-section { flex-direction: column; }
-  .cover-grid { grid-template-columns: repeat(3, 1fr); }
   .syl-chapter-head { flex-direction: column; align-items: stretch; }
-  .syl-preview { flex-direction: column; align-items: stretch; }
-  .syl-preview .video-player { width: 100%; }
+  .chapter-head-actions { justify-content: flex-end; }
   .syl-lesson { flex-wrap: wrap; }
-  .syl-lesson-dur { width: 100%; }
 }
 </style>

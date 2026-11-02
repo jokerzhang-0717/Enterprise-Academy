@@ -7,9 +7,14 @@
         <h1 class="page-title">题库管理</h1>
         <p class="page-sub">全题库统一维护 · 题目发布后即被对应考试引用</p>
       </div>
-      <button class="btn btn--primary" @click="openAdd">
-        <Plus class="btn-icon" /> 新增题目
-      </button>
+      <div class="page-head-actions">
+        <button class="btn btn--secondary" @click="openImportModal">
+          <Upload class="btn-icon" /> 批量导入
+        </button>
+        <button class="btn btn--primary" @click="openAdd">
+          <Plus class="btn-icon" /> 新增题目
+        </button>
+      </div>
     </div>
 
     <!-- 题型统计 -->
@@ -57,7 +62,7 @@
 
     <!-- 题目列表 -->
     <div class="question-list">
-      <article v-for="(q, idx) in pagedQuestions" :key="q.id" class="question-item">
+      <article v-for="(q, idx) in pagedQuestions" :key="q.id" class="question-item" @click="openEdit(q)">
         <div class="q-index">{{ (page - 1) * 4 + idx + 1 }}</div>
         <div class="q-main">
           <div class="q-top">
@@ -68,7 +73,7 @@
           </div>
           <p class="q-title">{{ q.title }}</p>
         </div>
-        <div class="q-actions">
+        <div class="q-actions" @click.stop>
           <button class="icon-btn" title="编辑" @click="openEdit(q)"><EditPen /></button>
           <button class="icon-btn icon-btn--danger" title="删除" @click="removeQ(q)"><Delete /></button>
         </div>
@@ -152,6 +157,89 @@
       </div>
     </div>
 
+    <!-- 批量导入题目弹窗 -->
+    <div v-if="importModalOpen" class="modal-backdrop" @click.self="closeImportModal">
+      <div class="modal modal--import">
+        <div class="modal-head">
+          <h2 class="modal-title">批量导入题目</h2>
+          <button class="modal-close" @click="closeImportModal"><Close /></button>
+        </div>
+        <div class="modal-body import-body">
+          <label class="field">
+            <span class="field-label">所属考试</span>
+            <select v-model="importExamId" class="field-input">
+              <option value="" disabled>请选择所属考试</option>
+              <option v-for="exam in exams" :key="exam.id" :value="exam.id">
+                {{ exam.title }}
+              </option>
+            </select>
+          </label>
+
+          <div class="field">
+            <div class="field-label-row">
+              <span class="field-label">题目内容 (JSON 或文本格式)</span>
+              <div class="field-helper-btns">
+                <button type="button" class="link-btn" @click="fillSampleJSON">填入示例 JSON</button>
+                <button type="button" class="link-btn" @click="fillSampleText">填入示例纯文本</button>
+              </div>
+            </div>
+            <textarea
+              v-model="importRawText"
+              rows="7"
+              class="field-input field-textarea mono-input"
+              placeholder="在此粘贴题目 JSON 数组，或按格式编写的题目文本..."
+              @input="parseQuestions"
+            ></textarea>
+          </div>
+
+          <!-- 文件上传快捷通道 -->
+          <div class="file-drop-area" @click="triggerImportFile">
+            <input
+              ref="importFileInputRef"
+              type="file"
+              accept=".json,.txt"
+              style="display: none"
+              @change="handleImportFile"
+            />
+            <Upload class="file-drop-icon" />
+            <span class="file-drop-text">点击上传本地 .json 或 .txt 题库文件进行快速解析</span>
+          </div>
+
+          <!-- 解析状态与预览条 -->
+          <div v-if="parsedList.length" class="parsed-preview">
+            <div class="parsed-status-badge">
+              ✓ 已成功解析 {{ parsedList.length }} 道题目
+            </div>
+            <div class="parsed-list">
+              <div v-for="(item, idx) in parsedList.slice(0, 3)" :key="idx" class="parsed-item">
+                <span class="parsed-item-type">{{ item.typeLabel }}</span>
+                <span class="parsed-item-title">{{ item.title }}</span>
+                <span class="parsed-item-score">{{ item.score }}分</span>
+              </div>
+              <div v-if="parsedList.length > 3" class="parsed-more">
+                ... 还有 {{ parsedList.length - 3 }} 道题目
+              </div>
+            </div>
+          </div>
+          <p v-else-if="importRawText.trim()" class="form-error">
+            未检测到合规题目数据，请检查格式或点击上方「填入示例」参考。
+          </p>
+
+          <div class="modal-actions">
+            <button type="button" class="btn btn--ghost" @click="closeImportModal">取消</button>
+            <button
+              type="button"
+              class="btn btn--primary"
+              :disabled="!parsedList.length || !importExamId"
+              @click="confirmImport"
+            >
+              确认导入 ({{ parsedList.length }} 题)
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <ConfirmDialog
       v-if="confirmState"
       :title="confirmState.title"
@@ -169,12 +257,15 @@
 
 <script setup>
 import { computed, ref, watch } from 'vue';
-import { Plus, EditPen, Delete, Close } from '@element-plus/icons-vue';
+import { Plus, EditPen, Delete, Close, Upload } from '@element-plus/icons-vue';
 import { adminStore } from '../../adminStore.js';
 import { usePager } from '../../composables/usePager.js';
 import { useConfirm } from '../../composables/useConfirm.js';
+import { useToast } from '../../composables/useToast.js';
 import AdminPager from '../../components/AdminPager.vue';
 import ConfirmDialog from '../../components/ConfirmDialog.vue';
+
+const { show: showToast } = useToast();
 
 const questions = adminStore.questions;
 
@@ -312,6 +403,210 @@ const removeQ = (q) => {
     }
   });
 };
+
+/* ---------- 批量导入题目逻辑 ---------- */
+const importModalOpen = ref(false);
+const importExamId = ref('');
+const importRawText = ref('');
+const importFileInputRef = ref(null);
+const parsedList = ref([]);
+
+const openImportModal = () => {
+  importExamId.value = exams[0]?.id || '';
+  importRawText.value = '';
+  parsedList.value = [];
+  importModalOpen.value = true;
+};
+
+const closeImportModal = () => {
+  importModalOpen.value = false;
+  importRawText.value = '';
+  parsedList.value = [];
+};
+
+const fillSampleJSON = () => {
+  const sample = [
+    {
+      type: 'single',
+      typeLabel: '单选题',
+      title: '在企业级微服务架构中，服务注册中心的核心功能是什么？',
+      score: 5,
+      options: [
+        { key: 'A', text: '服务地址的管理、健康检查与动态发现' },
+        { key: 'B', text: '分布式数据库事务持久化管理' },
+        { key: 'C', text: '前端页面静态资源的 CDN 加速' },
+        { key: 'D', text: '统一生成前端客户端调用代码' }
+      ],
+      answer: 'A'
+    },
+    {
+      type: 'multiple',
+      typeLabel: '多选题',
+      title: '在高并发系统中，常见的流量削峰与防雪崩手段包含以下哪些？',
+      score: 5,
+      options: [
+        { key: 'A', text: '分布式消息队列异步化处理' },
+        { key: 'B', text: '令牌桶/漏桶算法限流' },
+        { key: 'C', text: '服务熔断与降级保护' },
+        { key: 'D', text: '完全关闭所有日志输出' }
+      ],
+      answer: 'ABC'
+    },
+    {
+      type: 'judgment',
+      typeLabel: '判断题',
+      title: 'Vue 3 的 Composition API 可以有效提升复杂大型组件的逻辑复用与代码可维护性。',
+      score: 5,
+      options: [
+        { key: 'A', text: '正确' },
+        { key: 'B', text: '错误' }
+      ],
+      answer: 'A'
+    }
+  ];
+  importRawText.value = JSON.stringify(sample, null, 2);
+  parseQuestions();
+};
+
+const fillSampleText = () => {
+  importRawText.value = `1. [单选题] Spring Boot 3 最低要求的 JDK 版本是？ (5分)
+A. JDK 8
+B. JDK 11
+C. JDK 17
+D. JDK 21
+答案: C
+
+2. [判断题] Redis 默认是单线程模型处理网络请求和命令执行。 (5分)
+A. 正确
+B. 错误
+答案: A`;
+  parseQuestions();
+};
+
+const parseQuestions = () => {
+  const raw = importRawText.value.trim();
+  if (!raw) {
+    parsedList.value = [];
+    return;
+  }
+  // 优先 JSON 解析
+  if (raw.startsWith('[') || raw.startsWith('{')) {
+    try {
+      const parsed = JSON.parse(raw);
+      const arr = Array.isArray(parsed) ? parsed : [parsed];
+      parsedList.value = arr.map(item => ({
+        type: item.type || 'single',
+        typeLabel: typeLabelMap[item.type || 'single'] || '单选题',
+        title: item.title || '',
+        score: Number(item.score) || 5,
+        options: item.options || [
+          { key: 'A', text: '选项 A' },
+          { key: 'B', text: '选项 B' }
+        ],
+        answer: String(item.answer || '').toUpperCase()
+      })).filter(q => q.title.trim());
+      return;
+    } catch (e) {
+      // 容错进入纯文本匹配
+    }
+  }
+
+  // 文本解析
+  const items = [];
+  const blocks = raw.split(/\n\s*\n+/);
+  for (const block of blocks) {
+    const lines = block.split('\n').map(l => l.trim()).filter(Boolean);
+    if (!lines.length) continue;
+    let titleLine = lines[0].replace(/^\d+[\.、\s]*/, '');
+    let type = 'single';
+    let score = 5;
+    if (titleLine.includes('多选')) type = 'multiple';
+    else if (titleLine.includes('判断')) type = 'judgment';
+    else if (titleLine.includes('问答')) type = 'application';
+
+    titleLine = titleLine.replace(/\[(单选题?|多选题?|判断题?|问答题?)\]\s*/g, '');
+    const scoreMatch = titleLine.match(/[\(（](\d+)分[\)）]/);
+    if (scoreMatch) {
+      score = parseInt(scoreMatch[1], 10);
+      titleLine = titleLine.replace(/[\(（]\d+分[\)）]/, '').trim();
+    }
+
+    const options = [];
+    let answer = '';
+    for (let i = 1; i < lines.length; i++) {
+      const line = lines[i];
+      if (/^(答案|参考答案)[:：\s]*/i.test(line)) {
+        answer = line.replace(/^(答案|参考答案)[:：\s]*/i, '').trim().toUpperCase();
+      } else {
+        const optMatch = line.match(/^([A-D])[\.、\s]+(.*)$/);
+        if (optMatch) {
+          options.push({ key: optMatch[1].toUpperCase(), text: optMatch[2].trim() });
+        }
+      }
+    }
+
+    if (type === 'judgment' && !options.length) {
+      options.push({ key: 'A', text: '正确' }, { key: 'B', text: '错误' });
+    }
+
+    if (titleLine) {
+      items.push({
+        type,
+        typeLabel: typeLabelMap[type] || '单选题',
+        title: titleLine,
+        score,
+        options: options.length ? options : [
+          { key: 'A', text: '选项 A' },
+          { key: 'B', text: '选项 B' }
+        ],
+        answer: answer || 'A'
+      });
+    }
+  }
+  parsedList.value = items;
+};
+
+const triggerImportFile = () => {
+  importFileInputRef.value?.click();
+};
+
+const handleImportFile = (e) => {
+  const file = e.target.files?.[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (loadEvent) => {
+    importRawText.value = String(loadEvent.target.result || '');
+    parseQuestions();
+    showToast(`文件【${file.name}】已载入，成功解析 ${parsedList.value.length} 道题目`, 'success');
+  };
+  reader.readAsText(file);
+};
+
+const confirmImport = () => {
+  if (!importExamId.value) {
+    showToast('请先选择所属考试', 'error');
+    return;
+  }
+  if (!parsedList.value.length) {
+    showToast('没有可导入的有效题目', 'error');
+    return;
+  }
+
+  const newQuestions = parsedList.value.map((q, idx) => ({
+    id: `q-${Date.now()}-${idx + 1}`,
+    examId: importExamId.value,
+    type: q.type,
+    typeLabel: q.typeLabel,
+    score: q.score,
+    title: q.title,
+    options: q.options.map(o => ({ ...o })),
+    answer: q.answer
+  }));
+
+  adminStore.questions.unshift(...newQuestions);
+  showToast(`已成功导入 ${newQuestions.length} 道新题目！`, 'success');
+  closeImportModal();
+};
 </script>
 
 <style scoped>
@@ -343,14 +638,14 @@ button { cursor: pointer; }
 .page-title {
   font-size: 24px;
   font-weight: 700;
-  color: #0F1E33;
+  color: var(--app-heading);
   letter-spacing: -0.02em;
 }
 
 .page-sub {
   margin-top: 4px;
   font-size: 13px;
-  color: #64748B;
+  color: var(--app-text-4);
 }
 
 .btn {
@@ -368,19 +663,36 @@ button { cursor: pointer; }
 .btn-icon { width: 15px; height: 15px; }
 
 .btn--primary {
-  background: linear-gradient(135deg, #E9B949, #D19A2B);
-  color: #241A04;
-  border-color: #D19A2B;
-  box-shadow: 0 2px 6px rgba(233, 185, 73, 0.35);
+  background: linear-gradient(135deg, var(--app-brand), var(--app-brand-deep));
+  color: var(--app-brand-on);
+  border-color: var(--app-brand-deep);
+  box-shadow: 0 2px 6px var(--app-brand-glow);
 }
-.btn--primary:hover { background: linear-gradient(135deg, #F0C45E, #D19A2B); }
+.btn--primary:hover { background: linear-gradient(135deg, var(--app-brand-hi), var(--app-brand-deep)); }
+
+.page-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.btn--secondary {
+  background: var(--app-blue-bg);
+  color: var(--app-blue-fg);
+  border-color: var(--app-blue-line);
+}
+.btn--secondary:hover {
+  background: var(--app-blue-bg);
+  color: var(--app-blue-fg);
+  border-color: var(--app-blue-line);
+}
 
 .btn--ghost {
-  background: #fff;
-  color: #334155;
-  border-color: #E2E8F0;
+  background: var(--app-surface);
+  color: var(--app-text-2);
+  border-color: var(--app-text-6);
 }
-.btn--ghost:hover { border-color: #E9B949; color: #8A6414; }
+.btn--ghost:hover { border-color: var(--app-brand); color: var(--app-brand-ink); }
 
 /* ========== 题型统计 ========== */
 .stat-strip {
@@ -395,25 +707,25 @@ button { cursor: pointer; }
   align-items: center;
   gap: 2px;
   padding: 14px;
-  background: #fff;
-  border: 1px solid #E2E8F0;
+  background: var(--app-surface);
+  border: 1px solid var(--app-border);
   border-radius: 12px;
 }
 
 .stat-value {
   font-size: 22px;
   font-weight: 800;
-  color: #0F1E33;
+  color: var(--app-heading);
   font-variant-numeric: tabular-nums;
 }
-.stat-value--blue   { color: #005576; }
-.stat-value--purple { color: #6555B0; }
-.stat-value--gold   { color: #B45309; }
-.stat-value--green  { color: #047857; }
+.stat-value--blue   { color: var(--app-accent-deep); }
+.stat-value--purple { color: var(--app-violet-fg); }
+.stat-value--gold   { color: var(--app-amber-fg); }
+.stat-value--green  { color: var(--app-emerald-fg); }
 
 .stat-label {
   font-size: 12px;
-  color: #64748B;
+  color: var(--app-text-4);
 }
 
 /* ========== 工具栏 ========== */
@@ -422,8 +734,8 @@ button { cursor: pointer; }
   align-items: center;
   gap: 10px;
   padding: 12px 14px;
-  background: #fff;
-  border: 1px solid #E2E8F0;
+  background: var(--app-surface);
+  border: 1px solid var(--app-border);
   border-radius: 12px;
   flex-wrap: wrap;
 }
@@ -431,15 +743,15 @@ button { cursor: pointer; }
 .select {
   padding: 9px 12px;
   font-size: 13px;
-  color: #334155;
-  background: #F8FAFC;
-  border: 1px solid #E2E8F0;
+  color: var(--app-text-2);
+  background: var(--app-surface-2);
+  border: 1px solid var(--app-border);
   border-radius: 10px;
   outline: none;
   max-width: 260px;
   transition: border-color 0.15s;
 }
-.select:focus { border-color: #2E8BD6; }
+.select:focus { border-color: var(--app-accent-strong); }
 
 .search-box {
   display: flex;
@@ -448,14 +760,14 @@ button { cursor: pointer; }
   flex: 1;
   min-width: 180px;
   padding: 0 12px;
-  background: #F8FAFC;
-  border: 1px solid #E2E8F0;
+  background: var(--app-surface-2);
+  border: 1px solid var(--app-border);
   border-radius: 10px;
   transition: border-color 0.15s, box-shadow 0.15s;
 }
 .search-box:focus-within {
-  border-color: #2E8BD6;
-  box-shadow: 0 0 0 3px rgba(46, 139, 214, 0.12);
+  border-color: var(--app-accent-strong);
+  box-shadow: 0 0 0 3px var(--app-accent-a12);
 }
 
 .search-icon {
@@ -471,7 +783,7 @@ button { cursor: pointer; }
   left: 0;
   width: 9px;
   height: 9px;
-  border: 2px solid #64748B;
+  border: 2px solid var(--app-text-4);
   border-radius: 50%;
 }
 .search-icon::after {
@@ -481,7 +793,7 @@ button { cursor: pointer; }
   right: 0;
   width: 6px;
   height: 2px;
-  background: #64748B;
+  background: var(--app-text-4);
   border-radius: 1px;
   transform: rotate(45deg);
   transform-origin: right center;
@@ -492,7 +804,7 @@ button { cursor: pointer; }
   min-width: 0;
   padding: 9px 0;
   font-size: 13px;
-  color: #1E293B;
+  color: var(--app-text);
   background: transparent;
   border: none;
   outline: none;
@@ -501,7 +813,7 @@ button { cursor: pointer; }
 .toolbar-result {
   margin-left: auto;
   font-size: 12px;
-  color: #94A3B8;
+  color: var(--app-text-5);
 }
 
 /* ========== 题目列表 ========== */
@@ -516,12 +828,21 @@ button { cursor: pointer; }
   align-items: flex-start;
   gap: 12px;
   padding: 14px;
-  background: #fff;
-  border: 1px solid #E2E8F0;
+  background: var(--app-surface);
+  border: 1px solid var(--app-border);
   border-radius: 12px;
-  transition: box-shadow 0.15s;
+  cursor: pointer;
+  transition: background 0.15s, box-shadow 0.15s, border-color 0.15s;
 }
-.question-item:hover { box-shadow: 0 4px 12px rgba(15, 30, 51, 0.07); }
+.question-item:hover {
+  background: var(--app-accent-soft);
+  border-color: var(--app-accent-border);
+  box-shadow: inset 3px 0 0 var(--app-accent), 0 4px 16px var(--app-accent-a20);
+}
+.question-item:hover .q-title { color: var(--app-accent-deep); }
+/* 卡片底变成青底后,原本同底的序号块与单选 chip 会糊在一起,改用实底卡片色保住边界 */
+.question-item:hover .q-index,
+.question-item:hover .q-type-chip--single { background: var(--app-surface); }
 
 .q-index {
   width: 26px;
@@ -531,8 +852,8 @@ button { cursor: pointer; }
   justify-content: center;
   font-size: 12px;
   font-weight: 800;
-  color: #005576;
-  background: #D9F0FF;
+  color: var(--app-accent-deep);
+  background: var(--app-accent-soft);
   border-radius: 8px;
   flex-shrink: 0;
 }
@@ -555,33 +876,33 @@ button { cursor: pointer; }
   font-weight: 700;
   border-radius: 9999px;
 }
-.q-type-chip--single      { color: #005576; background: #D9F0FF; }
-.q-type-chip--multiple    { color: #6555B0; background: #EDE9FE; }
-.q-type-chip--judgment    { color: #B45309; background: #FEF3C7; }
-.q-type-chip--application { color: #047857; background: #D1FAE5; }
+.q-type-chip--single      { color: var(--app-accent-deep); background: var(--app-accent-soft); }
+.q-type-chip--multiple    { color: var(--app-violet-fg); background: var(--app-violet-bg); }
+.q-type-chip--judgment    { color: var(--app-amber-fg); background: var(--app-amber-bg); }
+.q-type-chip--application { color: var(--app-emerald-fg); background: var(--app-emerald-bg); }
 
 .q-score {
   font-size: 11px;
   font-weight: 600;
-  color: #64748B;
+  color: var(--app-text-4);
 }
 
 .q-exam {
   font-size: 11px;
-  color: #94A3B8;
+  color: var(--app-text-5);
 }
 
 .q-answer {
   font-size: 11px;
   font-weight: 700;
-  color: #047857;
+  color: var(--app-emerald-fg);
 }
 
 .q-title {
   margin-top: 6px;
   font-size: 13px;
   line-height: 1.6;
-  color: #1E293B;
+  color: var(--app-text);
   word-break: break-all;
 }
 
@@ -597,21 +918,21 @@ button { cursor: pointer; }
   justify-content: center;
   width: 28px;
   height: 28px;
-  color: #475569;
-  background: #F8FAFC;
-  border: 1px solid #E2E8F0;
+  color: var(--app-text-3);
+  background: var(--app-surface-2);
+  border: 1px solid var(--app-border);
   border-radius: 8px;
   transition: background 0.15s, color 0.15s, border-color 0.15s;
 }
 .icon-btn svg { width: 14px; height: 14px; }
-.icon-btn:hover { background: #D9F0FF; color: #005576; border-color: #A3D5FF; }
-.icon-btn--danger:hover { background: #FFE4E6; color: #BE123C; border-color: #FECDD3; }
+.icon-btn:hover { background: var(--app-accent-soft); color: var(--app-accent-deep); border-color: var(--app-accent-border); }
+.icon-btn--danger:hover { background: var(--app-rose-bg); color: var(--app-rose-fg); border-color: var(--app-rose-line); }
 
 .empty-tip {
   padding: 40px 0;
   text-align: center;
   font-size: 13px;
-  color: #94A3B8;
+  color: var(--app-text-5);
 }
 
 /* ========== 弹窗 ========== */
@@ -632,7 +953,7 @@ button { cursor: pointer; }
   max-width: 560px;
   max-height: 88vh;
   overflow-y: auto;
-  background: #fff;
+  background: var(--app-surface);
   border-radius: 16px;
   box-shadow: 0 24px 48px rgba(15, 30, 51, 0.25);
   animation: modal-in 0.22s ease-out;
@@ -648,13 +969,13 @@ button { cursor: pointer; }
   align-items: center;
   justify-content: space-between;
   padding: 16px 20px;
-  border-bottom: 1px solid #F1F5F9;
+  border-bottom: 1px solid var(--app-border-soft);
 }
 
 .modal-title {
   font-size: 16px;
   font-weight: 700;
-  color: #0F1E33;
+  color: var(--app-heading);
 }
 
 .modal-close {
@@ -663,14 +984,14 @@ button { cursor: pointer; }
   justify-content: center;
   width: 30px;
   height: 30px;
-  color: #64748B;
+  color: var(--app-text-4);
   background: transparent;
   border: none;
   border-radius: 8px;
   transition: background 0.15s, color 0.15s;
 }
 .modal-close svg { width: 16px; height: 16px; }
-.modal-close:hover { background: #F1F5F9; color: #0F1E33; }
+.modal-close:hover { background: var(--app-surface-3); color: var(--app-heading); }
 
 .modal-body {
   display: flex;
@@ -694,23 +1015,23 @@ button { cursor: pointer; }
 .field-label {
   font-size: 12px;
   font-weight: 600;
-  color: #475569;
+  color: var(--app-text-3);
 }
 
 .field-input {
   width: 100%;
   padding: 10px 12px;
   font-size: 13px;
-  color: #1E293B;
-  background: #F8FAFC;
-  border: 1px solid #E2E8F0;
+  color: var(--app-text);
+  background: var(--app-surface-2);
+  border: 1px solid var(--app-border);
   border-radius: 10px;
   outline: none;
   transition: border-color 0.15s, box-shadow 0.15s;
 }
 .field-input:focus {
-  border-color: #2E8BD6;
-  box-shadow: 0 0 0 3px rgba(46, 139, 214, 0.12);
+  border-color: var(--app-accent-strong);
+  box-shadow: 0 0 0 3px var(--app-accent-a12);
 }
 
 .field-textarea {
@@ -723,7 +1044,7 @@ button { cursor: pointer; }
 
 .form-error {
   font-size: 12px;
-  color: #BE123C;
+  color: var(--app-rose-fg);
 }
 
 .modal-actions {
@@ -731,6 +1052,140 @@ button { cursor: pointer; }
   justify-content: flex-end;
   gap: 10px;
   margin-top: 4px;
+}
+
+/* ========== 批量导入弹窗样式 ========== */
+.modal--import {
+  max-width: 600px;
+}
+
+.import-body {
+  gap: 14px;
+}
+
+.field-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.field-helper-btns {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.link-btn {
+  background: none;
+  border: none;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--app-blue-fg);
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+}
+.link-btn:hover {
+  color: var(--app-blue-fg);
+}
+
+.mono-input {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 12px;
+  min-height: 120px;
+  white-space: pre;
+}
+
+.file-drop-area {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: var(--app-surface-2);
+  border: 1.5px dashed var(--app-border-strong);
+  border-radius: 10px;
+  cursor: pointer;
+  color: var(--app-text-4);
+  transition: all 0.15s ease;
+}
+.file-drop-area:hover {
+  background: var(--app-surface-3);
+  border-color: #2563EB;
+  color: var(--app-blue-fg);
+}
+.file-drop-icon {
+  width: 16px;
+  height: 16px;
+}
+.file-drop-text {
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.parsed-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  background: var(--app-emerald-bg);
+  border: 1px solid var(--app-emerald-line);
+  border-radius: 10px;
+}
+
+.parsed-status-badge {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--app-emerald-fg);
+}
+
+.parsed-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.parsed-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--app-text);
+  background: var(--app-surface);
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--app-emerald-line);
+}
+
+.parsed-item-type {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--app-blue-bg);
+  color: var(--app-violet-fg);
+  flex-shrink: 0;
+}
+
+.parsed-item-title {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.parsed-item-score {
+  font-size: 11px;
+  color: var(--app-text-4);
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.parsed-more {
+  font-size: 11px;
+  color: var(--app-emerald-fg);
+  font-style: italic;
+  padding-left: 4px;
 }
 
 @media (max-width: 640px) {

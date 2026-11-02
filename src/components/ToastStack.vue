@@ -54,8 +54,8 @@ const iconOf = (type) => iconMap[type] || InfoFilled;
   gap: 10px;
   max-width: 440px;
   padding: 12px 16px;
-  background: #fff;
-  border: 1px solid #E8EDF3;
+  background: var(--app-surface);
+  border: 1px solid var(--app-overlay-border);
   border-radius: 12px;
   box-shadow: 0 14px 34px rgba(15, 30, 51, 0.16);
 }
@@ -69,7 +69,7 @@ const iconOf = (type) => iconMap[type] || InfoFilled;
 .toast-text {
   font-size: 13px;
   line-height: 1.6;
-  color: #334155;
+  color: var(--app-text-2);
 }
 
 .toast--error .toast-icon   { color: #BE123C; }

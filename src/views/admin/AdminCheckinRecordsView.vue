@@ -16,10 +16,6 @@
         <span class="overview-label">正常签到</span>
       </div>
       <div class="overview-item">
-        <span class="overview-value overview-value--gold">{{ lateCount }}</span>
-        <span class="overview-label">迟到</span>
-      </div>
-      <div class="overview-item">
         <span class="overview-value overview-value--red">{{ missingCount }}</span>
         <span class="overview-label">未签到</span>
       </div>
@@ -42,7 +38,7 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="record in pagedRecords" :key="record.id">
+          <tr v-for="record in pagedRecords" :key="record.id" @click="openDetail(record)">
             <td>
               <div class="cell-user">
                 <span class="cell-avatar">{{ record.name.charAt(0) }}</span>
@@ -71,6 +67,21 @@
       :total-pages="totalPages"
     />
 
+    <!-- 签到详情 -->
+    <AdminDetailModal
+      v-if="detailRecord"
+      title="签到详情"
+      :subtitle="`${detailRecord.name} · ${detailRecord.employeeId}`"
+      :tags="[statusLabel(detailRecord.status)]"
+      :rows="[
+        { label: '所属部门', value: detailRecord.department },
+        { label: '签到时间', value: detailRecord.checkInTime || '—' },
+        { label: '签退时间', value: detailRecord.checkOutTime || '—' },
+        { label: '签到状态', value: statusLabel(detailRecord.status) }
+      ]"
+      @close="detailRecord = null"
+    />
+
   </div>
 </template>
 
@@ -79,21 +90,24 @@ import { computed, ref } from 'vue';
 import { ADMIN_CHECKIN_RECORDS } from '../../mockData.js';
 import { usePager } from '../../composables/usePager.js';
 import AdminPager from '../../components/AdminPager.vue';
+import AdminDetailModal from '../../components/AdminDetailModal.vue';
 
-const checkinRecords = ref(ADMIN_CHECKIN_RECORDS.map(c => ({ ...c })));
+const checkinRecords = ref(ADMIN_CHECKIN_RECORDS.filter(c => c.status !== 'late').map(c => ({ ...c })));
 
 const { page, totalPages, paged: pagedRecords } = usePager(checkinRecords, 6);
 
 const normalCount = computed(() => checkinRecords.value.filter(c => c.status === 'normal').length);
-const lateCount = computed(() => checkinRecords.value.filter(c => c.status === 'late').length);
 const missingCount = computed(() => checkinRecords.value.filter(c => c.status === 'missing').length);
 
 const statusLabelMap = {
   normal: '正常',
-  late: '迟到',
   missing: '未签到'
 };
 const statusLabel = (status) => statusLabelMap[status] || status;
+
+/* ---------- 签到详情 ---------- */
+const detailRecord = ref(null);
+const openDetail = (record) => { detailRecord.value = record; };
 </script>
 
 <style scoped>
@@ -123,20 +137,20 @@ const statusLabel = (status) => statusLabelMap[status] || status;
 .page-title {
   font-size: 24px;
   font-weight: 700;
-  color: #0F1E33;
+  color: var(--app-heading);
   letter-spacing: -0.02em;
 }
 
 .page-sub {
   margin-top: 4px;
   font-size: 13px;
-  color: #64748B;
+  color: var(--app-text-4);
 }
 
 /* ========== 概览条 ========== */
 .overview-strip {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
 }
 
@@ -146,30 +160,30 @@ const statusLabel = (status) => statusLabelMap[status] || status;
   align-items: center;
   gap: 2px;
   padding: 14px;
-  background: #fff;
-  border: 1px solid #E2E8F0;
+  background: var(--app-surface);
+  border: 1px solid var(--app-border);
   border-radius: 12px;
 }
 
 .overview-value {
   font-size: 22px;
   font-weight: 800;
-  color: #0F1E33;
+  color: var(--app-heading);
   font-variant-numeric: tabular-nums;
 }
-.overview-value--green { color: #047857; }
-.overview-value--gold  { color: #B45309; }
-.overview-value--red   { color: #BE123C; }
+.overview-value--green { color: var(--app-emerald-fg); }
+.overview-value--gold  { color: var(--app-amber-fg); }
+.overview-value--red   { color: var(--app-rose-fg); }
 
 .overview-label {
   font-size: 12px;
-  color: #64748B;
+  color: var(--app-text-4);
 }
 
 /* ========== 表格 ========== */
 .table-wrap {
-  background: #fff;
-  border: 1px solid #E2E8F0;
+  background: var(--app-surface);
+  border: 1px solid var(--app-border);
   border-radius: 12px;
   overflow-x: auto;
 }
@@ -185,23 +199,33 @@ const statusLabel = (status) => statusLabelMap[status] || status;
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.06em;
-  color: #64748B;
+  color: var(--app-text-4);
   text-align: left;
-  background: #F8FAFC;
-  border-bottom: 1px solid #E2E8F0;
+  background: var(--app-surface-2);
+  border-bottom: 1px solid var(--app-border);
   white-space: nowrap;
 }
 
 .data-table tbody td {
   padding: 12px 14px;
-  color: #1E293B;
-  border-bottom: 1px solid #F1F5F9;
+  color: var(--app-text);
+  border-bottom: 1px solid var(--app-border-soft);
 }
 
 .data-table tbody tr:last-child td { border-bottom: none; }
-.data-table tbody tr:hover { background: #F8FAFC; }
+.data-table tbody tr { cursor: pointer; }
+.data-table tbody td { transition: background 0.15s, color 0.15s, box-shadow 0.15s; }
+.data-table tbody tr:hover td { background: var(--app-accent-soft); }
+.data-table tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--app-accent); }
+.data-table tbody tr:hover td,
+.data-table tbody tr:hover .cell-name,
+.data-table tbody tr:hover .cell-meta,
+.data-table tbody tr:hover .cell-muted,
+.data-table tbody tr:hover .mono-cell {
+  color: var(--app-accent-deep);
+}
 
-.cell-muted { color: #64748B; }
+.cell-muted { color: var(--app-text-4); }
 
 .mono-cell {
   font-family: 'JetBrains Mono', ui-monospace, monospace;
@@ -225,8 +249,8 @@ const statusLabel = (status) => statusLabelMap[status] || status;
   justify-content: center;
   font-size: 13px;
   font-weight: 700;
-  color: #005576;
-  background: #D9F0FF;
+  color: var(--app-accent-deep);
+  background: var(--app-accent-soft);
   border-radius: 50%;
   flex-shrink: 0;
 }
@@ -239,7 +263,7 @@ const statusLabel = (status) => statusLabelMap[status] || status;
 .cell-meta {
   margin-top: 2px;
   font-size: 11px;
-  color: #94A3B8;
+  color: var(--app-text-5);
   white-space: nowrap;
 }
 
@@ -253,9 +277,9 @@ const statusLabel = (status) => statusLabelMap[status] || status;
   border-radius: 9999px;
   white-space: nowrap;
 }
-.status-pill--normal  { color: #047857; background: #D1FAE5; }
-.status-pill--late    { color: #B45309; background: #FEF3C7; }
-.status-pill--missing { color: #BE123C; background: #FFE4E6; }
+.status-pill--normal  { color: var(--app-emerald-fg); background: var(--app-emerald-bg); }
+.status-pill--late    { color: var(--app-amber-fg); background: var(--app-amber-bg); }
+.status-pill--missing { color: var(--app-rose-fg); background: var(--app-rose-bg); }
 
 @media (max-width: 640px) {
   .overview-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }

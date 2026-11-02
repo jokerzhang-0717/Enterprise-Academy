@@ -19,6 +19,7 @@
         :key="notice.id"
         class="notice-card"
         :class="[`notice-card--${notice.status}`, notice.isTop ? 'notice-card--top' : '']"
+        @click="openDetail(notice)"
       >
         <div class="notice-main">
           <div class="notice-title-row">
@@ -39,7 +40,7 @@
           <span class="status-pill" :class="notice.status === 'published' ? 'status-pill--on' : 'status-pill--draft'">
             {{ notice.status === 'published' ? '已发布' : '草稿' }}
           </span>
-          <div class="row-actions">
+          <div class="row-actions" @click.stop>
             <button
               v-if="notice.status === 'draft'"
               class="text-btn text-btn--primary"
@@ -64,6 +65,21 @@
       v-model:page="page"
       :total="announcements.length"
       :total-pages="totalPages"
+    />
+
+    <!-- 公告详情 -->
+    <AdminDetailModal
+      v-if="detailNotice"
+      title="公告详情"
+      :subtitle="detailNotice.title"
+      :tags="detailTags"
+      :rows="[
+        { label: '发布人', value: detailNotice.author },
+        { label: '发布时间', value: detailNotice.publishTime },
+        { label: '阅读量', value: detailNotice.views ? `${detailNotice.views.toLocaleString()} 次` : '—' }
+      ]"
+      :sections="[{ label: '公告内容', text: detailNotice.content }]"
+      @close="detailNotice = null"
     />
 
     <!-- 撰写公告弹窗 -->
@@ -119,6 +135,7 @@ import { ADMIN_ANNOUNCEMENTS_DATA } from '../../mockData.js';
 import { usePager } from '../../composables/usePager.js';
 import { useConfirm } from '../../composables/useConfirm.js';
 import AdminPager from '../../components/AdminPager.vue';
+import AdminDetailModal from '../../components/AdminDetailModal.vue';
 import ConfirmDialog from '../../components/ConfirmDialog.vue';
 
 const announcements = ref(ADMIN_ANNOUNCEMENTS_DATA.map(a => ({ ...a })));
@@ -129,6 +146,16 @@ const { page, totalPages, paged: pagedAnnouncements } = usePager(announcements, 
 
 const publishedCount = computed(() => announcements.value.filter(a => a.status === 'published').length);
 const draftCount = computed(() => announcements.value.filter(a => a.status === 'draft').length);
+
+/* ---------- 公告详情 ---------- */
+const detailNotice = ref(null);
+const openDetail = (notice) => { detailNotice.value = notice; };
+const detailTags = computed(() => {
+  if (!detailNotice.value) return [];
+  const tags = [detailNotice.value.status === 'published' ? '已发布' : '草稿'];
+  if (detailNotice.value.isTop) tags.push('置顶');
+  return tags;
+});
 
 /* ---------- 弹窗表单 ---------- */
 const modalOpen = ref(false);
@@ -226,14 +253,14 @@ button { cursor: pointer; }
 .page-title {
   font-size: 24px;
   font-weight: 700;
-  color: #0F1E33;
+  color: var(--app-heading);
   letter-spacing: -0.02em;
 }
 
 .page-sub {
   margin-top: 4px;
   font-size: 13px;
-  color: #64748B;
+  color: var(--app-text-4);
 }
 
 .btn {
@@ -251,19 +278,19 @@ button { cursor: pointer; }
 .btn-icon { width: 15px; height: 15px; }
 
 .btn--primary {
-  background: linear-gradient(135deg, #E9B949, #D19A2B);
-  color: #241A04;
-  border-color: #D19A2B;
-  box-shadow: 0 2px 6px rgba(233, 185, 73, 0.35);
+  background: linear-gradient(135deg, var(--app-brand), var(--app-brand-deep));
+  color: var(--app-brand-on);
+  border-color: var(--app-brand-deep);
+  box-shadow: 0 2px 6px var(--app-brand-glow);
 }
-.btn--primary:hover { background: linear-gradient(135deg, #F0C45E, #D19A2B); }
+.btn--primary:hover { background: linear-gradient(135deg, var(--app-brand-hi), var(--app-brand-deep)); }
 
 .btn--ghost {
-  background: #fff;
-  color: #334155;
-  border-color: #E2E8F0;
+  background: var(--app-surface);
+  color: var(--app-text-2);
+  border-color: var(--app-text-6);
 }
-.btn--ghost:hover { border-color: #E9B949; color: #8A6414; }
+.btn--ghost:hover { border-color: var(--app-brand); color: var(--app-brand-ink); }
 
 /* ========== 公告卡片 ========== */
 .notice-list {
@@ -278,21 +305,30 @@ button { cursor: pointer; }
   justify-content: space-between;
   gap: 16px;
   padding: 18px;
-  background: #fff;
-  border: 1px solid #E2E8F0;
-  border-left: 4px solid #CBD5E1;
+  background: var(--app-surface);
+  border: 1px solid var(--app-border);
+  border-left: 4px solid var(--app-border-strong);
   border-radius: 12px;
   box-shadow: 0 1px 2px rgba(15, 30, 51, 0.04);
-  transition: box-shadow 0.15s, border-color 0.15s;
-}
-
-.notice-card:hover {
-  box-shadow: 0 6px 16px rgba(15, 30, 51, 0.08);
+  cursor: pointer;
+  transition: background 0.15s, box-shadow 0.15s, border-color 0.15s;
 }
 
 .notice-card--published { border-left-color: #2FBF8F; }
-.notice-card--top { border-left-color: #E9B949; }
-.notice-card--draft { background: #FDFDFC; }
+.notice-card--top { border-left-color: var(--app-brand); }
+.notice-card--draft { background: var(--app-surface); }
+
+.notice-card:hover {
+  background: var(--app-accent-soft);
+  /* 只翻三边,左 4px 条留给「已发布/置顶」的状态色,hover 不再把它刷成品牌青 */
+  border-top-color: var(--app-accent-border);
+  border-right-color: var(--app-accent-border);
+  border-bottom-color: var(--app-accent-border);
+  box-shadow: 0 6px 18px var(--app-accent-a20);
+}
+.notice-card:hover .notice-title { color: var(--app-accent-deep); }
+/* 卡片底变成青底后,同为青底的操作按钮会糊进去,改用实底卡片色 */
+.notice-card:hover .text-btn--primary { background: var(--app-surface); }
 
 .notice-main { flex: 1; min-width: 0; }
 
@@ -306,8 +342,8 @@ button { cursor: pointer; }
   padding: 2px 8px;
   font-size: 10px;
   font-weight: 700;
-  color: #8A6414;
-  background: #FEF3C7;
+  color: var(--app-brand-ink);
+  background: var(--app-brand-tint);
   border-radius: 9999px;
   flex-shrink: 0;
 }
@@ -315,7 +351,7 @@ button { cursor: pointer; }
 .notice-title {
   font-size: 15px;
   font-weight: 700;
-  color: #0F1E33;
+  color: var(--app-heading);
   line-height: 1.4;
 }
 
@@ -323,7 +359,7 @@ button { cursor: pointer; }
   margin-top: 6px;
   font-size: 13px;
   line-height: 1.7;
-  color: #475569;
+  color: var(--app-text-3);
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -333,7 +369,7 @@ button { cursor: pointer; }
 .notice-meta {
   margin-top: 10px;
   font-size: 11px;
-  color: #94A3B8;
+  color: var(--app-text-5);
 }
 
 .meta-sep { margin: 0 6px; }
@@ -355,8 +391,8 @@ button { cursor: pointer; }
   font-weight: 700;
   border-radius: 9999px;
 }
-.status-pill--on    { color: #047857; background: #D1FAE5; }
-.status-pill--draft { color: #8A6414; background: #FEF3C7; }
+.status-pill--on    { color: var(--app-emerald-fg); background: var(--app-emerald-bg); }
+.status-pill--draft { color: var(--app-amber-fg); background: var(--app-amber-bg); }
 
 .row-actions {
   display: inline-flex;
@@ -373,10 +409,10 @@ button { cursor: pointer; }
   border-radius: 9999px;
   transition: background 0.15s;
 }
-.text-btn--primary { color: #005576; background: #D9F0FF; }
-.text-btn--primary:hover { background: #C2E4FA; }
-.text-btn--ghost { color: #64748B; background: #F1F5F9; }
-.text-btn--ghost:hover { background: #E2E8F0; }
+.text-btn--primary { color: var(--app-accent-deep); background: var(--app-accent-soft); }
+.text-btn--primary:hover { background: var(--app-accent-hover); }
+.text-btn--ghost { color: var(--app-text-4); background: var(--app-surface-3); }
+.text-btn--ghost:hover { background: var(--app-chip); }
 
 .icon-btn {
   display: inline-flex;
@@ -384,20 +420,20 @@ button { cursor: pointer; }
   justify-content: center;
   width: 28px;
   height: 28px;
-  color: #475569;
-  background: #F8FAFC;
-  border: 1px solid #E2E8F0;
+  color: var(--app-text-3);
+  background: var(--app-surface-2);
+  border: 1px solid var(--app-border);
   border-radius: 8px;
   transition: background 0.15s, color 0.15s, border-color 0.15s;
 }
 .icon-btn svg { width: 14px; height: 14px; }
-.icon-btn--danger:hover { background: #FFE4E6; color: #BE123C; border-color: #FECDD3; }
+.icon-btn--danger:hover { background: var(--app-rose-bg); color: var(--app-rose-fg); border-color: var(--app-rose-line); }
 
 .empty-tip {
   padding: 40px 0;
   text-align: center;
   font-size: 13px;
-  color: #94A3B8;
+  color: var(--app-text-5);
 }
 
 /* ========== 弹窗 ========== */
@@ -416,7 +452,7 @@ button { cursor: pointer; }
 .modal {
   width: 100%;
   max-width: 560px;
-  background: #fff;
+  background: var(--app-surface);
   border-radius: 16px;
   box-shadow: 0 24px 48px rgba(15, 30, 51, 0.25);
   overflow: hidden;
@@ -433,13 +469,13 @@ button { cursor: pointer; }
   align-items: center;
   justify-content: space-between;
   padding: 16px 20px;
-  border-bottom: 1px solid #F1F5F9;
+  border-bottom: 1px solid var(--app-border-soft);
 }
 
 .modal-title {
   font-size: 16px;
   font-weight: 700;
-  color: #0F1E33;
+  color: var(--app-heading);
 }
 
 .modal-close {
@@ -448,14 +484,14 @@ button { cursor: pointer; }
   justify-content: center;
   width: 30px;
   height: 30px;
-  color: #64748B;
+  color: var(--app-text-4);
   background: transparent;
   border: none;
   border-radius: 8px;
   transition: background 0.15s, color 0.15s;
 }
 .modal-close svg { width: 16px; height: 16px; }
-.modal-close:hover { background: #F1F5F9; color: #0F1E33; }
+.modal-close:hover { background: var(--app-surface-3); color: var(--app-heading); }
 
 .modal-body {
   display: flex;
@@ -473,23 +509,23 @@ button { cursor: pointer; }
 .field-label {
   font-size: 12px;
   font-weight: 600;
-  color: #475569;
+  color: var(--app-text-3);
 }
 
 .field-input {
   width: 100%;
   padding: 10px 12px;
   font-size: 13px;
-  color: #1E293B;
-  background: #F8FAFC;
-  border: 1px solid #E2E8F0;
+  color: var(--app-text);
+  background: var(--app-surface-2);
+  border: 1px solid var(--app-border);
   border-radius: 10px;
   outline: none;
   transition: border-color 0.15s, box-shadow 0.15s;
 }
 .field-input:focus {
-  border-color: #2E8BD6;
-  box-shadow: 0 0 0 3px rgba(46, 139, 214, 0.12);
+  border-color: var(--app-accent-strong);
+  box-shadow: 0 0 0 3px var(--app-accent-a12);
 }
 
 .field-textarea {
@@ -500,7 +536,7 @@ button { cursor: pointer; }
 
 .form-error {
   font-size: 12px;
-  color: #BE123C;
+  color: var(--app-rose-fg);
 }
 
 .modal-actions {

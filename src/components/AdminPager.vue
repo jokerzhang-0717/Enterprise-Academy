@@ -63,7 +63,7 @@ const go = (p) => {
 
 .pager-info {
   font-size: 12px;
-  color: #94A3B8;
+  color: var(--app-text-5);
 }
 
 .pager-controls {
@@ -79,23 +79,23 @@ const go = (p) => {
   font-family: inherit;
   font-size: 12px;
   font-weight: 600;
-  color: #475569;
-  background: #fff;
-  border: 1px solid #E2E8F0;
+  color: var(--app-text-3);
+  background: var(--app-surface);
+  border: 1px solid var(--app-border);
   border-radius: 8px;
   cursor: pointer;
   transition: background 0.15s, color 0.15s, border-color 0.15s;
 }
 
 .pager-btn:hover:not(:disabled) {
-  background: #FDF7E7;
-  color: #8A6414;
-  border-color: #E9B949;
+  background: var(--app-brand-wash);
+  color: var(--app-brand-ink);
+  border-color: var(--app-brand);
 }
 
 .pager-btn:disabled {
-  color: #CBD5E1;
-  background: #F8FAFC;
+  color: var(--app-text-6);
+  background: var(--app-surface-2);
   cursor: not-allowed;
 }
 
@@ -104,7 +104,7 @@ const go = (p) => {
 .pager-btn--active,
 .pager-btn--active:hover:not(:disabled) {
   color: #fff;
-  background: linear-gradient(135deg, #E9B949, #D19A2B);
-  border-color: #D19A2B;
+  background: linear-gradient(135deg, var(--app-brand), var(--app-brand-deep));
+  border-color: var(--app-brand-deep);
 }
 </style>

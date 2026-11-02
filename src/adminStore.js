@@ -1,5 +1,6 @@
 import { reactive } from 'vue';
 import {
+  ADMIN_DEPARTMENTS,
   COURSES_DATA,
   EXAMS_DATA,
   PAST_EXAMS,
@@ -15,7 +16,7 @@ import {
 const seedExams = [
   ...EXAMS_DATA.map(e => ({
     ...e,
-    state: e.status === 'in_progress' ? 'running' : e.status === 'not_started' ? 'scheduled' : 'open',
+    state: e.status === 'in_progress' ? 'running' : 'scheduled',
     participants: e.status === 'in_progress' ? 486 : e.status === 'not_started' ? 128 : 672
   })),
   ...PAST_EXAMS.map(p => ({
@@ -45,6 +46,7 @@ export const SAMPLE_VIDEOS = {
 };
 
 export const adminStore = reactive({
+  departments: ADMIN_DEPARTMENTS.map(d => ({ ...d })),
   courses: COURSES_DATA.map(c => ({
     ...c,
     published: c.status !== 'offline',

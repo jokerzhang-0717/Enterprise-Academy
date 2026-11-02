@@ -81,6 +81,27 @@
         <span v-if="unreadCount > 0" class="unread-dot"></span>
       </button>
 
+      <!-- 管理端工具:全屏 -->
+      <button
+        v-if="isAdmin"
+        class="tool-btn"
+        :title="isFullscreen ? '退出全屏' : '进入全屏'"
+        @click="toggleFullscreen"
+      >
+        <Minimize v-if="isFullscreen" class="tool-icon" />
+        <Maximize v-else class="tool-icon" />
+      </button>
+
+      <!-- 管理端工具:换主题 -->
+      <button
+        v-if="isAdmin"
+        class="tool-btn tool-btn--theme"
+        title="换主题"
+        @click="$emit('cycle-theme')"
+      >
+        <Palette class="tool-icon" />
+      </button>
+
       <!-- 用户头像 + 下拉菜单 -->
       <div class="user-zone">
         <button class="user-btn" @click="showUserDropdown = !showUserDropdown">
@@ -107,20 +128,21 @@
           <div class="user-dropdown">
             <div class="dropdown-user-info">
               <div class="dropdown-user-name">{{ user.name }}</div>
-              <div class="dropdown-user-id">{{ user.employeeId }} · {{ user.role }}</div>
+              <div v-if="!isAdmin" class="dropdown-user-id">{{ user.employeeId }} · {{ user.role }}</div>
             </div>
             <button
-              v-if="!isAdmin"
-              class="dropdown-action dropdown-action--switch"
-              @click="$emit('switch-user'); showUserDropdown = false"
+              class="dropdown-action"
+              @click="$emit('navigate', isAdmin ? 'admin-profile' : 'profile'); showUserDropdown = false"
             >
-              <span class="icon-switch">⇄</span>
-              <span>切换视角 (张浩然 / 李明)</span>
+              <span class="icon-switch">✎</span>
+              <span>修改个人信息</span>
             </button>
+            <div class="dropdown-divider"></div>
             <button
               class="dropdown-action dropdown-action--logout"
               @click="$emit('navigate', 'login'); showUserDropdown = false"
             >
+              <span class="icon-switch">↩</span>
               <span>退出登录</span>
             </button>
           </div>
@@ -132,7 +154,8 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { onBeforeUnmount, onMounted, ref } from 'vue';
+import { Maximize, Minimize, Palette } from 'lucide-vue-next';
 
 const props = defineProps({
   user:          { type: Object,  required: true },
@@ -144,7 +167,7 @@ const props = defineProps({
 
 const emit = defineEmits([
   'navigate',
-  'switch-user',
+  'cycle-theme',
   'open-mockup',
   'toggle-checkin',
   'search',
@@ -154,6 +177,21 @@ const emit = defineEmits([
 const searchValue     = ref('');
 const showSearchModal = ref(false);
 const showUserDropdown = ref(false);
+
+const isFullscreen = ref(false);
+const syncFullscreen = () => { isFullscreen.value = !!document.fullscreenElement; };
+
+const toggleFullscreen = async () => {
+  try {
+    if (document.fullscreenElement) await document.exitFullscreen();
+    else await document.documentElement.requestFullscreen();
+  } catch {
+    /* 内嵌预览环境可能禁用全屏 API，静默忽略 */
+  }
+};
+
+onMounted(() => document.addEventListener('fullscreenchange', syncFullscreen));
+onBeforeUnmount(() => document.removeEventListener('fullscreenchange', syncFullscreen));
 
 // 选中搜索结果
 function handleSelectSuggestion(item) {
@@ -199,14 +237,25 @@ input {
   justify-content: space-between;
   gap: 16px;
   padding: 0 24px;
-  background: #fff;
-  border-bottom: 1px solid #E2E8F0;
+  background: var(--app-surface);
+  border-bottom: 1px solid var(--app-border);
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
 }
 
 /* 管理端只有头像,靠右显示 */
 .app-header--admin {
   justify-content: flex-end;
+}
+
+/* 管理端底边:强调色 → 身份色 的渐变条,整条随主题走 */
+.app-header--admin::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--app-accent) 0%, var(--app-brand) 100%);
 }
 
 /* ========== 搜索栏区域 ========== */
@@ -221,7 +270,7 @@ input {
   align-items: center;
   gap: 8px;
   padding: 0 14px;
-  background: #fff;
+  background: var(--app-surface);
   border: 1px solid #A3D5FF;
   border-radius: 9999px;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
@@ -238,14 +287,14 @@ input {
   min-width: 0;
   padding: 10px 0;
   font-size: 14px;
-  color: #1E293B;
+  color: var(--app-text);
   background: transparent;
   border: none;
   outline: none;
 }
 
 .search-input::placeholder {
-  color: #64748B;
+  color: var(--app-text-4);
 }
 
 /* --- 放大镜图标（CSS 画） --- */
@@ -294,8 +343,8 @@ input {
   right: 0;
   z-index: 50;
   padding: 12px;
-  background: #fff;
-  border: 1px solid #E2E8F0;
+  background: var(--app-surface);
+  border: 1px solid var(--app-border);
   border-radius: 12px;
   box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
   font-size: 12px;
@@ -306,7 +355,7 @@ input {
   padding: 0 8px;
   font-size: 11px;
   font-weight: 600;
-  color: #64748B;
+  color: var(--app-text-4);
 }
 
 .dropdown-list {
@@ -355,7 +404,7 @@ input {
 }
 
 .item-title {
-  color: #1E293B;
+  color: var(--app-text);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -365,7 +414,7 @@ input {
   margin-top: 4px;
   padding-left: 4px;
   font-size: 10px;
-  color: #94A3B8;
+  color: var(--app-text-5);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -374,14 +423,14 @@ input {
 .item-action {
   margin-left: 12px;
   font-size: 10px;
-  color: #64748B;
+  color: var(--app-text-4);
   flex-shrink: 0;
 }
 
 .dropdown-empty {
   padding: 12px 8px;
   font-size: 11px;
-  color: #94A3B8;
+  color: var(--app-text-5);
 }
 
 /* ========== 右侧操作区 ========== */
@@ -449,7 +498,7 @@ input {
   align-items: center;
   justify-content: center;
   padding: 8px;
-  color: #64748B;
+  color: var(--app-text-4);
   background: transparent;
   border: none;
   border-radius: 50%;
@@ -457,8 +506,44 @@ input {
 }
 
 .bell-btn:hover {
-  color: #1E293B;
-  background: #F1F5F9;
+  color: var(--app-text);
+  background: var(--app-surface-3);
+}
+
+/* --- 管理端工具按钮（全屏 / 换主题） --- */
+.tool-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  color: var(--app-text-4);
+  background: var(--app-surface);
+  border: 1px solid var(--app-border);
+  border-radius: 10px;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+
+.tool-btn:hover {
+  color: var(--app-accent-deep);
+  border-color: var(--app-accent);
+  background: var(--app-accent-soft);
+}
+
+.tool-btn--theme {
+  color: var(--app-accent-deep);
+  border-color: var(--app-accent);
+  background: var(--app-accent-soft);
+}
+
+.tool-icon {
+  width: 16px;
+  height: 16px;
+}
+
+.app-header--admin .avatar {
+  background: var(--app-brand);
+  color: var(--app-brand-on);
 }
 
 /* --- 铃铛图标（CSS 画） --- */
@@ -522,8 +607,8 @@ input {
 }
 
 .user-btn:hover {
-  background: #F8FAFC;
-  border-color: #E2E8F0;
+  background: var(--app-surface-2);
+  border-color: var(--app-text-6);
 }
 
 /* 头像 */
@@ -561,14 +646,14 @@ input {
   gap: 4px;
   font-size: 12px;
   font-weight: 700;
-  color: #1E293B;
+  color: var(--app-text);
   line-height: 1.25;
 }
 
 .user-meta {
   margin-top: 2px;
   font-size: 10px;
-  color: #64748B;
+  color: var(--app-text-4);
   line-height: 1;
 }
 
@@ -578,7 +663,7 @@ input {
   height: 0;
   border-left: 3.5px solid transparent;
   border-right: 3.5px solid transparent;
-  border-top: 4px solid #94A3B8;
+  border-top: 4px solid var(--app-text-5);
 }
 
 /* ========== 用户下拉菜单 ========== */
@@ -587,65 +672,128 @@ input {
   right: 0;
   top: 48px;
   z-index: 50;
-  width: 224px;
-  padding: 8px;
-  background: #fff;
-  border: 1px solid #E2E8F0;
-  border-radius: 12px;
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-  font-size: 12px;
+  width: 232px;
+  padding: 6px;
+  background: var(--app-surface);
+  border: 1px solid var(--app-border);
+  border-radius: 14px;
+  box-shadow: 0 4px 6px -2px rgba(15, 23, 42, 0.05), 0 12px 28px -6px rgba(15, 23, 42, 0.16);
+  font-size: 13px;
+  animation: dropdown-in 0.14s ease-out;
+}
+
+@keyframes dropdown-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
 .dropdown-user-info {
-  padding: 8px 12px;
-  margin-bottom: 4px;
-  border-bottom: 1px solid #F1F5F9;
+  padding: 9px 10px 10px;
 }
 
 .dropdown-user-name {
+  font-size: 13px;
   font-weight: 600;
-  color: #1E293B;
+  line-height: 1.3;
+  color: #0F172A;
 }
 
 .dropdown-user-id {
-  margin-top: 2px;
+  margin-top: 3px;
   font-size: 11px;
-  color: #64748B;
+  line-height: 1.3;
+  color: var(--app-text-4);
+}
+
+.dropdown-divider {
+  height: 1px;
+  margin: 5px 8px;
+  background: var(--app-surface-2);
 }
 
 /* 下拉菜单按钮 */
 .dropdown-action {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 9px;
   width: 100%;
-  padding: 8px 12px;
-  font-size: 12px;
+  padding: 9px 10px;
+  font-size: 13px;
+  color: var(--app-text-2);
   background: transparent;
   border: none;
-  border-radius: 8px;
+  border-radius: 10px;
   text-align: left;
-  transition: background 0.15s;
+  transition: background 0.15s, color 0.15s;
 }
 
-/* 切换视角 */
-.dropdown-action--switch {
-  color: #005576;
-  font-weight: 500;
+.dropdown-action:hover {
+  background: var(--app-surface-3);
+  color: #0F172A;
 }
 
-.dropdown-action--switch:hover {
-  background: #F4F9FD;
+.dropdown-action:focus-visible {
+  outline: 2px solid #005576;
+  outline-offset: -2px;
 }
 
 .icon-switch {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  flex: none;
   font-size: 13px;
+  line-height: 1;
+  color: var(--app-text-5);
 }
 
-/* 重新登录 */
+/* 退出登录 */
 .dropdown-action--logout {
-  margin-top: 4px;
   color: #DC2626;
+}
+
+.dropdown-action--logout:hover {
+  background: #FEF2F2;
+  color: #B91C1C;
+}
+
+.dropdown-action--logout .icon-switch {
+  color: #FCA5A5;
+}
+
+.dropdown-action--logout:hover .icon-switch {
+  color: #DC2626;
+}
+
+/* 管理端:下拉浮层跟随主题,深色主题下不出现浅底深字;学员端沿用上面的原色 */
+.app-header--admin .dropdown-user-name {
+  color: var(--app-heading);
+}
+
+.app-header--admin .dropdown-action:hover {
+  color: var(--app-heading);
+}
+
+.app-header--admin .dropdown-action:focus-visible {
+  outline-color: var(--app-accent-focus);
+}
+
+.app-header--admin .dropdown-action--logout {
+  color: var(--app-rose-fg);
+}
+
+.app-header--admin .dropdown-action--logout:hover {
+  background: var(--app-rose-bg);
+  color: var(--app-rose-fg);
+}
+
+.app-header--admin .dropdown-action--logout .icon-switch {
+  color: var(--app-rose-line);
+}
+
+.app-header--admin .dropdown-action--logout:hover .icon-switch {
+  color: var(--app-rose-fg);
 }
 
 /* 管理端标签 */
@@ -656,9 +804,9 @@ input {
   padding: 1px 7px;
   font-size: 10px;
   font-weight: 700;
-  color: #8A6414;
-  background: #FEF3C7;
-  border: 1px solid #FDE68A;
+  color: var(--app-brand-ink);
+  background: var(--app-brand-tint);
+  border: 1px solid var(--app-brand-tint-line);
   border-radius: 9999px;
   vertical-align: 1px;
 }

@@ -36,7 +36,7 @@
     <!-- 底部用户卡片 -->
     <div class="sidebar-footer">
       <div class="user-card">
-        <div class="user-card-info" @click="$emit('switch-user')" title="点击切换演示账号">
+        <div class="user-card-info">
           <div class="user-card-avatar">
             <img v-if="user?.avatarUrl" :src="user.avatarUrl" alt="" class="user-card-img" />
             <User v-else class="sidebar-icon sidebar-user-icon" />
@@ -84,7 +84,7 @@ const props = defineProps({
   }
 });
 
-defineEmits(['select-view', 'change-theme', 'logout', 'switch-user']);
+defineEmits(['select-view', 'change-theme', 'logout']);
 
 const navItems = [
   { id: 'home',         label: '首页',           icon: House },
@@ -319,7 +319,6 @@ button {
   gap: 10px;
   min-width: 0;
   flex: 1;
-  cursor: pointer;
 }
 
 .user-card-avatar {
@@ -334,11 +333,6 @@ button {
   color: #005576;
   flex-shrink: 0;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-  transition: transform 0.15s;
-}
-
-.user-card-info:hover .user-card-avatar {
-  transform: scale(1.05);
 }
 
 .user-card-img {

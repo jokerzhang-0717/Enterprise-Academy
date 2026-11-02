@@ -58,7 +58,11 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="item in pagedRequests" :key="item.id">
+          <tr
+            v-for="item in pagedRequests"
+            :key="item.id"
+            @click="openReason(item)"
+          >
             <td>
               <div class="cell-user">
                 <span class="cell-avatar">{{ item.applicant.charAt(0) }}</span>
@@ -81,7 +85,7 @@
               </span>
             </td>
             <td class="ops">
-              <div class="row-actions" v-if="item.status === 'pending'">
+              <div class="row-actions" v-if="item.status === 'pending'" @click.stop>
                 <button class="text-btn text-btn--ok" @click="decide(item, 'approved')">通过</button>
                 <button class="text-btn text-btn--reject" @click="decide(item, 'rejected')">驳回</button>
               </div>
@@ -114,11 +118,42 @@
       @confirm="acceptConfirm"
     />
 
+    <!-- 请假事由详情 -->
+    <Teleport to="body">
+      <div v-if="reasonDetail" class="reason-modal" @click.self="closeReason">
+        <div class="reason-dialog" role="dialog" aria-modal="true" aria-labelledby="reason-dialog-title">
+          <div class="reason-dialog-head">
+            <div>
+              <h3 id="reason-dialog-title" class="reason-dialog-title">请假事由</h3>
+              <p class="reason-dialog-sub">
+                {{ reasonDetail.applicant }} · {{ reasonDetail.department }} · {{ reasonDetail.employeeId }}
+              </p>
+            </div>
+            <button class="reason-dialog-close" aria-label="关闭" @click="closeReason">✕</button>
+          </div>
+          <div class="reason-dialog-body">
+            <div class="reason-dialog-meta">
+              <span class="type-chip">{{ reasonDetail.type }}</span>
+              <span class="reason-dialog-time">{{ reasonDetail.timeRange }} · {{ reasonDetail.days }} 天</span>
+              <span class="status-pill" :class="`status-pill--${reasonDetail.status}`">
+                {{ statusLabel(reasonDetail.status) }}
+              </span>
+            </div>
+            <p class="reason-dialog-text">{{ reasonDetail.reason }}</p>
+            <p class="reason-dialog-foot">提交时间：{{ reasonDetail.submittedTime }}</p>
+          </div>
+          <div class="reason-dialog-actions">
+            <button type="button" class="reason-dialog-btn" @click="closeReason">关闭</button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
   </div>
 </template>
 
 <script setup>
-import { computed, ref, watch } from 'vue';
+import { computed, ref, watch, onMounted, onBeforeUnmount } from 'vue';
 import { ADMIN_LEAVE_REQUESTS } from '../../mockData.js';
 import { usePager } from '../../composables/usePager.js';
 import { useConfirm } from '../../composables/useConfirm.js';
@@ -160,6 +195,14 @@ const statusLabelMap = {
   rejected: '已驳回'
 };
 const statusLabel = (status) => statusLabelMap[status] || status;
+
+/* ---------- 事由详情 ---------- */
+const reasonDetail = ref(null);
+const openReason = (item) => { reasonDetail.value = item; };
+const closeReason = () => { reasonDetail.value = null; };
+const onKeydown = (e) => { if (e.key === 'Escape') closeReason(); };
+onMounted(() => window.addEventListener('keydown', onKeydown));
+onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown));
 
 const decide = (item, status) => {
   const approve = status === 'approved';
@@ -209,14 +252,14 @@ button { font-family: inherit; cursor: pointer; }
 .page-title {
   font-size: 24px;
   font-weight: 700;
-  color: #0F1E33;
+  color: var(--app-heading);
   letter-spacing: -0.02em;
 }
 
 .page-sub {
   margin-top: 4px;
   font-size: 13px;
-  color: #64748B;
+  color: var(--app-text-4);
 }
 
 /* ========== 概览条 ========== */
@@ -232,24 +275,24 @@ button { font-family: inherit; cursor: pointer; }
   align-items: center;
   gap: 2px;
   padding: 14px;
-  background: #fff;
-  border: 1px solid #E2E8F0;
+  background: var(--app-surface);
+  border: 1px solid var(--app-border);
   border-radius: 12px;
 }
 
 .overview-value {
   font-size: 22px;
   font-weight: 800;
-  color: #0F1E33;
+  color: var(--app-heading);
   font-variant-numeric: tabular-nums;
 }
-.overview-value--green { color: #047857; }
-.overview-value--gold  { color: #B45309; }
-.overview-value--red   { color: #BE123C; }
+.overview-value--green { color: var(--app-emerald-fg); }
+.overview-value--gold  { color: var(--app-amber-fg); }
+.overview-value--red   { color: var(--app-rose-fg); }
 
 .overview-label {
   font-size: 12px;
-  color: #64748B;
+  color: var(--app-text-4);
 }
 
 /* ========== 筛选 Tab ========== */
@@ -266,22 +309,22 @@ button { font-family: inherit; cursor: pointer; }
   padding: 8px 14px;
   font-size: 13px;
   font-weight: 600;
-  color: #475569;
-  background: #fff;
-  border: 1px solid #E2E8F0;
+  color: var(--app-text-3);
+  background: var(--app-surface);
+  border: 1px solid var(--app-border);
   border-radius: 9999px;
   transition: background 0.15s, color 0.15s, border-color 0.15s;
 }
 
 .filter-tab:hover {
-  border-color: #E9B949;
-  color: #8A6414;
+  border-color: var(--app-brand);
+  color: var(--app-brand-ink);
 }
 
 .filter-tab--active {
-  background: linear-gradient(135deg, #E9B949, #D19A2B);
-  border-color: #D19A2B;
-  color: #241A04;
+  background: linear-gradient(135deg, var(--app-brand), var(--app-brand-deep));
+  border-color: var(--app-brand-deep);
+  color: var(--app-brand-on);
 }
 
 .filter-tab-count {
@@ -299,8 +342,8 @@ button { font-family: inherit; cursor: pointer; }
 
 /* ========== 表格 ========== */
 .table-wrap {
-  background: #fff;
-  border: 1px solid #E2E8F0;
+  background: var(--app-surface);
+  border: 1px solid var(--app-border);
   border-radius: 12px;
   overflow-x: auto;
 }
@@ -316,22 +359,34 @@ button { font-family: inherit; cursor: pointer; }
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.06em;
-  color: #64748B;
+  color: var(--app-text-4);
   text-align: left;
-  background: #F8FAFC;
-  border-bottom: 1px solid #E2E8F0;
+  background: var(--app-surface-2);
+  border-bottom: 1px solid var(--app-border);
   white-space: nowrap;
 }
 
 .data-table tbody td {
   padding: 12px 14px;
-  color: #1E293B;
-  border-bottom: 1px solid #F1F5F9;
+  color: var(--app-text);
+  border-bottom: 1px solid var(--app-border-soft);
   vertical-align: top;
 }
 
 .data-table tbody tr:last-child td { border-bottom: none; }
-.data-table tbody tr:hover { background: #F8FAFC; }
+.data-table tbody tr { cursor: pointer; }
+.data-table tbody td { transition: background 0.15s, color 0.15s, box-shadow 0.15s; }
+.data-table tbody tr:hover td { background: var(--app-accent-soft); }
+.data-table tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--app-accent); }
+
+/* 悬停整行时，整行文字统一变为主色 */
+.data-table tbody tr:hover td,
+.data-table tbody tr:hover .cell-name,
+.data-table tbody tr:hover .cell-meta,
+.data-table tbody tr:hover .cell-muted,
+.data-table tbody tr:hover .reason-text {
+  color: var(--app-accent-deep);
+}
 
 th.num, td.num { text-align: right; white-space: nowrap; }
 th.ops, td.ops { text-align: right; white-space: nowrap; }
@@ -340,8 +395,8 @@ th.ops, td.ops { text-align: right; white-space: nowrap; }
 .data-table thead th.num,
 .data-table thead th.ops { text-align: right; }
 
-.cell-muted { color: #64748B; }
-.empty-cell { text-align: center; color: #94A3B8; padding: 28px 0 !important; }
+.cell-muted { color: var(--app-text-4); }
+.empty-cell { text-align: center; color: var(--app-text-5); padding: 28px 0 !important; }
 
 /* ========== 申请人单元格 ========== */
 .cell-user {
@@ -359,8 +414,8 @@ th.ops, td.ops { text-align: right; white-space: nowrap; }
   justify-content: center;
   font-size: 13px;
   font-weight: 700;
-  color: #005576;
-  background: #D9F0FF;
+  color: var(--app-accent-deep);
+  background: var(--app-accent-soft);
   border-radius: 50%;
   flex-shrink: 0;
 }
@@ -373,7 +428,7 @@ th.ops, td.ops { text-align: right; white-space: nowrap; }
 .cell-meta {
   margin-top: 2px;
   font-size: 11px;
-  color: #94A3B8;
+  color: var(--app-text-5);
   white-space: nowrap;
 }
 
@@ -383,8 +438,8 @@ th.ops, td.ops { text-align: right; white-space: nowrap; }
   padding: 3px 10px;
   font-size: 11px;
   font-weight: 600;
-  color: #6555B0;
-  background: #EDE9FE;
+  color: var(--app-violet-fg);
+  background: var(--app-violet-bg);
   border-radius: 9999px;
   white-space: nowrap;
 }
@@ -392,15 +447,21 @@ th.ops, td.ops { text-align: right; white-space: nowrap; }
 .reason-cell {
   width: 320px;
   min-width: 260px;
-  color: #475569;
+  color: var(--app-text-3);
+  cursor: pointer;
 }
 
-/* 事由完整展示:由单元格自然换行,不再截断 */
+/* 事由最多显示两行，超出省略；点击单元格查看完整内容 */
 .reason-text {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
   font-size: 12.5px;
   line-height: 1.6;
   white-space: normal;
   word-break: break-word;
+  transition: color 0.15s;
 }
 
 /* ========== 状态徽标 ========== */
@@ -413,9 +474,9 @@ th.ops, td.ops { text-align: right; white-space: nowrap; }
   border-radius: 9999px;
   white-space: nowrap;
 }
-.status-pill--pending  { color: #B45309; background: #FEF3C7; }
-.status-pill--approved { color: #047857; background: #D1FAE5; }
-.status-pill--rejected { color: #BE123C; background: #FFE4E6; }
+.status-pill--pending  { color: var(--app-amber-fg); background: var(--app-amber-bg); }
+.status-pill--approved { color: var(--app-emerald-fg); background: var(--app-emerald-bg); }
+.status-pill--rejected { color: var(--app-rose-fg); background: var(--app-rose-bg); }
 
 /* ========== 行操作 ========== */
 .row-actions {
@@ -431,10 +492,137 @@ th.ops, td.ops { text-align: right; white-space: nowrap; }
   border-radius: 9999px;
   transition: background 0.15s;
 }
-.text-btn--ok { color: #047857; background: #D1FAE5; }
-.text-btn--ok:hover { background: #A7F3D0; }
-.text-btn--reject { color: #BE123C; background: #FFE4E6; }
-.text-btn--reject:hover { background: #FECDD3; }
+.text-btn--ok { color: var(--app-emerald-fg); background: var(--app-emerald-bg); }
+.text-btn--ok:hover { background: var(--app-emerald-line); }
+.text-btn--reject { color: var(--app-rose-fg); background: var(--app-rose-bg); }
+.text-btn--reject:hover { background: var(--app-rose-line); }
+
+/* ========== 事由详情弹窗 ========== */
+.reason-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgb(15 30 51 / 50%);
+  backdrop-filter: blur(4px);
+  animation: reason-fade 0.16s ease-out;
+}
+
+.reason-dialog {
+  width: 100%;
+  max-width: 520px;
+  max-height: 86vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--app-surface);
+  border-radius: 16px;
+  box-shadow: 0 28px 60px rgb(15 30 51 / 28%);
+  animation: reason-in 0.2s ease-out;
+}
+
+.reason-dialog-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 20px 14px;
+  border-bottom: 1px solid var(--app-border-soft);
+}
+
+.reason-dialog-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--app-heading);
+}
+
+.reason-dialog-sub {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--app-text-4);
+}
+
+.reason-dialog-close {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  color: var(--app-text-4);
+  background: transparent;
+  border: none;
+  border-radius: 7px;
+  flex-shrink: 0;
+  transition: background 0.15s, color 0.15s;
+}
+.reason-dialog-close:hover { background: var(--app-surface-3); color: var(--app-heading); }
+
+.reason-dialog-body {
+  padding: 16px 20px 18px;
+  overflow-y: auto;
+}
+
+.reason-dialog-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.reason-dialog-time {
+  font-size: 12px;
+  color: var(--app-text-4);
+}
+
+.reason-dialog-text {
+  margin-top: 12px;
+  padding: 12px 14px;
+  font-size: 13px;
+  line-height: 1.75;
+  color: var(--app-text-2);
+  background: var(--app-surface-2);
+  border: 1px solid var(--app-border-soft);
+  border-radius: 10px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.reason-dialog-foot {
+  margin-top: 10px;
+  font-size: 11px;
+  color: var(--app-text-5);
+}
+
+.reason-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  padding: 12px 20px 16px;
+  border-top: 1px solid var(--app-border-soft);
+}
+
+.reason-dialog-btn {
+  padding: 7px 16px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--app-text-3);
+  background: var(--app-surface-2);
+  border: 1px solid var(--app-border);
+  border-radius: 9px;
+  transition: background 0.15s, color 0.15s;
+}
+.reason-dialog-btn:hover { background: var(--app-surface-3); color: var(--app-heading); }
+
+@keyframes reason-fade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes reason-in {
+  from { opacity: 0; transform: translateY(10px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
 
 @media (max-width: 640px) {
   .overview-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }

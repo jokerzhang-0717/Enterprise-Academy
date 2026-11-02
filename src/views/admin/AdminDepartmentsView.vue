@@ -42,7 +42,13 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="dept in pagedDepartments" :key="dept.id">
+          <tr
+            v-for="dept in pagedDepartments"
+            :key="dept.id"
+            class="clickable-row"
+            title="点击查看部门详细数据"
+            @click="openDetail(dept)"
+          >
             <td>
               <div class="cell-user">
                 <span class="cell-avatar">{{ dept.name.charAt(0) }}</span>
@@ -51,7 +57,7 @@
             </td>
             <td class="cell-muted">{{ dept.manager }}</td>
             <td class="num">{{ dept.learners }}</td>
-            <td class="desc-cell">{{ dept.desc }}</td>
+            <td class="desc-cell" :title="dept.desc">{{ dept.desc }}</td>
             <td>
               <span class="status-pill" :class="dept.status === 'active' ? 'status-pill--on' : 'status-pill--off'">
                 {{ dept.status === 'active' ? '启用' : '已停用' }}
@@ -59,19 +65,19 @@
             </td>
             <td class="ops">
               <div class="row-actions">
-                <button class="icon-btn" title="编辑" @click="openEdit(dept)">
+                <button
+                  class="status-toggle-btn"
+                  :class="dept.status === 'active' ? 'status-toggle-btn--off' : 'status-toggle-btn--on'"
+                  :title="dept.status === 'active' ? '停用此部门' : '启用此部门'"
+                  @click.stop="toggleStatus(dept)"
+                >
+                  <span class="toggle-dot"></span>
+                  <span>{{ dept.status === 'active' ? '停用' : '启用' }}</span>
+                </button>
+                <button class="icon-btn" title="编辑" @click.stop="openEdit(dept)">
                   <EditPen />
                 </button>
-                <button
-                  class="icon-btn"
-                  :class="dept.status === 'active' ? 'icon-btn--warn' : 'icon-btn--ok'"
-                  :title="dept.status === 'active' ? '停用部门' : '启用部门'"
-                  @click="toggleStatus(dept)"
-                >
-                  <CircleClose v-if="dept.status === 'active'" />
-                  <CircleCheck v-else />
-                </button>
-                <button class="icon-btn icon-btn--danger" title="删除" @click="removeDept(dept)">
+                <button class="icon-btn icon-btn--danger" title="删除" @click.stop="removeDept(dept)">
                   <Delete />
                 </button>
               </div>
@@ -89,6 +95,57 @@
       :total="departments.length"
       :total-pages="totalPages"
     />
+
+    <!-- 部门详细数据弹窗 -->
+    <div v-if="detailModalOpen" class="modal-backdrop" @click.self="detailModalOpen = false">
+      <div class="modal modal--detail">
+        <div class="modal-head">
+          <h2 class="modal-title">部门详细资料</h2>
+          <button class="modal-close" @click="detailModalOpen = false"><Close /></button>
+        </div>
+        <div v-if="selectedDept" class="modal-body detail-body">
+          <div class="detail-header-card">
+            <div class="detail-avatar">{{ selectedDept.name.charAt(0) }}</div>
+            <div class="detail-main">
+              <div class="detail-name-row">
+                <h3 class="detail-name">{{ selectedDept.name }}</h3>
+                <span class="status-pill" :class="selectedDept.status === 'active' ? 'status-pill--on' : 'status-pill--off'">
+                  {{ selectedDept.status === 'active' ? '正常启用' : '已停用' }}
+                </span>
+              </div>
+              <p class="detail-meta">部门编号：{{ selectedDept.id }} · 负责人：{{ selectedDept.manager }}</p>
+            </div>
+          </div>
+
+          <div class="detail-grid">
+            <div class="detail-stat-card">
+              <span class="detail-stat-label">在编人数</span>
+              <span class="detail-stat-val">{{ selectedDept.learners }} 人</span>
+            </div>
+            <div class="detail-stat-card">
+              <span class="detail-stat-label">部门负责人</span>
+              <span class="detail-stat-val">{{ selectedDept.manager }}</span>
+            </div>
+            <div class="detail-stat-card">
+              <span class="detail-stat-label">运行状态</span>
+              <span class="detail-stat-val" :class="selectedDept.status === 'active' ? 'text-green' : 'text-slate'">
+                {{ selectedDept.status === 'active' ? '正常运营中' : '已暂停运营' }}
+              </span>
+            </div>
+          </div>
+
+          <div class="detail-section">
+            <div class="detail-section-label">部门简介与职责范围</div>
+            <div class="detail-desc-box">{{ selectedDept.desc || '该部门暂无详细职责简介说明。' }}</div>
+          </div>
+
+          <div class="modal-actions">
+            <button type="button" class="btn btn--ghost" @click="detailModalOpen = false">关闭</button>
+            <button type="button" class="btn btn--primary" @click="openEditFromDetail">编辑此部门</button>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <!-- 新增 / 编辑弹窗 -->
     <div v-if="modalOpen" class="modal-backdrop" @click.self="closeModal">
@@ -146,25 +203,40 @@
 <script setup>
 import { computed, ref } from 'vue';
 import { Plus, EditPen, Delete, Close, CircleClose, CircleCheck } from '@element-plus/icons-vue';
-import { ADMIN_DEPARTMENTS } from '../../mockData.js';
+import { adminStore } from '../../adminStore.js';
 import { usePager } from '../../composables/usePager.js';
 import { useConfirm } from '../../composables/useConfirm.js';
 import AdminPager from '../../components/AdminPager.vue';
 import ConfirmDialog from '../../components/ConfirmDialog.vue';
 
-const departments = ref(ADMIN_DEPARTMENTS.map(d => ({ ...d })));
+const departments = adminStore.departments;
 
 const { confirmState, askConfirm, cancelConfirm, acceptConfirm } = useConfirm();
 
 const { page, totalPages, paged: pagedDepartments } = usePager(departments, 6);
 
-const activeCount = computed(() => departments.value.filter(d => d.status === 'active').length);
-const totalLearners = computed(() => departments.value.reduce((s, d) => s + d.learners, 0));
+const activeCount = computed(() => departments.filter(d => d.status === 'active').length);
+const totalLearners = computed(() => departments.reduce((s, d) => s + d.learners, 0));
 const avgLearners = computed(() =>
-  departments.value.length
-    ? Math.round(totalLearners.value / departments.value.length)
+  departments.length
+    ? Math.round(totalLearners.value / departments.length)
     : 0
 );
+
+/* ---------- 详情弹窗 ---------- */
+const detailModalOpen = ref(false);
+const selectedDept = ref(null);
+
+const openDetail = (dept) => {
+  selectedDept.value = dept;
+  detailModalOpen.value = true;
+};
+
+const openEditFromDetail = () => {
+  const target = selectedDept.value;
+  detailModalOpen.value = false;
+  if (target) openEdit(target);
+};
 
 /* ---------- 弹窗表单 ---------- */
 const modalOpen = ref(false);
@@ -199,16 +271,16 @@ const closeModal = () => {
 const saveDept = () => {
   if (!form.value.name) { formError.value = '请输入部门名称。'; return; }
   if (!form.value.manager) { formError.value = '请输入负责人姓名。'; return; }
-  const dup = departments.value.some(
+  const dup = departments.some(
     d => d.name === form.value.name && d.id !== editingId.value
   );
   if (dup) { formError.value = '该部门已存在,请勿重复创建。'; return; }
 
   if (editingId.value) {
-    const target = departments.value.find(d => d.id === editingId.value);
+    const target = departments.find(d => d.id === editingId.value);
     Object.assign(target, { ...form.value });
   } else {
-    departments.value.push({
+    departments.push({
       id: `d-${Date.now()}`,
       ...form.value,
       learners: 0,
@@ -233,7 +305,8 @@ const removeDept = (dept) => {
     tip: `删除后，该部门下 ${dept.learners} 名学员将变为「无部门」状态，此操作不可恢复。`,
     confirmText: '确认删除',
     action: () => {
-      departments.value = departments.value.filter(d => d.id !== dept.id);
+      const idx = departments.findIndex(d => d.id === dept.id);
+      if (idx > -1) departments.splice(idx, 1);
     }
   });
 };
@@ -268,14 +341,14 @@ button { cursor: pointer; }
 .page-title {
   font-size: 24px;
   font-weight: 700;
-  color: #0F1E33;
+  color: var(--app-heading);
   letter-spacing: -0.02em;
 }
 
 .page-sub {
   margin-top: 4px;
   font-size: 13px;
-  color: #64748B;
+  color: var(--app-text-4);
 }
 
 .btn {
@@ -293,19 +366,19 @@ button { cursor: pointer; }
 .btn-icon { width: 15px; height: 15px; }
 
 .btn--primary {
-  background: linear-gradient(135deg, #E9B949, #D19A2B);
-  color: #241A04;
-  border-color: #D19A2B;
-  box-shadow: 0 2px 6px rgba(233, 185, 73, 0.35);
+  background: linear-gradient(135deg, var(--app-brand), var(--app-brand-deep));
+  color: var(--app-brand-on);
+  border-color: var(--app-brand-deep);
+  box-shadow: 0 2px 6px var(--app-brand-glow);
 }
-.btn--primary:hover { background: linear-gradient(135deg, #F0C45E, #D19A2B); }
+.btn--primary:hover { background: linear-gradient(135deg, var(--app-brand-hi), var(--app-brand-deep)); }
 
 .btn--ghost {
-  background: #fff;
-  color: #334155;
-  border-color: #E2E8F0;
+  background: var(--app-surface);
+  color: var(--app-text-2);
+  border-color: var(--app-text-6);
 }
-.btn--ghost:hover { border-color: #E9B949; color: #8A6414; }
+.btn--ghost:hover { border-color: var(--app-brand); color: var(--app-brand-ink); }
 
 /* ========== 概览条 ========== */
 .overview-strip {
@@ -320,27 +393,27 @@ button { cursor: pointer; }
   align-items: center;
   gap: 2px;
   padding: 14px;
-  background: #fff;
-  border: 1px solid #E2E8F0;
+  background: var(--app-surface);
+  border: 1px solid var(--app-border);
   border-radius: 12px;
 }
 
 .overview-value {
   font-size: 22px;
   font-weight: 800;
-  color: #0F1E33;
+  color: var(--app-heading);
   font-variant-numeric: tabular-nums;
 }
 
 .overview-label {
   font-size: 12px;
-  color: #64748B;
+  color: var(--app-text-4);
 }
 
 /* ========== 表格 ========== */
 .table-wrap {
-  background: #fff;
-  border: 1px solid #E2E8F0;
+  background: var(--app-surface);
+  border: 1px solid var(--app-border);
   border-radius: 12px;
   overflow-x: auto;
 }
@@ -356,22 +429,34 @@ button { cursor: pointer; }
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.06em;
-  color: #64748B;
+  color: var(--app-text-4);
   text-align: left;
-  background: #F8FAFC;
-  border-bottom: 1px solid #E2E8F0;
+  background: var(--app-surface-2);
+  border-bottom: 1px solid var(--app-border);
   white-space: nowrap;
 }
 
 .data-table tbody td {
   padding: 12px 14px;
-  color: #1E293B;
-  border-bottom: 1px solid #F1F5F9;
+  color: var(--app-text);
+  border-bottom: 1px solid var(--app-border-soft);
   vertical-align: top;
+  transition: background 0.15s, color 0.15s, box-shadow 0.15s;
 }
 
 .data-table tbody tr:last-child td { border-bottom: none; }
-.data-table tbody tr:hover { background: #F8FAFC; }
+.data-table tbody tr:hover td { background: var(--app-accent-soft); }
+.data-table tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--app-accent); }
+.data-table tbody tr:hover td,
+.data-table tbody tr:hover .cell-name,
+.data-table tbody tr:hover .cell-muted,
+.data-table tbody tr:hover .desc-cell {
+  color: var(--app-accent-deep);
+}
+
+.clickable-row {
+  cursor: pointer;
+}
 
 th.num, td.num { text-align: right; white-space: nowrap; }
 th.ops, td.ops { text-align: right; white-space: nowrap; }
@@ -380,13 +465,16 @@ th.ops, td.ops { text-align: right; white-space: nowrap; }
 .data-table thead th.num,
 .data-table thead th.ops { text-align: right; }
 
-.cell-muted { color: #64748B; }
-.empty-cell { text-align: center; color: #94A3B8; padding: 28px 0 !important; }
+.cell-muted { color: var(--app-text-4); }
+.empty-cell { text-align: center; color: var(--app-text-5); padding: 28px 0 !important; }
 
+/* 部门简介仅显示一行，超出省略号 */
 .desc-cell {
   max-width: 240px;
-  color: #475569;
-  white-space: normal;
+  color: var(--app-text-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   line-height: 1.6;
 }
 
@@ -405,8 +493,8 @@ th.ops, td.ops { text-align: right; white-space: nowrap; }
   justify-content: center;
   font-size: 13px;
   font-weight: 700;
-  color: #005576;
-  background: #D9F0FF;
+  color: var(--app-accent-deep);
+  background: var(--app-accent-soft);
   border-radius: 8px;
   flex-shrink: 0;
 }
@@ -426,12 +514,63 @@ th.ops, td.ops { text-align: right; white-space: nowrap; }
   border-radius: 9999px;
   white-space: nowrap;
 }
-.status-pill--on  { color: #047857; background: #D1FAE5; }
-.status-pill--off { color: #64748B; background: #E2E8F0; }
+.status-pill--on  { color: var(--app-emerald-fg); background: var(--app-emerald-bg); }
+.status-pill--off { color: var(--app-text-4); background: var(--app-chip); }
+
+/* ========== 现代化状态切换按钮（替代原先难看的圆圈按钮） ========== */
+.status-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 9px;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.toggle-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+/* 启用中 -> 按钮显示停用操作 */
+.status-toggle-btn--off {
+  background: var(--app-orange-bg);
+  color: var(--app-orange-fg);
+  border-color: var(--app-orange-line);
+}
+.status-toggle-btn--off .toggle-dot {
+  background: #EA580C;
+}
+.status-toggle-btn--off:hover {
+  background: var(--app-rose-bg);
+  color: #DC2626;
+  border-color: var(--app-rose-line);
+}
+.status-toggle-btn--off:hover .toggle-dot {
+  background: #DC2626;
+}
+/* 已停用 -> 按钮显示启用操作 */
+.status-toggle-btn--on {
+  background: var(--app-emerald-bg);
+  color: var(--app-emerald-fg);
+  border-color: var(--app-emerald-line);
+}
+.status-toggle-btn--on .toggle-dot {
+  background: #16A34A;
+}
+.status-toggle-btn--on:hover {
+  background: var(--app-emerald-bg);
+  color: var(--app-emerald-fg);
+  border-color: var(--app-emerald-line);
+}
 
 /* ========== 行操作 ========== */
 .row-actions {
   display: inline-flex;
+  align-items: center;
   gap: 6px;
 }
 
@@ -441,17 +580,17 @@ th.ops, td.ops { text-align: right; white-space: nowrap; }
   justify-content: center;
   width: 28px;
   height: 28px;
-  color: #475569;
-  background: #F8FAFC;
-  border: 1px solid #E2E8F0;
+  color: var(--app-text-3);
+  background: var(--app-surface-2);
+  border: 1px solid var(--app-border);
   border-radius: 8px;
   transition: background 0.15s, color 0.15s, border-color 0.15s;
 }
 .icon-btn svg { width: 14px; height: 14px; }
-.icon-btn:hover { background: #D9F0FF; color: #005576; border-color: #A3D5FF; }
-.icon-btn--warn:hover { background: #FFEDD5; color: #9A3412; border-color: #FED7AA; }
-.icon-btn--ok:hover   { background: #D1FAE5; color: #047857; border-color: #A7F3D0; }
-.icon-btn--danger:hover { background: #FFE4E6; color: #BE123C; border-color: #FECDD3; }
+.icon-btn:hover { background: var(--app-accent-soft); color: var(--app-accent-deep); border-color: var(--app-accent-border); }
+.icon-btn--warn:hover { background: var(--app-orange-bg); color: var(--app-orange-fg); border-color: var(--app-orange-line); }
+.icon-btn--ok:hover   { background: var(--app-emerald-bg); color: var(--app-emerald-fg); border-color: var(--app-emerald-line); }
+.icon-btn--danger:hover { background: var(--app-rose-bg); color: var(--app-rose-fg); border-color: var(--app-rose-line); }
 
 /* ========== 弹窗 ========== */
 .modal-backdrop {
@@ -469,7 +608,7 @@ th.ops, td.ops { text-align: right; white-space: nowrap; }
 .modal {
   width: 100%;
   max-width: 480px;
-  background: #fff;
+  background: var(--app-surface);
   border-radius: 16px;
   box-shadow: 0 24px 48px rgba(15, 30, 51, 0.25);
   overflow: hidden;
@@ -486,13 +625,13 @@ th.ops, td.ops { text-align: right; white-space: nowrap; }
   align-items: center;
   justify-content: space-between;
   padding: 16px 20px;
-  border-bottom: 1px solid #F1F5F9;
+  border-bottom: 1px solid var(--app-border-soft);
 }
 
 .modal-title {
   font-size: 16px;
   font-weight: 700;
-  color: #0F1E33;
+  color: var(--app-heading);
 }
 
 .modal-close {
@@ -501,14 +640,14 @@ th.ops, td.ops { text-align: right; white-space: nowrap; }
   justify-content: center;
   width: 30px;
   height: 30px;
-  color: #64748B;
+  color: var(--app-text-4);
   background: transparent;
   border: none;
   border-radius: 8px;
   transition: background 0.15s, color 0.15s;
 }
 .modal-close svg { width: 16px; height: 16px; }
-.modal-close:hover { background: #F1F5F9; color: #0F1E33; }
+.modal-close:hover { background: var(--app-surface-3); color: var(--app-heading); }
 
 .modal-body {
   display: flex;
@@ -532,23 +671,23 @@ th.ops, td.ops { text-align: right; white-space: nowrap; }
 .field-label {
   font-size: 12px;
   font-weight: 600;
-  color: #475569;
+  color: var(--app-text-3);
 }
 
 .field-input {
   width: 100%;
   padding: 10px 12px;
   font-size: 13px;
-  color: #1E293B;
-  background: #F8FAFC;
-  border: 1px solid #E2E8F0;
+  color: var(--app-text);
+  background: var(--app-surface-2);
+  border: 1px solid var(--app-border);
   border-radius: 10px;
   outline: none;
   transition: border-color 0.15s, box-shadow 0.15s;
 }
 .field-input:focus {
-  border-color: #2E8BD6;
-  box-shadow: 0 0 0 3px rgba(46, 139, 214, 0.12);
+  border-color: var(--app-accent-strong);
+  box-shadow: 0 0 0 3px var(--app-accent-a12);
 }
 
 .field-textarea {
@@ -559,7 +698,7 @@ th.ops, td.ops { text-align: right; white-space: nowrap; }
 
 .form-error {
   font-size: 12px;
-  color: #BE123C;
+  color: var(--app-rose-fg);
 }
 
 .modal-actions {
@@ -567,6 +706,117 @@ th.ops, td.ops { text-align: right; white-space: nowrap; }
   justify-content: flex-end;
   gap: 10px;
   margin-top: 4px;
+}
+
+/* ========== 部门详情弹窗定制样式 ========== */
+.modal--detail {
+  max-width: 520px;
+}
+
+.detail-body {
+  gap: 16px;
+}
+
+.detail-header-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  background: var(--app-surface-2);
+  border: 1px solid var(--app-border);
+  border-radius: 12px;
+}
+
+.detail-avatar {
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--app-accent-deep);
+  background: var(--app-accent-soft);
+  border-radius: 10px;
+  flex-shrink: 0;
+}
+
+.detail-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.detail-name-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.detail-name {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--app-heading);
+}
+
+.detail-meta {
+  margin-top: 3px;
+  font-size: 12px;
+  color: var(--app-text-4);
+}
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.detail-stat-card {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 12px;
+  background: var(--app-surface-2);
+  border: 1px solid var(--app-border);
+  border-radius: 10px;
+  text-align: center;
+}
+
+.detail-stat-label {
+  font-size: 11px;
+  color: var(--app-text-4);
+}
+
+.detail-stat-val {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--app-heading);
+}
+
+.text-green { color: var(--app-emerald-fg) !important; }
+.text-slate { color: var(--app-text-4) !important; }
+
+.detail-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.detail-section-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--app-text-2);
+}
+
+.detail-desc-box {
+  padding: 12px 14px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--app-text-2);
+  background: var(--app-surface-2);
+  border: 1px solid var(--app-border);
+  border-radius: 10px;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 @media (max-width: 640px) {

@@ -25,7 +25,7 @@
       </div>
       <select v-model="deptFilter" class="select">
         <option value="">全部部门</option>
-        <option v-for="dept in departments" :key="dept" :value="dept">{{ dept }}</option>
+        <option v-for="dept in allDeptNames" :key="dept" :value="dept">{{ dept }}</option>
       </select>
       <select v-model="statusFilter" class="select">
         <option value="">全部状态</option>
@@ -40,6 +40,7 @@
       <table class="data-table">
         <thead>
           <tr>
+            <th>头像</th>
             <th>学员</th>
             <th>工号</th>
             <th>部门</th>
@@ -51,15 +52,15 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="learner in pagedLearners" :key="learner.id">
+          <tr v-for="learner in pagedLearners" :key="learner.id" @click="openEdit(learner)">
             <td>
-              <div class="cell-user">
-                <span class="cell-avatar">
-                  <img v-if="learner.avatarUrl" :src="learner.avatarUrl" alt="" class="cell-avatar-img" />
-                  <template v-else>{{ learner.name.charAt(0) }}</template>
-                </span>
-                <span class="cell-name">{{ learner.name }}</span>
-              </div>
+              <span class="cell-avatar">
+                <img v-if="learner.avatarUrl" :src="learner.avatarUrl" alt="" class="cell-avatar-img" />
+                <template v-else>{{ learner.name.charAt(0) }}</template>
+              </span>
+            </td>
+            <td>
+              <span class="cell-name">{{ learner.name }}</span>
             </td>
             <td class="mono">{{ learner.employeeId }}</td>
             <td>{{ learner.department }}</td>
@@ -72,18 +73,21 @@
               </span>
             </td>
             <td class="ops">
-              <div class="row-actions">
-                <button class="icon-btn" title="编辑" @click="openEdit(learner)">
-                  <EditPen />
-                </button>
+              <div class="row-actions" @click.stop>
                 <button
-                  class="icon-btn"
-                  :class="learner.status === 'active' ? 'icon-btn--warn' : 'icon-btn--ok'"
-                  :title="learner.status === 'active' ? '停用账号' : '启用账号'"
+                  class="status-toggle-btn"
+                  :class="learner.status === 'active' ? 'status-toggle-btn--off' : 'status-toggle-btn--on'"
+                  :title="learner.status === 'active' ? '停用此学员账号' : '启用此学员账号'"
                   @click="toggleStatus(learner)"
                 >
-                  <CircleClose v-if="learner.status === 'active'" />
-                  <CircleCheck v-else />
+                  <span class="toggle-dot"></span>
+                  <span>{{ learner.status === 'active' ? '停用' : '启用' }}</span>
+                </button>
+                <button class="icon-btn icon-btn--key" title="重置密码为 123456" @click="resetPassword(learner)">
+                  <Key />
+                </button>
+                <button class="icon-btn" title="编辑" @click="openEdit(learner)">
+                  <EditPen />
                 </button>
                 <button class="icon-btn icon-btn--danger" title="删除" @click="removeLearner(learner)">
                   <Delete />
@@ -92,7 +96,7 @@
             </td>
           </tr>
           <tr v-if="!filteredLearners.length">
-            <td colspan="8" class="empty-cell">没有匹配的学员</td>
+            <td colspan="9" class="empty-cell">没有匹配的学员</td>
           </tr>
         </tbody>
       </table>
@@ -138,7 +142,8 @@
             <label class="field">
               <span class="field-label">部门</span>
               <select v-model="form.department" class="field-input">
-                <option v-for="dept in departments" :key="dept" :value="dept">{{ dept }}</option>
+                <option v-if="!assignableDepts.length" value="">暂无可分配部门</option>
+                <option v-for="dept in assignableDepts" :key="dept" :value="dept">{{ dept }}</option>
               </select>
             </label>
             <label class="field">
@@ -153,25 +158,38 @@
               <option value="inactive">停用</option>
             </select>
           </label>
-          <label class="field">
-            <span class="field-label">头像链接</span>
-            <div class="avatar-input-row">
-              <input v-model.trim="form.avatarUrl" type="text" class="field-input" placeholder="粘贴图片 URL,留空则用姓名首字母头像" />
-              <span class="avatar-preview">
-                <img v-if="form.avatarUrl" :src="form.avatarUrl" alt="" class="avatar-preview-img" @error="onAvatarError" />
-                <span v-else class="avatar-preview-fallback">{{ form.name ? form.name.charAt(0) : '?' }}</span>
-              </span>
-            </div>
-          </label>
-          <label class="field">
-            <span class="field-label">登录密码</span>
+          <div class="field">
+            <span class="field-label">学员头像</span>
             <input
-              v-model="form.password"
-              type="text"
-              class="field-input"
-              :placeholder="editingId ? '留空则不修改密码' : '默认 123456,可自定义'"
+              ref="fileInputRef"
+              type="file"
+              accept="image/*"
+              style="display: none"
+              @change="handleAvatarFile"
             />
-          </label>
+            <div class="avatar-upload-box" @click="triggerFileInput">
+              <div class="avatar-upload-preview">
+                <img v-if="form.avatarUrl" :src="form.avatarUrl" alt="头像预览" class="avatar-upload-img" />
+                <span v-else class="avatar-upload-letter">{{ form.name ? form.name.charAt(0) : '?' }}</span>
+              </div>
+              <div class="avatar-upload-info">
+                <div class="avatar-upload-btn">
+                  <Plus class="upload-btn-icon" />
+                  <span>{{ form.avatarUrl ? '点击更换本地头像' : '点击上传本地头像' }}</span>
+                </div>
+                <p class="avatar-upload-hint">支持 JPG、PNG、WebP 图片，点击即可选择本地文件</p>
+              </div>
+              <button
+                v-if="form.avatarUrl"
+                type="button"
+                class="avatar-clear-btn"
+                title="清除自定义头像"
+                @click.stop="form.avatarUrl = ''"
+              >
+                <Close />
+              </button>
+            </div>
+          </div>
           <p v-if="formError" class="form-error">{{ formError }}</p>
           <div class="modal-actions">
             <button type="button" class="btn btn--ghost" @click="closeModal">取消</button>
@@ -198,10 +216,14 @@
 
 <script setup>
 import { computed, ref, watch } from 'vue';
-import { Plus, EditPen, Delete, Close, CircleClose, CircleCheck, Search } from '@element-plus/icons-vue';
+import { Plus, EditPen, Delete, Close, CircleClose, CircleCheck, Key } from '@element-plus/icons-vue';
 import { ADMIN_LEARNERS_DATA } from '../../mockData.js';
+import { adminStore } from '../../adminStore.js';
 import { useConfirm } from '../../composables/useConfirm.js';
+import { useToast } from '../../composables/useToast.js';
 import ConfirmDialog from '../../components/ConfirmDialog.vue';
+
+const { show: showToast } = useToast();
 
 const learners = ref(ADMIN_LEARNERS_DATA.map(l => ({ ...l })));
 
@@ -211,7 +233,8 @@ const keyword = ref('');
 const deptFilter = ref('');
 const statusFilter = ref('');
 
-const departments = computed(() => [...new Set(learners.value.map(l => l.department))]);
+/* 部门数据统一取自「部门管理」的共享 store */
+const allDeptNames = computed(() => adminStore.departments.map(d => d.name));
 
 const activeCount = computed(() => learners.value.filter(l => l.status === 'active').length);
 
@@ -261,12 +284,41 @@ watch(totalPages, (n) => {
 const modalOpen = ref(false);
 const editingId = ref(null);
 const formError = ref('');
-const form = ref({ name: '', employeeId: '', department: '研发部', title: '', status: 'active', avatarUrl: '', password: '' });
+const fileInputRef = ref(null);
+const form = ref({ name: '', employeeId: '', department: '', title: '', status: 'active', avatarUrl: '' });
+
+/* 只允许分配到启用中的部门；编辑时保留学员原部门，避免下拉回落把部门静默改掉 */
+const assignableDepts = computed(() => {
+  const active = adminStore.departments
+    .filter(d => d.status === 'active')
+    .map(d => d.name);
+  const current = form.value.department;
+  return current && !active.includes(current) ? [...active, current] : active;
+});
+
+const triggerFileInput = () => {
+  fileInputRef.value?.click();
+};
+
+const handleAvatarFile = (e) => {
+  const file = e.target.files?.[0];
+  if (!file) return;
+  if (!file.type.startsWith('image/')) {
+    showToast('请上传有效的图片文件', 'error');
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = (loadEvent) => {
+    form.value.avatarUrl = loadEvent.target.result;
+    showToast('头像已载入，保存后生效', 'success');
+  };
+  reader.readAsDataURL(file);
+};
 
 const openCreate = () => {
   editingId.value = null;
   formError.value = '';
-  form.value = { name: '', employeeId: '', department: departments.value[0] || '研发部', title: '', status: 'active', avatarUrl: '', password: '123456' };
+  form.value = { name: '', employeeId: '', department: assignableDepts.value[0] || '', title: '', status: 'active', avatarUrl: '' };
   modalOpen.value = true;
 };
 
@@ -279,14 +331,9 @@ const openEdit = (learner) => {
     department: learner.department,
     title: learner.title,
     status: learner.status,
-    avatarUrl: learner.avatarUrl || '',
-    password: ''
+    avatarUrl: learner.avatarUrl || ''
   };
   modalOpen.value = true;
-};
-
-const onAvatarError = (e) => {
-  e.target.style.display = 'none';
 };
 
 const closeModal = () => {
@@ -294,9 +341,34 @@ const closeModal = () => {
   formError.value = '';
 };
 
+const resetPassword = (learner) => {
+  askConfirm({
+    tone: 'warn',
+    title: '重置学员登录密码？',
+    subtitle: `${learner.name} · 工号: ${learner.employeeId}`,
+    rows: [
+      { label: '所属部门', value: learner.department },
+      { label: '学员职级', value: learner.title },
+      { label: '重置后密码', value: '123456' }
+    ],
+    tip: '重置后该学员的登录密码将统一恢复为 123456。',
+    confirmText: '确认重置为 123456',
+    action: () => {
+      learner.password = '123456';
+      showToast(`已成功将【${learner.name}】的密码重置为 123456`, 'success');
+    }
+  });
+};
+
 const saveLearner = () => {
   if (!form.value.name) { formError.value = '请输入学员姓名。'; return; }
   if (!form.value.employeeId) { formError.value = '请输入企业工号。'; return; }
+  if (!form.value.department) {
+    formError.value = assignableDepts.value.length
+      ? '请选择所属部门。'
+      : '暂无启用中的部门，请先在「部门管理」中创建或启用部门。';
+    return;
+  }
   const dup = learners.value.some(
     l => l.employeeId === form.value.employeeId && l.id !== editingId.value
   );
@@ -304,19 +376,19 @@ const saveLearner = () => {
 
   if (editingId.value) {
     const target = learners.value.find(l => l.id === editingId.value);
-    const { password, ...rest } = form.value;
-    Object.assign(target, { ...rest });
-    if (password) target.password = password;
+    Object.assign(target, { ...form.value });
+    showToast(`已更新学员【${form.value.name}】信息`, 'success');
   } else {
     learners.value.unshift({
       id: `u-${Date.now()}`,
       ...form.value,
-      password: form.value.password || '123456',
+      password: '123456',
       learningHours: 0,
       completedCourses: 0,
       certificateCount: 0,
       lastActive: '—'
     });
+    showToast(`成功新增学员【${form.value.name}】，初始密码为 123456`, 'success');
   }
   closeModal();
 };
@@ -373,14 +445,14 @@ button { cursor: pointer; }
 .page-title {
   font-size: 24px;
   font-weight: 700;
-  color: #0F1E33;
+  color: var(--app-heading);
   letter-spacing: -0.02em;
 }
 
 .page-sub {
   margin-top: 4px;
   font-size: 13px;
-  color: #64748B;
+  color: var(--app-text-4);
 }
 
 .btn {
@@ -398,19 +470,19 @@ button { cursor: pointer; }
 .btn-icon { width: 15px; height: 15px; }
 
 .btn--primary {
-  background: linear-gradient(135deg, #E9B949, #D19A2B);
-  color: #241A04;
-  border-color: #D19A2B;
-  box-shadow: 0 2px 6px rgba(233, 185, 73, 0.35);
+  background: linear-gradient(135deg, var(--app-brand), var(--app-brand-deep));
+  color: var(--app-brand-on);
+  border-color: var(--app-brand-deep);
+  box-shadow: 0 2px 6px var(--app-brand-glow);
 }
-.btn--primary:hover { background: linear-gradient(135deg, #F0C45E, #D19A2B); }
+.btn--primary:hover { background: linear-gradient(135deg, var(--app-brand-hi), var(--app-brand-deep)); }
 
 .btn--ghost {
-  background: #fff;
-  color: #334155;
-  border-color: #E2E8F0;
+  background: var(--app-surface);
+  color: var(--app-text-2);
+  border-color: var(--app-text-6);
 }
-.btn--ghost:hover { border-color: #E9B949; color: #8A6414; }
+.btn--ghost:hover { border-color: var(--app-brand); color: var(--app-brand-ink); }
 
 /* ========== 工具栏 ========== */
 .toolbar {
@@ -418,8 +490,8 @@ button { cursor: pointer; }
   align-items: center;
   gap: 10px;
   padding: 12px 14px;
-  background: #fff;
-  border: 1px solid #E2E8F0;
+  background: var(--app-surface);
+  border: 1px solid var(--app-border);
   border-radius: 12px;
   flex-wrap: wrap;
 }
@@ -431,14 +503,14 @@ button { cursor: pointer; }
   flex: 1;
   min-width: 200px;
   padding: 0 12px;
-  background: #F8FAFC;
-  border: 1px solid #E2E8F0;
+  background: var(--app-surface-2);
+  border: 1px solid var(--app-border);
   border-radius: 10px;
   transition: border-color 0.15s, box-shadow 0.15s;
 }
 .search-box:focus-within {
-  border-color: #2E8BD6;
-  box-shadow: 0 0 0 3px rgba(46, 139, 214, 0.12);
+  border-color: var(--app-accent-strong);
+  box-shadow: 0 0 0 3px var(--app-accent-a12);
 }
 
 .search-icon {
@@ -454,7 +526,7 @@ button { cursor: pointer; }
   left: 0;
   width: 9px;
   height: 9px;
-  border: 2px solid #64748B;
+  border: 2px solid var(--app-text-4);
   border-radius: 50%;
 }
 .search-icon::after {
@@ -464,7 +536,7 @@ button { cursor: pointer; }
   right: 0;
   width: 6px;
   height: 2px;
-  background: #64748B;
+  background: var(--app-text-4);
   border-radius: 1px;
   transform: rotate(45deg);
   transform-origin: right center;
@@ -475,7 +547,7 @@ button { cursor: pointer; }
   min-width: 0;
   padding: 9px 0;
   font-size: 13px;
-  color: #1E293B;
+  color: var(--app-text);
   background: transparent;
   border: none;
   outline: none;
@@ -484,25 +556,25 @@ button { cursor: pointer; }
 .select {
   padding: 9px 12px;
   font-size: 13px;
-  color: #334155;
-  background: #F8FAFC;
-  border: 1px solid #E2E8F0;
+  color: var(--app-text-2);
+  background: var(--app-surface-2);
+  border: 1px solid var(--app-border);
   border-radius: 10px;
   outline: none;
   transition: border-color 0.15s;
 }
-.select:focus { border-color: #2E8BD6; }
+.select:focus { border-color: var(--app-accent-strong); }
 
 .toolbar-result {
   margin-left: auto;
   font-size: 12px;
-  color: #94A3B8;
+  color: var(--app-text-5);
 }
 
 /* ========== 表格 ========== */
 .table-wrap {
-  background: #fff;
-  border: 1px solid #E2E8F0;
+  background: var(--app-surface);
+  border: 1px solid var(--app-border);
   border-radius: 12px;
   overflow-x: auto;
 }
@@ -518,22 +590,31 @@ button { cursor: pointer; }
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.06em;
-  color: #64748B;
+  color: var(--app-text-4);
   text-align: left;
-  background: #F8FAFC;
-  border-bottom: 1px solid #E2E8F0;
+  background: var(--app-surface-2);
+  border-bottom: 1px solid var(--app-border);
   white-space: nowrap;
 }
 
 .data-table tbody td {
   padding: 12px 14px;
-  color: #1E293B;
-  border-bottom: 1px solid #F1F5F9;
+  color: var(--app-text);
+  border-bottom: 1px solid var(--app-border-soft);
   white-space: nowrap;
 }
 
 .data-table tbody tr:last-child td { border-bottom: none; }
-.data-table tbody tr:hover { background: #F8FAFC; }
+.data-table tbody tr { cursor: pointer; }
+.data-table tbody td { transition: background 0.15s, color 0.15s, box-shadow 0.15s; }
+.data-table tbody tr:hover td { background: var(--app-accent-soft); }
+.data-table tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--app-accent); }
+.data-table tbody tr:hover td,
+.data-table tbody tr:hover .cell-name,
+.data-table tbody tr:hover .cell-meta,
+.data-table tbody tr:hover .cell-muted {
+  color: var(--app-accent-deep);
+}
 
 th.num, td.num { text-align: right; }
 th.ops, td.ops { text-align: right; }
@@ -547,8 +628,8 @@ th.ops, td.ops { text-align: right; }
 .data-table td.center { text-align: center; }
 
 .mono { font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 12px; }
-.cell-muted { color: #64748B; }
-.empty-cell { text-align: center; color: #94A3B8; padding: 28px 0 !important; }
+.cell-muted { color: var(--app-text-4); }
+.empty-cell { text-align: center; color: var(--app-text-5); padding: 28px 0 !important; }
 
 /* ========== 分页 ========== */
 .pager {
@@ -563,7 +644,7 @@ th.ops, td.ops { text-align: right; }
 
 .pager-info {
   font-size: 12px;
-  color: #94A3B8;
+  color: var(--app-text-5);
 }
 
 .pager-controls {
@@ -579,23 +660,23 @@ th.ops, td.ops { text-align: right; }
   font-family: inherit;
   font-size: 12px;
   font-weight: 600;
-  color: #475569;
-  background: #fff;
-  border: 1px solid #E2E8F0;
+  color: var(--app-text-3);
+  background: var(--app-surface);
+  border: 1px solid var(--app-border);
   border-radius: 8px;
   cursor: pointer;
   transition: background 0.15s, color 0.15s, border-color 0.15s;
 }
 
 .pager-btn:hover:not(:disabled) {
-  background: #FDF7E7;
-  color: #8A6414;
-  border-color: #E9B949;
+  background: var(--app-brand-wash);
+  color: var(--app-brand-ink);
+  border-color: var(--app-brand);
 }
 
 .pager-btn:disabled {
-  color: #CBD5E1;
-  background: #F8FAFC;
+  color: var(--app-text-6);
+  background: var(--app-surface-2);
   cursor: not-allowed;
 }
 
@@ -604,8 +685,8 @@ th.ops, td.ops { text-align: right; }
 .pager-btn--active,
 .pager-btn--active:hover:not(:disabled) {
   color: #fff;
-  background: linear-gradient(135deg, #E9B949, #D19A2B);
-  border-color: #D19A2B;
+  background: linear-gradient(135deg, var(--app-brand), var(--app-brand-deep));
+  border-color: var(--app-brand-deep);
 }
 
 .cell-user { display: flex; align-items: center; gap: 8px; }
@@ -618,8 +699,8 @@ th.ops, td.ops { text-align: right; }
   justify-content: center;
   font-size: 12px;
   font-weight: 700;
-  color: #005576;
-  background: #D9F0FF;
+  color: var(--app-accent-deep);
+  background: var(--app-accent-soft);
   border-radius: 50%;
   flex-shrink: 0;
   overflow: hidden;
@@ -642,13 +723,64 @@ th.ops, td.ops { text-align: right; }
   font-weight: 700;
   border-radius: 9999px;
 }
-.status-pill--on  { color: #047857; background: #D1FAE5; }
-.status-pill--off { color: #64748B; background: #E2E8F0; }
+.status-pill--on  { color: var(--app-emerald-fg); background: var(--app-emerald-bg); }
+.status-pill--off { color: var(--app-text-4); background: var(--app-chip); }
 
 /* ========== 行操作 ========== */
 .row-actions {
   display: inline-flex;
+  align-items: center;
   gap: 6px;
+}
+
+/* ========== 现代化状态切换按钮（替代原先难看的圆圈按钮） ========== */
+.status-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 9px;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.toggle-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+/* 正常学习中 -> 按钮显示停用操作 */
+.status-toggle-btn--off {
+  background: var(--app-orange-bg);
+  color: var(--app-orange-fg);
+  border-color: var(--app-orange-line);
+}
+.status-toggle-btn--off .toggle-dot {
+  background: #EA580C;
+}
+.status-toggle-btn--off:hover {
+  background: var(--app-rose-bg);
+  color: #DC2626;
+  border-color: var(--app-rose-line);
+}
+.status-toggle-btn--off:hover .toggle-dot {
+  background: #DC2626;
+}
+/* 已停用 -> 按钮显示启用操作 */
+.status-toggle-btn--on {
+  background: var(--app-emerald-bg);
+  color: var(--app-emerald-fg);
+  border-color: var(--app-emerald-line);
+}
+.status-toggle-btn--on .toggle-dot {
+  background: #16A34A;
+}
+.status-toggle-btn--on:hover {
+  background: var(--app-emerald-bg);
+  color: var(--app-emerald-fg);
+  border-color: var(--app-emerald-line);
 }
 
 .icon-btn {
@@ -657,17 +789,18 @@ th.ops, td.ops { text-align: right; }
   justify-content: center;
   width: 28px;
   height: 28px;
-  color: #475569;
-  background: #F8FAFC;
-  border: 1px solid #E2E8F0;
+  color: var(--app-text-3);
+  background: var(--app-surface-2);
+  border: 1px solid var(--app-border);
   border-radius: 8px;
   transition: background 0.15s, color 0.15s, border-color 0.15s;
 }
 .icon-btn svg { width: 14px; height: 14px; }
-.icon-btn:hover { background: #D9F0FF; color: #005576; border-color: #A3D5FF; }
-.icon-btn--warn:hover { background: #FFEDD5; color: #9A3412; border-color: #FED7AA; }
-.icon-btn--ok:hover   { background: #D1FAE5; color: #047857; border-color: #A7F3D0; }
-.icon-btn--danger:hover { background: #FFE4E6; color: #BE123C; border-color: #FECDD3; }
+.icon-btn:hover { background: var(--app-accent-soft); color: var(--app-accent-deep); border-color: var(--app-accent-border); }
+.icon-btn--key:hover { background: var(--app-amber-bg); color: var(--app-amber-fg); border-color: var(--app-amber-line); }
+.icon-btn--warn:hover { background: var(--app-orange-bg); color: var(--app-orange-fg); border-color: var(--app-orange-line); }
+.icon-btn--ok:hover   { background: var(--app-emerald-bg); color: var(--app-emerald-fg); border-color: var(--app-emerald-line); }
+.icon-btn--danger:hover { background: var(--app-rose-bg); color: var(--app-rose-fg); border-color: var(--app-rose-line); }
 
 /* ========== 弹窗 ========== */
 .modal-backdrop {
@@ -685,7 +818,7 @@ th.ops, td.ops { text-align: right; }
 .modal {
   width: 100%;
   max-width: 460px;
-  background: #fff;
+  background: var(--app-surface);
   border-radius: 16px;
   box-shadow: 0 24px 48px rgba(15, 30, 51, 0.25);
   overflow: hidden;
@@ -702,13 +835,13 @@ th.ops, td.ops { text-align: right; }
   align-items: center;
   justify-content: space-between;
   padding: 16px 20px;
-  border-bottom: 1px solid #F1F5F9;
+  border-bottom: 1px solid var(--app-border-soft);
 }
 
 .modal-title {
   font-size: 16px;
   font-weight: 700;
-  color: #0F1E33;
+  color: var(--app-heading);
 }
 
 .modal-close {
@@ -717,14 +850,14 @@ th.ops, td.ops { text-align: right; }
   justify-content: center;
   width: 30px;
   height: 30px;
-  color: #64748B;
+  color: var(--app-text-4);
   background: transparent;
   border: none;
   border-radius: 8px;
   transition: background 0.15s, color 0.15s;
 }
 .modal-close svg { width: 16px; height: 16px; }
-.modal-close:hover { background: #F1F5F9; color: #0F1E33; }
+.modal-close:hover { background: var(--app-surface-3); color: var(--app-heading); }
 
 .modal-body {
   display: flex;
@@ -748,60 +881,120 @@ th.ops, td.ops { text-align: right; }
 .field-label {
   font-size: 12px;
   font-weight: 600;
-  color: #475569;
+  color: var(--app-text-3);
 }
 
 .field-input {
   width: 100%;
   padding: 10px 12px;
   font-size: 13px;
-  color: #1E293B;
-  background: #F8FAFC;
-  border: 1px solid #E2E8F0;
+  color: var(--app-text);
+  background: var(--app-surface-2);
+  border: 1px solid var(--app-border);
   border-radius: 10px;
   outline: none;
   transition: border-color 0.15s, box-shadow 0.15s;
 }
 .field-input:focus {
-  border-color: #2E8BD6;
-  box-shadow: 0 0 0 3px rgba(46, 139, 214, 0.12);
+  border-color: var(--app-accent-strong);
+  box-shadow: 0 0 0 3px var(--app-accent-a12);
 }
 
 .form-error {
   font-size: 12px;
-  color: #BE123C;
+  color: var(--app-rose-fg);
 }
 
-/* 头像链接行 */
-.avatar-input-row {
+/* 本地头像点击上传区域 */
+.avatar-upload-box {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 14px;
+  padding: 12px 14px;
+  background: var(--app-surface-2);
+  border: 1.5px dashed var(--app-border-strong);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+}
+.avatar-upload-box:hover {
+  background: var(--app-surface-3);
+  border-color: var(--app-accent-strong);
 }
 
-.avatar-preview {
-  width: 40px;
-  height: 40px;
+.avatar-upload-preview {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--app-accent-soft);
+  border: 2px solid var(--app-blue-line);
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #D9F0FF;
-  border: 1px solid #A3D5FF;
-  border-radius: 50%;
   overflow: hidden;
   flex-shrink: 0;
 }
 
-.avatar-preview-img {
+.avatar-upload-img {
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
 
-.avatar-preview-fallback {
-  font-size: 16px;
+.avatar-upload-letter {
+  font-size: 18px;
   font-weight: 700;
-  color: #005576;
+  color: var(--app-accent-deep);
+}
+
+.avatar-upload-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.avatar-upload-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--app-blue-fg);
+}
+
+.upload-btn-icon {
+  width: 14px;
+  height: 14px;
+}
+
+.avatar-upload-hint {
+  font-size: 11px;
+  color: var(--app-text-5);
+}
+
+.avatar-clear-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1px solid var(--app-border);
+  background: var(--app-surface);
+  color: var(--app-text-4);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.avatar-clear-btn:hover {
+  background: var(--app-rose-bg);
+  color: var(--app-rose-fg);
+  border-color: var(--app-rose-line);
+}
+.avatar-clear-btn svg {
+  width: 13px;
+  height: 13px;
 }
 
 .modal-actions {

@@ -108,7 +108,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
 .cf-modal {
   width: 100%;
   max-width: 420px;
-  background: #fff;
+  background: var(--app-surface);
   border-radius: 16px;
   box-shadow: 0 24px 60px rgba(15, 30, 51, 0.28);
   overflow: hidden;
@@ -136,6 +136,8 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
 .cf-icon--danger  { color: #BE123C; background: #FFE4E6; }
 .cf-icon--success { color: #047857; background: #D1FAE5; }
 .cf-icon--primary { color: #B45309; background: #FEF3C7; }
+.cf-icon--warn,
+.cf-icon--warning { color: #D97706; background: var(--app-brand-tint); }
 
 .cf-heading { min-width: 0; padding-top: 1px; }
 
@@ -143,7 +145,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
   font-size: 16px;
   font-weight: 700;
   line-height: 1.45;
-  color: #0F1E33;
+  color: var(--app-heading);
   letter-spacing: -0.01em;
 }
 
@@ -151,15 +153,15 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
   margin-top: 5px;
   font-size: 12.5px;
   line-height: 1.5;
-  color: #94A3B8;
+  color: var(--app-text-5);
 }
 
 /* ========== 信息行 ========== */
 .cf-body {
   margin: 18px 24px 0;
   padding: 2px 14px;
-  background: #F8FAFC;
-  border: 1px solid #EEF2F7;
+  background: var(--app-surface-2);
+  border: 1px solid var(--app-border-soft);
   border-radius: 12px;
 }
 
@@ -171,7 +173,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
   padding: 10px 0;
   font-size: 13px;
   line-height: 1.5;
-  border-bottom: 1px dashed #E6EBF2;
+  border-bottom: 1px dashed var(--app-border-soft);
 }
 .cf-row:last-child { border-bottom: none; }
 
@@ -194,20 +196,20 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
   font-weight: 700;
   letter-spacing: 0.04em;
   color: #B45309;
-  background: #FEF3C7;
+  background: var(--app-brand-tint);
   border-radius: 5px;
   padding: 1px 5px;
 }
 
-.cf-list-text { color: #334155; }
+.cf-list-text { color: var(--app-text-2); }
 
 .cf-key {
   flex-shrink: 0;
-  color: #94A3B8;
+  color: var(--app-text-5);
 }
 
 .cf-val {
-  color: #334155;
+  color: var(--app-text-2);
   font-weight: 600;
   text-align: right;
   word-break: break-word;
@@ -224,6 +226,8 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
 .cf-tip--danger  { color: #BE123C; background: #FFF1F2; border: 1px solid #FECDD3; }
 .cf-tip--success { color: #047857; background: #F0FDF4; border: 1px solid #D1FAE5; }
 .cf-tip--primary { color: #B45309; background: #FFFBEB; border: 1px solid #FDE68A; }
+.cf-tip--warn,
+.cf-tip--warning { color: #B45309; background: #FFFBEB; border: 1px solid #FDE68A; }
 
 /* ========== 底部按钮 ========== */
 .cf-actions {
@@ -234,34 +238,54 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
 }
 
 .cf-btn {
-  min-width: 88px;
-  padding: 9px 18px;
+  min-width: 96px;
+  padding: 9px 20px;
   font-size: 13px;
   font-weight: 600;
   font-family: inherit;
   border: 1px solid transparent;
   border-radius: 10px;
   cursor: pointer;
-  transition: background 0.15s, border-color 0.15s, color 0.15s, transform 0.15s;
+  transition: background 0.15s, border-color 0.15s, color 0.15s, transform 0.15s, box-shadow 0.15s;
 }
 .cf-btn:active { transform: translateY(1px); }
 .cf-btn:focus-visible { outline: 2px solid rgba(148, 163, 184, 0.7); outline-offset: 2px; }
 
-.cf-btn--ghost {
-  color: #475569;
-  background: #fff;
-  border-color: #E2E8F0;
+/* 默认兜底确认按钮样式，确保无论任何 tone 都高亮显眼 */
+.cf-btn:not(.cf-btn--ghost) {
+  color: #fff;
+  background: linear-gradient(135deg, var(--app-brand), var(--app-brand-deep));
+  box-shadow: 0 2px 8px var(--app-brand-a45);
 }
-.cf-btn--ghost:hover { background: #F8FAFC; border-color: #CBD5E1; }
 
-.cf-btn--danger  { color: #fff; background: #BE123C; }
-.cf-btn--danger:hover  { background: #9F1239; }
+.cf-btn--ghost {
+  color: var(--app-text-3);
+  background: var(--app-surface-2);
+  border-color: var(--app-text-6);
+}
+.cf-btn--ghost:hover { background: var(--app-surface-2); border-color: var(--app-text-6); color: var(--app-text); }
 
-.cf-btn--success { color: #fff; background: #047857; }
-.cf-btn--success:hover { background: #036B4E; }
+.cf-btn--danger  { color: #fff; background: #BE123C; box-shadow: 0 2px 8px rgba(190, 18, 60, 0.35); }
+.cf-btn--danger:hover  { background: #9F1239; box-shadow: 0 4px 12px rgba(190, 18, 60, 0.45); }
 
-.cf-btn--primary { color: #241A04; background: linear-gradient(135deg, #E9B949, #D19A2B); }
-.cf-btn--primary:hover { background: linear-gradient(135deg, #EEC45E, #C88F23); }
+.cf-btn--success { color: #fff; background: #047857; box-shadow: 0 2px 8px rgba(4, 120, 87, 0.35); }
+.cf-btn--success:hover { background: #036B4E; box-shadow: 0 4px 12px rgba(4, 120, 87, 0.45); }
+
+.cf-btn--primary { color: var(--app-brand-on); background: linear-gradient(135deg, var(--app-brand), var(--app-brand-deep)); box-shadow: 0 2px 8px var(--app-brand-glow); }
+.cf-btn--primary:hover { background: linear-gradient(135deg, var(--app-brand-hi), var(--app-brand-deep)); box-shadow: 0 4px 12px var(--app-brand-a45); }
+
+.cf-btn--warn,
+.cf-btn--warning {
+  color: #fff !important;
+  background: linear-gradient(135deg, #F59E0B, #D97706) !important;
+  border-color: #D97706 !important;
+  box-shadow: 0 3px 10px rgba(217, 119, 6, 0.4) !important;
+}
+.cf-btn--warn:hover,
+.cf-btn--warning:hover {
+  background: linear-gradient(135deg, #FBBF24, #D97706) !important;
+  box-shadow: 0 5px 14px rgba(217, 119, 6, 0.5) !important;
+}
 
 /* ========== 动画 ========== */
 .cf-enter-active,

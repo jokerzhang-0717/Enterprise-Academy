@@ -1,11 +1,11 @@
 <template>
-  <div class="profile-page">
+  <div class="profile-page" :class="{ 'profile-page--admin': user?.role === 'admin' }">
 
     <!-- ============ 1. 面包屑导航 ============ -->
     <header class="profile-crumb">
-      <span class="profile-crumb__item">企业赋能平台</span>
+      <span class="profile-crumb__item">{{ user?.role === 'admin' ? '管理控制台' : '企业赋能平台' }}</span>
       <span class="profile-crumb__sep">/</span>
-      <span class="profile-crumb__item is-current">个人中心</span>
+      <span class="profile-crumb__item is-current">{{ user?.role === 'admin' ? '管理员个人信息' : '个人中心' }}</span>
     </header>
 
     <!-- ============ 2. 个人档案横幅 ============ -->
@@ -25,7 +25,7 @@
 
         <!-- 姓名 / 部门 / 标签 -->
         <div class="profile-hero__info">
-          <p class="profile-hero__label">个人档案</p>
+          <p class="profile-hero__label">{{ user?.role === 'admin' ? '管理员资料' : '个人档案' }}</p>
           <h2 class="profile-hero__name">{{ user.name }}</h2>
           <p class="profile-hero__dept">{{ user.department }}</p>
           <div class="profile-hero__tags">
@@ -34,8 +34,18 @@
           </div>
         </div>
 
-        <!-- 学习统计 -->
-        <div class="profile-hero__stats">
+        <!-- 学习统计 / 管理员概览 -->
+        <div class="profile-hero__stats" v-if="user?.role === 'admin'">
+          <div class="profile-stat">
+            <p class="profile-stat__label">管理权限</p>
+            <p class="profile-stat__value">超级管理</p>
+          </div>
+          <div class="profile-stat">
+            <p class="profile-stat__label">系统权限</p>
+            <p class="profile-stat__value">全量可用</p>
+          </div>
+        </div>
+        <div class="profile-hero__stats" v-else>
           <div class="profile-stat">
             <p class="profile-stat__label">累计学时</p>
             <p class="profile-stat__value">{{ user.learningHours ?? 0 }}<span class="profile-stat__unit">小时</span></p>
@@ -388,14 +398,14 @@ const submitPasswordChange = () => {
   gap: 0.5rem;
   margin-bottom: 0.5rem;
   font-size: 0.875rem;
-  color: #64748b;
+  color: var(--app-text-4);
 }
 .profile-crumb__item.is-current {
   font-weight: 600;
-  color: #005576;
+  color: var(--app-accent-deep);
 }
 .profile-crumb__sep {
-  color: #cbd5e1;
+  color: var(--app-text-6);
 }
 
 /* ==================== 04 档案横幅 ==================== */
@@ -405,8 +415,8 @@ const submitPasswordChange = () => {
   overflow: hidden;
   border-radius: 1rem;      /* 16px */
   padding: 1.5rem;          /* 24px */
-  color: #005576;
-  background-image: linear-gradient(112deg, #83c9f4 0%, #a3d5ff 58%, #d9f0ff 100%);
+  color: var(--app-accent-deep);
+  background-image: linear-gradient(112deg, var(--app-accent) 0%, var(--app-accent-border) 58%, var(--app-accent-soft) 100%);
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 @media (min-width: 640px) {
@@ -481,16 +491,16 @@ const submitPasswordChange = () => {
   justify-content: center;
   width: 1.5rem;
   height: 1.5rem;
-  border: 2px solid #83c9f4;
+  border: 2px solid var(--app-accent);
   border-radius: 50%;
-  background: #fff;
-  color: #005576;
+  background: var(--app-surface);
+  color: var(--app-accent-deep);
   cursor: pointer;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
   transition: background-color 0.2s;
 }
 .profile-avatar__edit:hover {
-  background: #d9f0ff;
+  background: var(--app-accent-soft);
 }
 
 /* ---- 姓名信息 ---- */
@@ -529,7 +539,7 @@ const submitPasswordChange = () => {
   border-radius: 0.375rem;
   background: rgb(255 255 255 / 45%);
   font-size: 0.75rem;
-  color: #005576;
+  color: var(--app-accent-deep);
 }
 
 /* ---- 学习统计 ---- */
@@ -571,9 +581,9 @@ const submitPasswordChange = () => {
 /* ==================== 06 表单卡片 ==================== */
 .profile-card {
   padding: 1.25rem;         /* 20px */
-  border: 1px solid #e5eaf0;
+  border: 1px solid var(--app-border-soft);
   border-radius: 1rem;
-  background: #fff;
+  background: var(--app-surface);
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 @media (min-width: 640px) {
@@ -591,7 +601,7 @@ const submitPasswordChange = () => {
   gap: 1rem;
   margin-top: 1rem;
   padding-top: 1rem;
-  border-top: 1px solid #eef2f6;
+  border-top: 1px solid var(--app-border-soft);
 }
 .profile-card__foot .profile-note {
   margin: 0;
@@ -607,7 +617,7 @@ const submitPasswordChange = () => {
   justify-content: space-between;
   gap: 1rem;
   padding-bottom: 1.25rem;
-  border-bottom: 1px solid #eef2f6;
+  border-bottom: 1px solid var(--app-border-soft);
 }
 .profile-card__title {
   display: flex;
@@ -669,7 +679,7 @@ const submitPasswordChange = () => {
   height: 2rem;
   flex-shrink: 0;
   border-radius: 0.5rem;
-  background: #fff;
+  background: var(--app-surface);
   color: #0879a5;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
@@ -718,13 +728,13 @@ const submitPasswordChange = () => {
 .profile-block {
   margin-top: 1.25rem;
   padding-top: 1.25rem;
-  border-top: 1px solid #eef2f6;
+  border-top: 1px solid var(--app-border-soft);
 }
 .profile-block__title {
   margin: 0;
   font-size: 0.875rem;
   font-weight: 700;
-  color: #334155;
+  color: var(--app-text-2);
 }
 .profile-block__desc {
   margin: 0.25rem 0 0;
@@ -743,7 +753,7 @@ const submitPasswordChange = () => {
   grid-column: 1 / -1;
 }
 .profile-field > span {
-  color: #475569;
+  color: var(--app-text-3);
   font-size: 0.75rem;
   font-weight: 600;
 }
@@ -752,7 +762,7 @@ const submitPasswordChange = () => {
 }
 .profile-field small {
   font-size: 0.6875rem;
-  color: #94a3b8;
+  color: var(--app-text-5);
 }
 .profile-field__error {
   color: #e11d48 !important;
@@ -768,9 +778,9 @@ const submitPasswordChange = () => {
 .profile-field select {
   width: 100%;
   min-height: 2.625rem;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--app-border);
   border-radius: 0.5rem;
-  background: white;
+  background: var(--app-surface);
   padding: 0.625rem 0.75rem;
   color: #172b4d;
   font-size: 0.8125rem;
@@ -784,13 +794,13 @@ const submitPasswordChange = () => {
 }
 .profile-field input:focus,
 .profile-field select:focus {
-  border-color: #38a6d4;
+  border-color: var(--app-accent-focus);
   box-shadow: 0 0 0 3px rgb(56 166 212 / 13%);
 }
 .profile-field input:disabled {
   cursor: not-allowed;
-  background: #f7f9fb;
-  color: #94a3b8;
+  background: var(--app-surface-2);
+  color: var(--app-text-5);
 }
 
 /* ==================== 08 修改密码 ==================== */
@@ -832,12 +842,12 @@ const submitPasswordChange = () => {
   transition: background-color 0.2s, box-shadow 0.2s;
 }
 .profile-btn--primary {
-  background: #83c9f4;
-  color: #005576;
+  background: var(--app-accent);
+  color: var(--app-accent-deep);
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 .profile-btn--primary:hover {
-  background: #a3d5ff;
+  background: var(--app-accent-border);
 }
 .profile-btn--primary:focus-visible {
   outline: none;
@@ -847,7 +857,7 @@ const submitPasswordChange = () => {
   flex-shrink: 0;
   padding: 0.625rem 1rem;
   border: 1px solid #d8d5f2;
-  background: #fff;
+  background: var(--app-surface);
   color: #6555b0;
 }
 .profile-btn--violet:hover {
@@ -860,7 +870,7 @@ const submitPasswordChange = () => {
 
 .profile-note {
   font-size: 0.6875rem;
-  color: #94a3b8;
+  color: var(--app-text-5);
 }
 .profile-note--wrap {
   line-height: 1.25rem;
@@ -891,5 +901,93 @@ const submitPasswordChange = () => {
 /* ==================== 10 隐藏元素 ==================== */
 .profile-hidden {
   display: none;
+}
+
+/* ==================== 11 管理端主题覆盖 ====================
+   本页同时给学员端和管理端用。学员端永远走上面的原色,
+   .profile-page--admin 只在 role==='admin' 时挂上,
+   让横幅、卡片、按钮按当前主题 token 重画,深色主题下不出现浅底深字。 */
+.profile-page--admin .profile-hero__label,
+.profile-page--admin .profile-stat__label {
+  color: var(--app-on-hero-soft);
+}
+.profile-page--admin .profile-hero__dept,
+.profile-page--admin .profile-stat__unit {
+  color: var(--app-on-hero);
+}
+.profile-page--admin .profile-avatar {
+  border-color: var(--app-glass-line);
+  background: var(--app-glass-bg-strong);
+}
+.profile-page--admin .profile-hero__tag,
+.profile-page--admin .profile-hero__stats {
+  border-color: var(--app-glass-line);
+  background: var(--app-glass-bg);
+}
+.profile-page--admin .profile-stat + .profile-stat {
+  border-left-color: var(--app-hero-divide);
+}
+.profile-page--admin .profile-card__name {
+  color: var(--app-heading);
+}
+.profile-page--admin .profile-card__desc,
+.profile-page--admin .profile-block__desc {
+  color: var(--app-text-4);
+}
+.profile-page--admin .profile-card__icon--sky {
+  background: var(--app-blue-bg);
+  color: var(--app-blue-fg);
+}
+.profile-page--admin .profile-card__icon--violet {
+  background: var(--app-violet-bg);
+  color: var(--app-violet-fg);
+}
+.profile-page--admin .profile-tip {
+  border-color: var(--app-blue-line);
+  background: var(--app-blue-bg);
+}
+.profile-page--admin .profile-tip__icon {
+  color: var(--app-blue-fg);
+}
+.profile-page--admin .profile-tip__title {
+  color: var(--app-blue-fg);
+}
+.profile-page--admin .profile-tip__text {
+  color: var(--app-text-3);
+}
+.profile-page--admin .profile-saved {
+  color: var(--app-emerald-fg);
+}
+.profile-page--admin .profile-field input,
+.profile-page--admin .profile-field select {
+  color: var(--app-text);
+}
+.profile-page--admin .profile-badge-amber {
+  background: var(--app-amber-bg);
+  color: var(--app-amber-fg);
+}
+.profile-page--admin .profile-btn--primary {
+  color: var(--app-on-accent-fill);
+}
+.profile-page--admin .profile-btn--primary:hover {
+  background: var(--app-accent-fill-hi);
+}
+.profile-page--admin .profile-btn--violet {
+  border-color: var(--app-violet-line);
+  color: var(--app-violet-fg);
+}
+.profile-page--admin .profile-btn--violet:hover {
+  background: var(--app-violet-bg);
+}
+.profile-page--admin .profile-btn--violet:focus-visible {
+  box-shadow: 0 0 0 4px var(--app-violet-bg);
+}
+.profile-page--admin .profile-alert--error {
+  background: var(--app-rose-bg);
+  color: var(--app-rose-fg);
+}
+.profile-page--admin .profile-alert--warn {
+  background: var(--app-amber-bg);
+  color: var(--app-amber-fg);
 }
 </style>
