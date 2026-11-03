@@ -1,5 +1,5 @@
 <template>
-  <div class="admin-checkin">
+  <div class="admin-checkin admin-fit-page">
 
     <!-- 页头 -->
     <div class="page-head">
@@ -122,7 +122,6 @@ const openDetail = (record) => { detailRecord.value = record; };
   flex-direction: column;
   gap: 16px;
   min-height: 100%;
-  height: 100%;
 }
 
 /* ========== 页头 ========== */
@@ -271,6 +270,8 @@ const openDetail = (record) => { detailRecord.value = record; };
 .status-pill {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
+  min-width: 56px;
   padding: 3px 10px;
   font-size: 11px;
   font-weight: 700;

@@ -1,5 +1,5 @@
 <template>
-  <div class="admin-bank">
+  <div class="admin-bank admin-fit-page">
 
     <!-- 页头 -->
     <div class="page-head">
@@ -299,7 +299,7 @@ const filteredQuestions = computed(() => {
   });
 });
 
-const { page, totalPages, paged: pagedQuestions, resetPage } = usePager(filteredQuestions, 4);
+const { page, totalPages, paged: pagedQuestions, resetPage } = usePager(filteredQuestions, 5);
 watch([examFilter, typeFilter, keyword], resetPage);
 
 /* ---------- 弹窗表单 ---------- */
@@ -623,7 +623,6 @@ button { cursor: pointer; }
   flex-direction: column;
   gap: 16px;
   min-height: 100%;
-  height: 100%;
 }
 
 /* ========== 页头 ========== */

@@ -1,5 +1,5 @@
 <template>
-  <div class="admin-exams">
+  <div class="admin-exams admin-fit-page">
 
     <!-- 页头 -->
     <div class="page-head">
@@ -76,6 +76,9 @@
                   class="text-btn text-btn--warn"
                   @click="revokeExam(exam)"
                 >撤回</button>
+                <button class="icon-btn" title="编辑" @click="openEdit(exam)">
+                  <EditPen />
+                </button>
                 <button class="icon-btn icon-btn--danger" title="删除" @click="removeExam(exam)">
                   <Delete />
                 </button>
@@ -107,17 +110,16 @@
         { label: '考试时长', value: `${detailExam.durationMinutes} 分钟` },
         { label: '题目数量', value: `${questionCount(detailExam.id)} 道` },
         { label: '总分 / 及格分', value: `${detailExam.totalScore} / ${detailExam.passScore}` },
-        { label: '参考人数', value: `${detailExam.participants} 人` },
         { label: '当前状态', value: stateLabel(detailExam.state) }
       ]"
       @close="detailExam = null"
     />
 
-    <!-- 新建考试弹窗 -->
+    <!-- 新建 / 编辑考试弹窗 -->
     <div v-if="modalOpen" class="modal-backdrop" @click.self="closeModal">
       <div class="modal">
         <div class="modal-head">
-          <h2 class="modal-title">新建考试</h2>
+          <h2 class="modal-title">{{ editingId ? '编辑考试' : '新建考试' }}</h2>
           <button class="modal-close" @click="closeModal"><Close /></button>
         </div>
         <form class="modal-body" @submit.prevent="saveExam">
@@ -158,7 +160,7 @@
           <p v-if="formError" class="form-error">{{ formError }}</p>
           <div class="modal-actions">
             <button type="button" class="btn btn--ghost" @click="closeModal">取消</button>
-            <button type="submit" class="btn btn--primary">保存为待发布</button>
+            <button type="submit" class="btn btn--primary">{{ editingId ? '保存修改' : '保存为待发布' }}</button>
           </div>
         </form>
       </div>
@@ -181,7 +183,7 @@
 
 <script setup>
 import { computed, ref } from 'vue';
-import { Plus, Delete, Close } from '@element-plus/icons-vue';
+import { Plus, EditPen, Delete, Close } from '@element-plus/icons-vue';
 import { adminStore, questionCount } from '../../adminStore.js';
 import { usePager } from '../../composables/usePager.js';
 import { useConfirm } from '../../composables/useConfirm.js';
@@ -217,8 +219,9 @@ const stateLabel = (state) => stateLabelMap[state] || state;
 const detailExam = ref(null);
 const openDetail = (exam) => { detailExam.value = exam; };
 
-/* ---------- 新建考试表单 ---------- */
+/* ---------- 新建 / 编辑考试表单 ---------- */
 const modalOpen = ref(false);
+const editingId = ref(null);
 const formError = ref('');
 
 const defaultDate = () => {
@@ -251,6 +254,7 @@ const timeWindowPreview = computed(() =>
 );
 
 const openCreate = () => {
+  editingId.value = null;
   formError.value = '';
   form.value = {
     title: '',
@@ -259,6 +263,28 @@ const openCreate = () => {
     startTime: '14:00',
     endTime: '15:30',
     passScore: 80
+  };
+  modalOpen.value = true;
+};
+
+/* 时间窗在种子数据里是一段展示文本，跨多天的场次（如 2025-04-10 ~ 04-30）没有钟点，只能各取能解析到的部分 */
+const parseWindow = (text) => {
+  const date = /\d{4}-\d{2}-\d{2}/.exec(text || '')?.[0];
+  const times = text?.match(/\d{2}:\d{2}/g) || [];
+  return { examDate: date || defaultDate(), startTime: times[0] || '14:00', endTime: times[1] || '15:30' };
+};
+
+const openEdit = (exam) => {
+  const win = parseWindow(exam.timeWindow);
+  editingId.value = exam.id;
+  formError.value = '';
+  form.value = {
+    title: exam.title,
+    category: exam.category,
+    examDate: win.examDate,
+    startTime: win.startTime,
+    endTime: win.endTime,
+    passScore: exam.passScore
   };
   modalOpen.value = true;
 };
@@ -274,6 +300,19 @@ const saveExam = () => {
   if (!form.value.examDate) { formError.value = '请选择考试日期。'; return; }
   if (toMinutes(form.value.endTime) <= toMinutes(form.value.startTime)) {
     formError.value = '结束时间需要晚于开始时间。';
+    return;
+  }
+
+  if (editingId.value) {
+    const exam = exams.find(e => e.id === editingId.value);
+    if (exam) {
+      exam.title = form.value.title;
+      exam.category = form.value.category;
+      exam.timeWindow = timeWindowPreview.value;
+      exam.durationMinutes = durationMinutes.value;
+      exam.passScore = form.value.passScore;
+    }
+    closeModal();
     return;
   }
 
@@ -351,7 +390,6 @@ button { cursor: pointer; }
   flex-direction: column;
   gap: 16px;
   min-height: 100%;
-  height: 100%;
 }
 
 /* ========== 页头 ========== */
@@ -528,6 +566,8 @@ th.ops, td.ops { text-align: right; }
 .status-pill {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
+  min-width: 56px;
   padding: 3px 10px;
   font-size: 11px;
   font-weight: 700;

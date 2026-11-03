@@ -1,5 +1,5 @@
 <template>
-  <div class="admin-courses">
+  <div class="admin-courses admin-fit-page">
 
     <!-- 页头 -->
     <div class="page-head">
@@ -519,7 +519,6 @@ button { cursor: pointer; }
   flex-direction: column;
   gap: 16px;
   min-height: 100%;
-  height: 100%;
 }
 
 /* ========== 页头 ========== */
@@ -773,6 +772,8 @@ th.ops, td.ops { text-align: right; }
 .status-pill {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
+  width: 56px;
   padding: 3px 10px;
   font-size: 11px;
   font-weight: 700;

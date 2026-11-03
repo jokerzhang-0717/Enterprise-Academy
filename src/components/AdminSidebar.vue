@@ -21,6 +21,7 @@
         v-for="item in navItems"
         :key="item.id"
         :class="['nav-item', isItemActive(item.id) ? 'nav-item--active' : '']"
+        :title="item.label"
         @click="$emit('select-view', item.id)"
       >
         <div class="nav-item-left">
@@ -35,7 +36,6 @@
     <div class="sidebar-footer">
       <div
         class="admin-card"
-        title="点击修改个人信息"
         @click="$emit('select-view', 'admin-profile')"
       >
         <div class="admin-card-avatar">

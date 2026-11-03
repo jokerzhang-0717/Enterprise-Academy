@@ -1,5 +1,5 @@
 <template>
-  <div class="admin-depts">
+  <div class="admin-depts admin-fit-page">
 
     <!-- 页头 -->
     <div class="page-head">
@@ -213,7 +213,7 @@ const departments = adminStore.departments;
 
 const { confirmState, askConfirm, cancelConfirm, acceptConfirm } = useConfirm();
 
-const { page, totalPages, paged: pagedDepartments } = usePager(departments, 6);
+const { page, totalPages, paged: pagedDepartments } = usePager(departments, 9);
 
 const activeCount = computed(() => departments.filter(d => d.status === 'active').length);
 const totalLearners = computed(() => departments.reduce((s, d) => s + d.learners, 0));

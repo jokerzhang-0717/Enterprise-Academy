@@ -1,5 +1,5 @@
 <template>
-  <div class="admin-certificates">
+  <div class="admin-certificates admin-fit-page">
 
     <!-- 页头 -->
     <div class="page-head">
@@ -80,6 +80,9 @@
                   class="text-btn text-btn--warn"
                   @click="revokeCert(cert)"
                 >撤销</button>
+                <button class="icon-btn" title="编辑" @click="openEdit(cert)">
+                  <EditPen />
+                </button>
                 <button class="icon-btn icon-btn--danger" title="删除" @click="removeCert(cert)">
                   <Delete />
                 </button>
@@ -116,11 +119,11 @@
       @close="detailCert = null"
     />
 
-    <!-- 发放证书弹窗 -->
+    <!-- 发放 / 编辑证书弹窗 -->
     <div v-if="modalOpen" class="modal-backdrop" @click.self="closeModal">
       <div class="modal">
         <div class="modal-head">
-          <h2 class="modal-title">发放证书</h2>
+          <h2 class="modal-title">{{ editingId ? '编辑证书' : '发放证书' }}</h2>
           <button class="modal-close" @click="closeModal"><Close /></button>
         </div>
         <form class="modal-body" @submit.prevent="saveIssue">
@@ -147,11 +150,12 @@
               <input v-model.trim="form.validity" type="text" class="field-input" placeholder="如 长期有效 / 24 个月" />
             </label>
           </div>
-          <p class="form-hint">证书防伪编号将自动生成:{{ autoSerial }}</p>
+          <p v-if="editingId" class="form-hint">证书编号保持不变:{{ form.serialNumber }}</p>
+          <p v-else class="form-hint">证书防伪编号将自动生成:{{ autoSerial }}</p>
           <p v-if="formError" class="form-error">{{ formError }}</p>
           <div class="modal-actions">
             <button type="button" class="btn btn--ghost" @click="closeModal">取消</button>
-            <button type="submit" class="btn btn--primary">确认发放</button>
+            <button type="submit" class="btn btn--primary">{{ editingId ? '保存修改' : '确认发放' }}</button>
           </div>
         </form>
       </div>
@@ -174,7 +178,7 @@
 
 <script setup>
 import { computed, ref } from 'vue';
-import { Plus, Delete, Close } from '@element-plus/icons-vue';
+import { Plus, EditPen, Delete, Close } from '@element-plus/icons-vue';
 import { ADMIN_CERTIFICATE_ISSUES, ADMIN_LEARNERS_DATA } from '../../mockData.js';
 import { usePager } from '../../composables/usePager.js';
 import { useConfirm } from '../../composables/useConfirm.js';
@@ -210,33 +214,65 @@ const todayText = () => {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 };
 
-/* ---------- 发放弹窗 ---------- */
+/* ---------- 发放 / 编辑弹窗 ---------- */
 const modalOpen = ref(false);
+const editingId = ref(null);
 const formError = ref('');
 const autoSerial = computed(() => {
   const seq = String(certificates.value.length + 1).padStart(3, '0');
   return `ZX-${new Date().getFullYear()}-AUTO-${seq}`;
 });
 const form = ref({
-  holder: '', title: '', issueOrg: '', validity: '长期有效'
+  holder: '', title: '', issueOrg: '', validity: '长期有效', serialNumber: ''
 });
 
 const openIssue = () => {
+  editingId.value = null;
   formError.value = '';
   form.value = {
-    holder: '', title: '', issueOrg: '企业大学教培中心', validity: '长期有效'
+    holder: '', title: '', issueOrg: '企业大学教培中心', validity: '长期有效', serialNumber: ''
+  };
+  modalOpen.value = true;
+};
+
+const openEdit = (cert) => {
+  editingId.value = cert.id;
+  formError.value = '';
+  form.value = {
+    holder: cert.holder,
+    title: cert.title,
+    issueOrg: cert.issueOrg,
+    validity: cert.validity,
+    serialNumber: cert.serialNumber
   };
   modalOpen.value = true;
 };
 
 const closeModal = () => {
   modalOpen.value = false;
+  editingId.value = null;
   formError.value = '';
 };
 
 const saveIssue = () => {
   if (!form.value.holder) { formError.value = '请选择持证学员。'; return; }
   if (!form.value.title) { formError.value = '请输入证书名称。'; return; }
+
+  if (editingId.value) {
+    const cert = certificates.value.find(c => c.id === editingId.value);
+    if (cert) {
+      cert.title = form.value.title;
+      cert.issueOrg = form.value.issueOrg;
+      cert.validity = form.value.validity || '长期有效';
+      if (cert.holder !== form.value.holder) {
+        const learner = learners.find(l => l.name === form.value.holder);
+        cert.holder = form.value.holder;
+        cert.employeeId = learner?.employeeId || '—';
+      }
+    }
+    closeModal();
+    return;
+  }
 
   const learner = learners.find(l => l.name === form.value.holder);
   certificates.value.unshift({
@@ -307,7 +343,6 @@ button { cursor: pointer; }
   flex-direction: column;
   gap: 16px;
   min-height: 100%;
-  height: 100%;
 }
 
 /* ========== 页头 ========== */
@@ -494,6 +529,8 @@ th.ops, td.ops { text-align: right; white-space: nowrap; }
 .status-pill {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
+  min-width: 56px;
   padding: 3px 10px;
   font-size: 11px;
   font-weight: 700;

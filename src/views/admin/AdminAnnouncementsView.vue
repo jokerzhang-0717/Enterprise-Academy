@@ -1,5 +1,5 @@
 <template>
-  <div class="admin-announcements">
+  <div class="admin-announcements admin-fit-page">
 
     <!-- 页头 -->
     <div class="page-head">
@@ -31,8 +31,6 @@
             <span>{{ notice.author }}</span>
             <span class="meta-sep">·</span>
             <span>{{ notice.publishTime }}</span>
-            <span v-if="notice.status === 'published'" class="meta-sep">·</span>
-            <span v-if="notice.status === 'published'">{{ notice.views.toLocaleString() }} 次阅读</span>
           </div>
         </div>
 
@@ -51,6 +49,9 @@
               class="text-btn text-btn--ghost"
               @click="toggleTop(notice)"
             >{{ notice.isTop ? '取消置顶' : '置顶' }}</button>
+            <button class="icon-btn" title="编辑" @click="openEdit(notice)">
+              <EditPen />
+            </button>
             <button class="icon-btn icon-btn--danger" title="删除" @click="removeNotice(notice)">
               <Delete />
             </button>
@@ -75,21 +76,20 @@
       :tags="detailTags"
       :rows="[
         { label: '发布人', value: detailNotice.author },
-        { label: '发布时间', value: detailNotice.publishTime },
-        { label: '阅读量', value: detailNotice.views ? `${detailNotice.views.toLocaleString()} 次` : '—' }
+        { label: '发布时间', value: detailNotice.publishTime }
       ]"
       :sections="[{ label: '公告内容', text: detailNotice.content }]"
       @close="detailNotice = null"
     />
 
-    <!-- 撰写公告弹窗 -->
+    <!-- 撰写 / 编辑公告弹窗 -->
     <div v-if="modalOpen" class="modal-backdrop" @click.self="closeModal">
       <div class="modal">
         <div class="modal-head">
-          <h2 class="modal-title">撰写公告</h2>
+          <h2 class="modal-title">{{ editingId ? '编辑公告' : '撰写公告' }}</h2>
           <button class="modal-close" @click="closeModal"><Close /></button>
         </div>
-        <form class="modal-body" @submit.prevent="saveDraft">
+        <form class="modal-body" @submit.prevent="saveDraft(false)">
           <label class="field">
             <span class="field-label">公告标题</span>
             <input v-model.trim="form.title" type="text" class="field-input" placeholder="请输入公告标题" />
@@ -106,8 +106,11 @@
           <p v-if="formError" class="form-error">{{ formError }}</p>
           <div class="modal-actions">
             <button type="button" class="btn btn--ghost" @click="closeModal">取消</button>
-            <button type="submit" class="btn btn--ghost">存为草稿</button>
-            <button type="button" class="btn btn--primary" @click="saveDraft(true)">立即发布</button>
+            <button v-if="editingId" type="submit" class="btn btn--primary">保存修改</button>
+            <template v-else>
+              <button type="button" class="btn btn--ghost" @click="saveDraft(false)">存为草稿</button>
+              <button type="button" class="btn btn--primary" @click="saveDraft(true)">立即发布</button>
+            </template>
           </div>
         </form>
       </div>
@@ -130,7 +133,7 @@
 
 <script setup>
 import { computed, ref } from 'vue';
-import { Plus, Delete, Close } from '@element-plus/icons-vue';
+import { Plus, EditPen, Delete, Close } from '@element-plus/icons-vue';
 import { ADMIN_ANNOUNCEMENTS_DATA } from '../../mockData.js';
 import { usePager } from '../../composables/usePager.js';
 import { useConfirm } from '../../composables/useConfirm.js';
@@ -142,7 +145,7 @@ const announcements = ref(ADMIN_ANNOUNCEMENTS_DATA.map(a => ({ ...a })));
 
 const { confirmState, askConfirm, cancelConfirm, acceptConfirm } = useConfirm();
 
-const { page, totalPages, paged: pagedAnnouncements } = usePager(announcements, 4);
+const { page, totalPages, paged: pagedAnnouncements } = usePager(announcements, 5);
 
 const publishedCount = computed(() => announcements.value.filter(a => a.status === 'published').length);
 const draftCount = computed(() => announcements.value.filter(a => a.status === 'draft').length);
@@ -159,17 +162,27 @@ const detailTags = computed(() => {
 
 /* ---------- 弹窗表单 ---------- */
 const modalOpen = ref(false);
+const editingId = ref(null);
 const formError = ref('');
 const form = ref({ title: '', content: '' });
 
 const openCompose = () => {
+  editingId.value = null;
   formError.value = '';
   form.value = { title: '', content: '' };
   modalOpen.value = true;
 };
 
+const openEdit = (notice) => {
+  editingId.value = notice.id;
+  formError.value = '';
+  form.value = { title: notice.title, content: notice.content };
+  modalOpen.value = true;
+};
+
 const closeModal = () => {
   modalOpen.value = false;
+  editingId.value = null;
   formError.value = '';
 };
 
@@ -182,6 +195,16 @@ const nowText = () => {
 const saveDraft = (publishNow = false) => {
   if (!form.value.title) { formError.value = '请输入公告标题。'; return; }
   if (!form.value.content) { formError.value = '请输入公告内容。'; return; }
+
+  if (editingId.value) {
+    const notice = announcements.value.find(a => a.id === editingId.value);
+    if (notice) {
+      notice.title = form.value.title;
+      notice.content = form.value.content;
+    }
+    closeModal();
+    return;
+  }
 
   announcements.value.unshift({
     id: `ann-${Date.now()}`,
@@ -212,8 +235,7 @@ const removeNotice = (notice) => {
     subtitle: notice.title,
     rows: [
       { label: '公告状态', value: notice.status === 'published' ? '已发布' : '草稿' },
-      { label: '发布时间', value: notice.publishTime },
-      { label: '浏览量', value: `${notice.views} 次` }
+      { label: '发布时间', value: notice.publishTime }
     ],
     tip: '删除后公告将从前台和列表中移除，此操作不可恢复。',
     confirmText: '确认删除',
@@ -238,7 +260,6 @@ button { cursor: pointer; }
   flex-direction: column;
   gap: 16px;
   min-height: 100%;
-  height: 100%;
 }
 
 /* ========== 页头 ========== */

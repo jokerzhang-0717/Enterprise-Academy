@@ -61,7 +61,7 @@
           class="app-viewport"
           :class="{ 'app-viewport--admin': isAdmin && currentView !== 'admin-profile' }"
         >
-          <Transition name="view">
+          <Transition name="view" mode="out-in">
             <div
               :key="currentView"
               class="view-transition"
@@ -286,6 +286,7 @@ import AdminCertificatesView from './views/admin/AdminCertificatesView.vue';
 import AdminAnnouncementsView from './views/admin/AdminAnnouncementsView.vue';
 
 import { useToast } from './composables/useToast.js';
+import { useAdminTableFit } from './composables/useAdminTableFit.js';
 
 // Navigation State
 const currentView = ref('home');
@@ -506,6 +507,8 @@ const handleOpenMessage = (messageId) => {
 };
 
 const isAdmin = computed(() => currentUser.value.role === 'admin');
+
+useAdminTableFit(mainContent, currentView);
 
 // ToastStack 通过 Teleport 挂在 body 下,取不到 .app-shell 的覆盖变量,
 // 所以把当前主题类同步一份到 body,让浮层跟随管理端主题。
@@ -914,47 +917,98 @@ textarea {
   overflow-y: auto;
 }
 
-/* 管理端去掉页面滚动能力,内容固定在视口内 */
-.app-viewport.app-viewport--admin {
-  overflow: hidden;
-  padding-top: 0.75rem;
-  padding-bottom: 1rem;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-}
-.app-viewport--admin::-webkit-scrollbar {
-  width: 0;
-  height: 0;
-  display: none;
-}
-
-/* 管理端:视图容器撑满视口,页面内的分页条才能固定在底部 */
-.app-viewport--admin > .view-transition {
-  height: 100%;
-}
-
-/* 管理端:内容区高度锁死,列表区可收缩,保证分页条不随数据增减上下移动 */
-.app-viewport--admin .view-transition > * {
-  height: 100%;
-}
-
-.app-viewport--admin .table-wrap,
-.app-viewport--admin .notice-list,
-.app-viewport--admin .question-list {
-  flex: 0 1 auto;
-  /* 视口很矮时页头/统计条会吃掉全部高度,留一个下限避免列表被挤成 0 高而看不见 */
-  min-height: 180px;
+/* 管理端:允许整页上下滚动,内容按自然高度铺开 */
+#app .app-viewport--admin {
   overflow-y: auto;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
+  padding-top: calc(0.75rem + 10px);
+  /* 底部留白交给吸底分页条自己处理，保证分页条吸底位置与自然位置一致 */
+  padding-bottom: 0;
+  /* 始终预留滚动条位置，页面切换时内容不会左右抖动 */
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: var(--app-border-strong, #cbd5e1) transparent;
+}
+#app .app-viewport--admin::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+#app .app-viewport--admin::-webkit-scrollbar-track {
+  background: transparent;
+}
+#app .app-viewport--admin::-webkit-scrollbar-thumb {
+  background: var(--app-border-strong, #cbd5e1);
+  background-clip: content-box;
+  border: 2px solid transparent;
+  border-radius: 999px;
+}
+#app .app-viewport--admin::-webkit-scrollbar-thumb:hover {
+  background: var(--app-text-5, #94a3b8);
+  background-clip: content-box;
 }
 
-.app-viewport--admin .table-wrap::-webkit-scrollbar,
-.app-viewport--admin .notice-list::-webkit-scrollbar,
-.app-viewport--admin .question-list::-webkit-scrollbar {
-  width: 0;
-  height: 0;
-  display: none;
+/* 管理端:视图容器给一个确定高度,页面根节点才能用 min-height:100%
+   撑满视口,保证分页条始终贴在内容底部、不随数据条数上下跳 */
+#app .app-viewport--admin > .view-transition {
+  height: 100%;
+}
+#app .app-viewport--admin .view-transition > * {
+  min-height: 0;
+  height: auto;
+}
+
+/* 列表区域不再内部滚动,跟随整页一起滚动 */
+#app .app-viewport--admin .table-wrap,
+#app .app-viewport--admin .notice-list,
+#app .app-viewport--admin .question-list {
+  flex: 0 0 auto;
+  min-height: 0;
+}
+
+/* 分页页:整页锁在一屏内,列表卡片吃掉剩余高度把分页条顶到屏幕底部,
+   行内边距由 useAdminTableFit 按比例压缩,保证当前页数据一屏看全 */
+#app .app-viewport--admin > .view-transition > .admin-fit-page {
+  height: 100%;
+  overflow: hidden;
+}
+#app .app-viewport--admin .admin-fit-page > :not(.table-wrap):not(.question-list):not(.notice-list) {
+  flex: 0 0 auto;
+}
+#app .app-viewport--admin .admin-fit-page .table-wrap,
+#app .app-viewport--admin .admin-fit-page .question-list,
+#app .app-viewport--admin .admin-fit-page .notice-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+#app .app-viewport--admin .admin-fit-page .data-table thead th,
+#app .app-viewport--admin .admin-fit-page .data-table tbody td {
+  padding-top: var(--row-pad, 12px);
+  padding-bottom: var(--row-pad, 12px);
+}
+#app .app-viewport--admin .admin-fit-page .question-item {
+  padding-top: var(--row-pad, 14px);
+  padding-bottom: var(--row-pad, 14px);
+}
+#app .app-viewport--admin .admin-fit-page .notice-card {
+  padding-top: var(--row-pad, 18px);
+  padding-bottom: var(--row-pad, 18px);
+}
+
+/* 管理端分页条：紧跟在列表后面，页面不留大片空白；
+   内容超高时吸底，滚动中也能随时翻页 */
+#app .app-viewport--admin .pager {
+  position: sticky;
+  bottom: 0;
+  z-index: 6;
+  margin-top: 0;
+  padding-top: 0;
+  padding-bottom: 1.25rem;
+  background: var(--app-page-bg, #f4f9fd);
+}
+
+/* 管理总览没有分页条，单独补底部留白 */
+#app .app-viewport--admin .admin-dashboard {
+  padding-bottom: 1.25rem;
 }
 .app-view-enter-active {
   transition: opacity 300ms ease-out, transform 300ms ease-out;
@@ -970,6 +1024,15 @@ textarea {
 .view-enter-from {
   opacity: 0;
   transform: translateY(12px);
+}
+
+/* 管理端页面进入时只做淡入，不做位移：
+   位移会让整个视图短暂超出滚动容器底部，触发滚动条闪现 */
+#app .app-viewport--admin .view-enter-from {
+  transform: none;
+}
+#app .app-viewport--admin .view-enter-active {
+  transition: opacity 300ms ease-out;
 }
 .view-enter-active:not(.view-transition--home) :is(
   h1,
@@ -1079,6 +1142,233 @@ textarea {
 .app-shell.theme-black .cf-backdrop { background: rgba(0, 0, 0, 0.62); }
 /* 分页当前页压在品牌渐变上,浅色主题是金字深底,曜黑下青底必须换深墨 */
 .app-shell.theme-black .pager-btn--active { color: var(--app-brand-on); }
+
+/* ==================== 05c 管理端响应式布局 ====================
+   屏幕变窄时:统计条自动换行、工具栏纵向排布、表格横向滚动、
+   侧边栏收成图标栏,保证管理端各页在小屏下仍然整齐不挤。 */
+
+/* --- 中等屏:收紧内边距,统计卡自动换行 --- */
+@media (max-width: 1280px) {
+  #app .app-viewport--admin {
+    padding-left: 1.25rem;
+    padding-right: 1.25rem;
+  }
+  #app .app-viewport--admin .overview-strip {
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  }
+}
+
+/* --- 窄屏:侧边栏收成图标栏,给内容让出宽度 --- */
+@media (max-width: 1080px) {
+  #app .app-viewport--admin {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+  /* 窄屏下压缩表格内边距，尽量让常见列数在可视区内放下 */
+  #app .app-viewport--admin .data-table {
+    font-size: 12.5px;
+  }
+  #app .app-viewport--admin .data-table thead th,
+  #app .app-viewport--admin .data-table tbody td {
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+  /* 表格横向滚动条做细一点，不抢内容 */
+  #app .app-viewport--admin .table-wrap {
+    scrollbar-width: thin;
+  }
+  #app .app-viewport--admin .table-wrap::-webkit-scrollbar {
+    height: 8px;
+  }
+  #app .app-viewport--admin .table-wrap::-webkit-scrollbar-thumb {
+    background: var(--app-border-strong, #cbd5e1);
+    border-radius: 999px;
+  }
+  #app .admin-sidebar {
+    width: 76px;
+  }
+  #app .admin-sidebar .brand-header {
+    justify-content: center;
+    padding: 16px 8px;
+  }
+  #app .admin-sidebar .brand-text,
+  #app .admin-sidebar .nav-label,
+  #app .admin-sidebar .nav-section-label,
+  #app .admin-sidebar .admin-card-text {
+    display: none;
+  }
+  #app .admin-sidebar .nav-menu {
+    padding: 12px 8px;
+  }
+  #app .admin-sidebar .nav-item {
+    justify-content: center;
+    padding: 11px 0;
+    border-left-width: 0;
+  }
+  #app .admin-sidebar .nav-item-left {
+    gap: 0;
+  }
+  #app .admin-sidebar .sidebar-footer {
+    padding: 8px;
+  }
+  #app .admin-sidebar .admin-card {
+    flex-direction: column;
+    gap: 6px;
+    padding: 8px 6px;
+  }
+  #app .admin-sidebar .logout-btn {
+    margin-left: 0;
+  }
+}
+
+/* --- 小屏:页头/工具栏/统计条纵向或两列排布,表格横向滚动 --- */
+@media (max-width: 820px) {
+  #app .app-viewport--admin {
+    padding: calc(0.75rem + 10px) 0.75rem 0;
+  }
+  #app .app-viewport--admin .page-head {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  #app .app-viewport--admin .page-head > * {
+    width: 100%;
+  }
+  #app .app-viewport--admin .page-title {
+    font-size: 20px;
+  }
+  #app .app-viewport--admin .page-sub {
+    font-size: 12px;
+  }
+  #app .app-viewport--admin .overview-strip,
+  #app .app-viewport--admin .stat-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+  #app .app-viewport--admin .overview-item {
+    padding: 10px;
+  }
+  #app .app-viewport--admin .overview-value {
+    font-size: 18px;
+  }
+  #app .app-viewport--admin .toolbar {
+    gap: 8px;
+    padding: 10px;
+  }
+  #app .app-viewport--admin .toolbar .search-box {
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+  #app .app-viewport--admin .toolbar-result {
+    margin-left: 0;
+  }
+  #app .app-viewport--admin .filter-tabs {
+    gap: 6px;
+  }
+  #app .app-viewport--admin .filter-tab {
+    padding: 6px 10px;
+    font-size: 12px;
+  }
+  #app .app-viewport--admin .table-wrap {
+    border-radius: 10px;
+    overflow-x: auto;
+  }
+  #app .app-viewport--admin .data-table {
+    min-width: 720px;
+  }
+  #app .app-viewport--admin .data-table thead th,
+  #app .app-viewport--admin .data-table tbody td {
+    padding: 10px 12px;
+  }
+  #app .app-viewport--admin .pager {
+    gap: 8px;
+  }
+}
+
+/* --- 超窄屏:留白再收紧,分页按钮允许换行 --- */
+@media (max-width: 560px) {
+  #app .app-viewport--admin {
+    padding-left: 0.625rem;
+    padding-right: 0.625rem;
+  }
+  #app .app-viewport--admin .data-table {
+    min-width: 640px;
+  }
+  #app .app-viewport--admin .pager-controls {
+    flex-wrap: wrap;
+  }
+  #app .app-header--admin {
+    padding: 0 14px;
+  }
+  .app-header--admin .user-meta,
+  .app-header--admin .admin-tag {
+    display: none;
+  }
+}
+
+/* --- 矮屏:收紧纵向留白,让 6 行列表也能一屏放下,避免整页出现滚动条 ---
+   仅在窗口高度 ≤800px 时生效,大屏保持原有宽松间距 --- */
+@media (max-height: 800px) {
+  #app .app-viewport--admin .view-transition > * {
+    gap: 12px;
+  }
+  #app .app-viewport--admin .page-title {
+    font-size: 21px;
+  }
+  #app .app-viewport--admin .page-sub {
+    margin-top: 2px;
+  }
+  #app .app-viewport--admin .overview-strip,
+  #app .app-viewport--admin .stat-strip {
+    gap: 10px;
+  }
+  #app .app-viewport--admin .overview-item,
+  #app .app-viewport--admin .stat-item {
+    padding: 10px 12px;
+  }
+  #app .app-viewport--admin .overview-value {
+    font-size: 19px;
+  }
+  #app .app-viewport--admin .data-table thead th {
+    padding-top: 8px;
+    padding-bottom: 8px;
+  }
+  #app .app-viewport--admin .data-table tbody td {
+    padding-top: 7px;
+    padding-bottom: 7px;
+  }
+  #app .app-viewport--admin .question-item {
+    gap: 8px;
+    padding: 11px 12px;
+  }
+  #app .app-viewport--admin .notice-card {
+    gap: 10px;
+    padding: 9px 14px;
+  }
+  #app .app-viewport--admin .notice-list {
+    gap: 6px;
+  }
+  #app .app-viewport--admin .toolbar {
+    padding: 9px 12px;
+  }
+  #app .app-viewport--admin .pager {
+    padding-top: 0;
+    padding-bottom: 10px;
+  }
+}
+
+/* --- 弹窗:矮屏/窄屏下顶部对齐并可滚动,内容不会溢出屏幕 --- */
+@media (max-width: 640px), (max-height: 720px) {
+  html body .modal-backdrop.modal-backdrop {
+    align-items: flex-start;
+    overflow-y: auto;
+    padding: 14px;
+  }
+  html body .modal.modal {
+    max-height: calc(100vh - 28px);
+    overflow-y: auto;
+  }
+}
 
 /* ==================== 06 无障碍：减少动效 ==================== */
 @media (prefers-reduced-motion: reduce) {

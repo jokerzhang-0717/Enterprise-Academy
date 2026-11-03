@@ -95,7 +95,7 @@
       <!-- 管理端工具:换主题 -->
       <button
         v-if="isAdmin"
-        class="tool-btn tool-btn--theme"
+        class="tool-btn"
         title="换主题"
         @click="$emit('cycle-theme')"
       >
@@ -517,23 +517,16 @@ input {
   justify-content: center;
   width: 34px;
   height: 34px;
-  color: var(--app-text-4);
-  background: var(--app-surface);
-  border: 1px solid var(--app-border);
+  color: var(--app-accent-deep);
+  background: var(--app-accent-soft);
+  border: 1px solid var(--app-accent);
   border-radius: 10px;
   transition: color 0.15s, border-color 0.15s, background 0.15s;
 }
 
 .tool-btn:hover {
-  color: var(--app-accent-deep);
-  border-color: var(--app-accent);
-  background: var(--app-accent-soft);
-}
-
-.tool-btn--theme {
-  color: var(--app-accent-deep);
-  border-color: var(--app-accent);
-  background: var(--app-accent-soft);
+  border-color: var(--app-accent-strong);
+  background: var(--app-accent-hover);
 }
 
 .tool-icon {

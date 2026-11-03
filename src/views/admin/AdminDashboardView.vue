@@ -247,17 +247,7 @@ button { font-family: inherit; cursor: pointer; }
   display: flex;
   flex-direction: column;
   gap: 20px;
-  height: 100%;
   min-height: 100%;
-  overflow-y: auto;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-}
-
-.admin-dashboard::-webkit-scrollbar {
-  width: 0;
-  height: 0;
-  display: none;
 }
 
 /* ========== 页头 ========== */

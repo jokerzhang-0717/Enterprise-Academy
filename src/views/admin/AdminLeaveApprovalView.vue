@@ -1,5 +1,5 @@
 <template>
-  <div class="admin-leave">
+  <div class="admin-leave admin-fit-page">
 
     <!-- 页头 -->
     <div class="page-head">
@@ -181,7 +181,7 @@ const filteredRequests = computed(() => {
   return requests.value.filter(r => r.status === statusFilter.value);
 });
 
-const { page, totalPages, paged: pagedRequests, resetPage } = usePager(filteredRequests, 4);
+const { page, totalPages, paged: pagedRequests, resetPage } = usePager(filteredRequests, 7);
 watch(statusFilter, resetPage);
 
 const tabCount = (key) => {
@@ -237,7 +237,6 @@ button { font-family: inherit; cursor: pointer; }
   flex-direction: column;
   gap: 16px;
   min-height: 100%;
-  height: 100%;
 }
 
 /* ========== 页头 ========== */
@@ -395,7 +394,7 @@ th.ops, td.ops { text-align: right; white-space: nowrap; }
 .data-table thead th.num,
 .data-table thead th.ops { text-align: right; }
 
-.cell-muted { color: var(--app-text-4); }
+.cell-muted { color: var(--app-text-4); white-space: nowrap; }
 .empty-cell { text-align: center; color: var(--app-text-5); padding: 28px 0 !important; }
 
 /* ========== 申请人单元格 ========== */
@@ -468,6 +467,8 @@ th.ops, td.ops { text-align: right; white-space: nowrap; }
 .status-pill {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
+  min-width: 56px;
   padding: 3px 10px;
   font-size: 11px;
   font-weight: 700;
