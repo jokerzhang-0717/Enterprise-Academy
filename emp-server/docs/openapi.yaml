@@ -1,0 +1,3497 @@
+openapi: 3.0.3
+info:
+  title: 企业学堂（Enterprise Academy）API
+  version: 1.0.0
+  description: |
+    企业学堂后端接口文档，可直接导入 Apifox / Postman / Swagger Editor。
+
+    - 服务地址：`http://127.0.0.1:8080/api`（Spring Boot context-path 为 `/api`）
+    - 鉴权方式：登录后把 `data.token` 放入请求头 `Authorization: Bearer <token>`
+    - 管理端接口（`/admin/**` 以及 `POST /notifications/send`）要求账号角色 `role=2`
+    - 统一响应：`{ "code": 0, "message": "ok", "data": ... }`
+    - 分页响应：`data` 为 `{ total, page, size, records }`
+    - 时间格式：`LocalDateTime` 为 `yyyy-MM-ddTHH:mm:ss`，`LocalDate` 为 `yyyy-MM-dd`，`LocalTime` 为 `HH:mm:ss`
+    - 错误码与 HTTP 状态码一致：400 参数错误、401 未登录、403 无权限、404 不存在、409 冲突、413 文件过大、415 请求格式不支持
+
+    演示账号：学员 `EMP-2024098 / 123456`，管理员 `admin / 123456`。
+servers:
+  - url: http://127.0.0.1:8080/api
+    description: 本地开发环境
+security:
+  - bearerAuth: []
+tags:
+  - name: 认证与个人
+    description: 登录、注册、当前用户、个人资料
+  - name: 学员端-首页
+    description: 学员首页看板
+  - name: 学员端-课程
+    description: 课程目录、详情、报名、学习进度
+  - name: 学员端-研修通道
+    description: 已上架研修通道
+  - name: 学员端-考试
+    description: 我的考试、试卷、作答、交卷
+  - name: 学员端-考勤与请假
+    description: 签到签退、请假申请
+  - name: 学员端-证书
+    description: 我的证书、证书验真
+  - name: 学员端-公告与通知
+    description: 公告、站内通知
+  - name: 文件
+    description: MinIO 文件上传、下载、删除
+  - name: 管理端-看板与日志
+    description: 管理看板、最新动态、操作日志
+  - name: 管理端-用户与部门
+    description: 学员管理、部门管理
+  - name: 管理端-课程与题库
+    description: 课程、章节、课时、标签、讲师、题库
+  - name: 管理端-研修通道
+    description: 研修通道管理
+  - name: 管理端-考试
+    description: 考试、指派、答卷、评分
+  - name: 管理端-考勤请假证书公告
+    description: 请假审批、签到管理、证书管理、公告管理
+paths:
+  /auth/login:
+    post:
+      tags: [认证与个人]
+      summary: 登录
+      description: 使用企业工号和密码登录，返回 JWT。该接口无需鉴权。
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+            example:
+              employeeNo: EMP-2024098
+              password: '123456'
+      responses:
+        '200':
+          description: 登录成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+              example:
+                code: 0
+                message: ok
+                data:
+                  token: eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.signature
+                  tokenType: Bearer
+                  expiresIn: 43200
+                  user:
+                    id: 1
+                    employeeNo: EMP-2024098
+                    name: 李明
+                    departmentId: 1
+                    department: 技术研发部
+                    jobTitle: 高级研发工程师
+                    grade: P6 高级研发
+                    specialty: 云原生与微服务
+                    avatarUrl: null
+                    phone: '13800000000'
+                    email: liming@example.com
+                    role: 1
+                    accountStatus: 1
+                    lastActiveAt: '2026-11-06T09:30:00'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /auth/register:
+    post:
+      tags: [认证与个人]
+      summary: 注册学员账号
+      description: 自助注册，默认角色为学员（role=1）。该接口无需鉴权。
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+            example:
+              name: 王小明
+              employeeNo: EMP-2026001
+              password: '123456'
+              departmentId: 1
+              jobTitle: 研发工程师
+              email: wangxm@example.com
+              phone: '13900000000'
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /auth/me:
+    get:
+      tags: [认证与个人]
+      summary: 当前登录用户
+      description: 返回当前用户资料及学习统计字段（learningHours、completedCourses、studyingCourses、certificateCount、unreadNotifications）。
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /auth/password:
+    put:
+      tags: [认证与个人]
+      summary: 修改登录密码
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangePasswordRequest'
+            example:
+              oldPassword: '123456'
+              newPassword: '654321'
+      responses:
+        '200': { $ref: '#/components/responses/OkVoid' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /auth/logout:
+    post:
+      tags: [认证与个人]
+      summary: 退出登录
+      description: 无状态 JWT，服务端仅返回成功，客户端自行丢弃 token。
+      responses:
+        '200': { $ref: '#/components/responses/OkVoid' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /profile:
+    get:
+      tags: [认证与个人]
+      summary: 获取个人资料
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    put:
+      tags: [认证与个人]
+      summary: 更新个人资料
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProfileUpdateRequest'
+            example:
+              name: 李明
+              phone: '13800000000'
+              email: liming@example.com
+              jobTitle: 高级研发工程师
+              specialty: 云原生与微服务
+              grade: P6 高级研发
+              avatarUrl: http://127.0.0.1:8080/api/files/view/avatar/demo.png
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /dashboard:
+    get:
+      tags: [学员端-首页]
+      summary: 学员首页看板
+      description: 返回学习统计、待办、推荐课程、公告、今日签到等聚合数据。
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /courses:
+    get:
+      tags: [学员端-课程]
+      summary: 课程目录（分页）
+      parameters:
+        - $ref: '#/components/parameters/PageQuery'
+        - $ref: '#/components/parameters/SizeQuery12'
+        - $ref: '#/components/parameters/KeywordQuery'
+        - name: category
+          in: query
+          required: false
+          description: 课程分类标识或名称
+          schema: { type: string }
+        - name: required
+          in: query
+          required: false
+          description: 是否必修
+          schema: { type: boolean }
+        - name: status
+          in: query
+          required: false
+          description: 课程状态文案或编码
+          schema: { type: string }
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+              example:
+                code: 0
+                message: ok
+                data:
+                  total: 12
+                  page: 1
+                  size: 12
+                  records:
+                    - id: 1
+                      title: 云原生微服务架构实战
+                      category: 技术研发
+                      categoryLabel: 技术研发
+                      level: 进阶技术
+                      isRequired: true
+                      totalHours: 6.5
+                      lessonCount: 12
+                      enrollCount: 320
+                      thumbnailUrl: null
+                      summary: 从 0 到 1 掌握微服务拆分与治理
+                      status: 2
+                      statusLabel: 已上架
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /courses/my-learning:
+    get:
+      tags: [学员端-课程]
+      summary: 我的学习
+      description: 返回当前学员已报名课程及学习进度。
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /courses/{id}:
+    get:
+      tags: [学员端-课程]
+      summary: 课程详情
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /courses/{id}/enroll:
+    post:
+      tags: [学员端-课程]
+      summary: 报名课程
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /courses/{id}/lessons/{lessonId}:
+    get:
+      tags: [学员端-课程]
+      summary: 获取课时播放信息
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+        - $ref: '#/components/parameters/LessonIdPath'
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /courses/{id}/lessons/{lessonId}/progress:
+    post:
+      tags: [学员端-课程]
+      summary: 上报课时学习进度
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+        - $ref: '#/components/parameters/LessonIdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProgressRequest'
+            example:
+              watchedSeconds: 600
+              completed: true
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /course-categories:
+    get:
+      tags: [学员端-课程]
+      summary: 课程分类列表
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /course-tags:
+    get:
+      tags: [学员端-课程]
+      summary: 课程标签列表
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /instructors:
+    get:
+      tags: [学员端-课程]
+      summary: 讲师列表
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /tracks:
+    get:
+      tags: [学员端-研修通道]
+      summary: 已上架研修通道（分页）
+      parameters:
+        - $ref: '#/components/parameters/PageQuery'
+        - $ref: '#/components/parameters/SizeQuery12'
+        - $ref: '#/components/parameters/KeywordQuery'
+        - name: category
+          in: query
+          required: false
+          description: security / tech / leadership
+          schema: { type: string }
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /tracks/all:
+    get:
+      tags: [学员端-研修通道]
+      summary: 全部已上架通道
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /tracks/{id}:
+    get:
+      tags: [学员端-研修通道]
+      summary: 研修通道详情
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /exams:
+    get:
+      tags: [学员端-考试]
+      summary: 我的考试
+      description: 返回待参加考试 `assignments` 与往期记录 `past`。status 为展示文案，statusCode 为原始编码。
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+              example:
+                code: 0
+                message: ok
+                data:
+                  assignments:
+                    - examId: 1
+                      title: 2025年度第二季度研发部全栈开发规范与安全编码认证考试
+                      code: ZK-20250422-09
+                      examStatusCode: 3
+                      examStatus: 进行中
+                      assignmentStatusCode: 1
+                      assignmentStatus: 待参加
+                      status: 待参加
+                      startAt: '2025-04-18T14:00:00'
+                      endAt: '2025-04-18T15:30:00'
+                      timeWindow: 2025-04-18 14:00 ~ 2025-04-18 15:30
+                      durationMinutes: 90
+                      questionCount: 25
+                      totalScore: 100.0
+                      passScore: 60.0
+                      attemptsAllowed: 2
+                      attemptsUsed: 0
+                  past: []
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /exams/metrics:
+    get:
+      tags: [学员端-考试]
+      summary: 我的考试统计
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /exams/past:
+    get:
+      tags: [学员端-考试]
+      summary: 往期考试记录
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /exams/{id}/paper:
+    get:
+      tags: [学员端-考试]
+      summary: 获取试卷
+      description: 若存在作答中的答卷，会一并返回 attempt，可用于断点续考。
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /exams/{id}/start:
+    post:
+      tags: [学员端-考试]
+      summary: 开始考试
+      description: 创建或复用作答中的答卷，返回 attemptId 和题目列表。
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /exams/attempts/{attemptId}:
+    get:
+      tags: [学员端-考试]
+      summary: 答卷详情
+      parameters:
+        - $ref: '#/components/parameters/AttemptIdPath'
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /exams/attempts/{attemptId}/answers:
+    post:
+      tags: [学员端-考试]
+      summary: 保存单题答案
+      description: 客观题传 selectedKeys（如 `A` 或 `ABD`），主观题传 answerText。
+      parameters:
+        - $ref: '#/components/parameters/AttemptIdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AnswerSaveRequest'
+            example:
+              questionId: 1
+              selectedKeys: A
+              answerText: null
+              flagged: false
+              remainingSeconds: 1800
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /exams/attempts/{attemptId}/switch:
+    post:
+      tags: [学员端-考试]
+      summary: 记录切屏
+      description: 切屏次数用于防作弊展示。
+      parameters:
+        - $ref: '#/components/parameters/AttemptIdPath'
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /exams/attempts/{attemptId}/submit:
+    post:
+      tags: [学员端-考试]
+      summary: 交卷
+      description: 客观题自动判分；含主观题时状态为待评分（2），全部为客观题时直接已评分（3）。
+      parameters:
+        - $ref: '#/components/parameters/AttemptIdPath'
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /leaves:
+    get:
+      tags: [学员端-考勤与请假]
+      summary: 我的请假申请
+      parameters:
+        - name: status
+          in: query
+          required: false
+          description: 1 待审批 / 2 已通过 / 3 已驳回
+          schema: { type: integer, enum: [1, 2, 3] }
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    post:
+      tags: [学员端-考勤与请假]
+      summary: 提交请假申请
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LeaveSaveRequest'
+            example:
+              leaveType: 病假
+              trainingTitle: 云原生微服务架构实战
+              courseId: 1
+              startDate: '2026-12-01'
+              endDate: '2026-12-02'
+              leaveDays: 2
+              reason: 身体不适需要休息
+              attachmentUrl: null
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /leaves/{id}:
+    get:
+      tags: [学员端-考勤与请假]
+      summary: 请假详情
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    put:
+      tags: [学员端-考勤与请假]
+      summary: 修改待审批的请假
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LeaveSaveRequest'
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [学员端-考勤与请假]
+      summary: 撤销请假申请
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      responses:
+        '200': { $ref: '#/components/responses/OkVoid' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /checkins:
+    get:
+      tags: [学员端-考勤与请假]
+      summary: 我的签到记录
+      parameters:
+        - $ref: '#/components/parameters/FromDateQuery'
+        - $ref: '#/components/parameters/ToDateQuery'
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /checkins/today:
+    get:
+      tags: [学员端-考勤与请假]
+      summary: 今日签到状态
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /checkins/check-in:
+    post:
+      tags: [学员端-考勤与请假]
+      summary: 签到
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CheckinAction'
+            example:
+              location: 企业总部·移动端定位
+              method: 3
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /checkins/check-out:
+    post:
+      tags: [学员端-考勤与请假]
+      summary: 签退
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /checkins/stats:
+    get:
+      tags: [学员端-考勤与请假]
+      summary: 我的签到统计
+      parameters:
+        - $ref: '#/components/parameters/FromDateQuery'
+        - $ref: '#/components/parameters/ToDateQuery'
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /certificates:
+    get:
+      tags: [学员端-证书]
+      summary: 我的证书
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /certificates/my:
+    get:
+      tags: [学员端-证书]
+      summary: 我的证书（别名）
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /certificates/verify/{serial}:
+    get:
+      tags: [学员端-证书]
+      summary: 证书验真（公开）
+      description: 按证书编号查询签发信息，无需登录。
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/SerialPath'
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /announcements:
+    get:
+      tags: [学员端-公告与通知]
+      summary: 已发布公告（分页）
+      parameters:
+        - $ref: '#/components/parameters/PageQuery'
+        - $ref: '#/components/parameters/SizeQuery'
+        - $ref: '#/components/parameters/KeywordQuery'
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /announcements/unread-count:
+    get:
+      tags: [学员端-公告与通知]
+      summary: 未读公告数
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /announcements/{id}:
+    get:
+      tags: [学员端-公告与通知]
+      summary: 公告详情
+      description: 学员端访问会记录已读并增加阅读量。
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /notifications:
+    get:
+      tags: [学员端-公告与通知]
+      summary: 通知列表（分页）
+      parameters:
+        - $ref: '#/components/parameters/PageQuery'
+        - $ref: '#/components/parameters/SizeQuery'
+        - name: type
+          in: query
+          required: false
+          description: 1 考试 / 2 课程 / 3 考勤 / 4 公告 / 5 培训考勤
+          schema: { type: integer, enum: [1, 2, 3, 4, 5] }
+        - name: isRead
+          in: query
+          required: false
+          schema: { type: boolean }
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /notifications/recent:
+    get:
+      tags: [学员端-公告与通知]
+      summary: 最近通知
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema: { type: integer, default: 10 }
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /notifications/unread-count:
+    get:
+      tags: [学员端-公告与通知]
+      summary: 未读通知数
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /notifications/{id}:
+    get:
+      tags: [学员端-公告与通知]
+      summary: 通知详情
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [学员端-公告与通知]
+      summary: 删除通知
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      responses:
+        '200': { $ref: '#/components/responses/OkVoid' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /notifications/{id}/read:
+    put:
+      tags: [学员端-公告与通知]
+      summary: 标记单条已读/未读
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NotificationReadRequest'
+            example:
+              isRead: true
+      responses:
+        '200': { $ref: '#/components/responses/OkVoid' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /notifications/read-all:
+    put:
+      tags: [学员端-公告与通知]
+      summary: 全部标记已读
+      responses:
+        '200': { $ref: '#/components/responses/OkVoid' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /notifications/send:
+    post:
+      tags: [学员端-公告与通知]
+      summary: 发送通知（管理员）
+      description: 仅管理员可调用。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NotificationSendRequest'
+            example:
+              userIds: [1, 2]
+              type: 1
+              typeLabel: 考试
+              priority: 1
+              title: 考试提醒
+              summary: 您有一场考试即将开始
+              content: 请在规定时间内完成考试。
+              bulletPoints: [提前 10 分钟进入考场, 保持网络稳定]
+              senderName: 培训中心
+              officialRefNo: SEC-2025-Q2-0892
+              refType: exam
+              refId: 1
+              durationLabel: 90 分钟
+              passingScoreLabel: 60分及格
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /departments/options:
+    get:
+      tags: [认证与个人]
+      summary: 部门下拉选项
+      description: 当前实现需要登录后访问（注册页请先使用公开注册接口或由前端内置选项）。
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /files/upload:
+    post:
+      tags: [文件]
+      summary: 上传文件（服务端转发）
+      description: multipart/form-data；适合头像、图片、PDF 等小文件。
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                folder:
+                  type: string
+                  description: 自定义目录，如 avatar / course / attachment
+            encoding:
+              file:
+                contentType: application/octet-stream
+      responses:
+        '200':
+          description: 上传成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+              example:
+                code: 0
+                message: ok
+                data:
+                  objectName: avatar/2026/11/897480d845904a88976368c26a7e7367.png
+                  fileName: avatar.png
+                  size: 20480
+                  contentType: image/png
+                  url: http://127.0.0.1:8080/api/files/view/avatar/2026/11/897480d845904a88976368c26a7e7367.png
+                  directUrl: http://127.0.0.1:9000/emp-academy/avatar/2026/11/897480d845904a88976368c26a7e7367.png
+                  presignedUrl: http://127.0.0.1:9000/emp-academy/avatar/2026/11/897480d845904a88976368c26a7e7367.png?X-Amz-Algorithm=...
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '413': { $ref: '#/components/responses/PayloadTooLarge' }
+  /files/presign-upload:
+    post:
+      tags: [文件]
+      summary: 获取直传预签名地址
+      description: 大文件（课程视频）由前端直接 PUT 到返回的 uploadUrl，再把 objectName 保存到业务表。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PresignUploadRequest'
+            example:
+              fileName: course-video.mp4
+              contentType: video/mp4
+              folder: course
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /files/presign:
+    get:
+      tags: [文件]
+      summary: 获取下载预签名地址
+      parameters:
+        - $ref: '#/components/parameters/ObjectNameQuery'
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /files:
+    delete:
+      tags: [文件]
+      summary: 删除文件
+      parameters:
+        - $ref: '#/components/parameters/ObjectNameQuery'
+      responses:
+        '200': { $ref: '#/components/responses/OkVoid' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /files/view/{objectName}:
+    get:
+      tags: [文件]
+      summary: 稳定访问文件（公开）
+      description: |-
+        直接返回文件字节流，可用于 img / video / a 标签。objectName 可包含 `/`，请按实际对象路径拼接。
+        注意：部分客户端会把路径中的 `/` 编码成 `%2F`（Tomcat 默认返回 400）。遇到这种情况，请直接使用上传接口返回的完整 `url`，或改用 `GET /files/presign?objectName=...` 获取预签名地址。
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/ObjectNamePath'
+      responses:
+        '200':
+          description: 文件内容
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /admin/dashboard:
+    get:
+      tags: [管理端-看板与日志]
+      summary: 管理看板
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /admin/activities:
+    get:
+      tags: [管理端-看板与日志]
+      summary: 最新动态
+      parameters:
+        - $ref: '#/components/parameters/PageQuery'
+        - $ref: '#/components/parameters/SizeQuery'
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /admin/logs:
+    get:
+      tags: [管理端-看板与日志]
+      summary: 操作日志（分页）
+      parameters:
+        - $ref: '#/components/parameters/PageQuery'
+        - $ref: '#/components/parameters/SizeQuery'
+        - name: logType
+          in: query
+          required: false
+          description: 日志类型，如 user / course / exam / notice / approve
+          schema: { type: string }
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /admin/users:
+    get:
+      tags: [管理端-用户与部门]
+      summary: 用户列表（分页）
+      parameters:
+        - $ref: '#/components/parameters/PageQuery'
+        - $ref: '#/components/parameters/SizeQuery'
+        - $ref: '#/components/parameters/KeywordQuery'
+        - name: departmentId
+          in: query
+          required: false
+          schema: { type: integer, format: int64 }
+        - name: status
+          in: query
+          required: false
+          description: 1 正常 / 2 禁用
+          schema: { type: integer, enum: [1, 2] }
+        - name: role
+          in: query
+          required: false
+          description: 1 学员 / 2 管理员，默认 1
+          schema: { type: integer, default: 1, enum: [1, 2] }
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      tags: [管理端-用户与部门]
+      summary: 新增用户
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserSaveRequest'
+            example:
+              name: 王小明
+              employeeNo: EMP-2026002
+              password: '123456'
+              departmentId: 1
+              jobTitle: 研发工程师
+              grade: P5
+              specialty: 前端工程
+              avatarUrl: null
+              phone: '13900000000'
+              email: wangxm@example.com
+              role: 1
+              accountStatus: 1
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /admin/users/options:
+    get:
+      tags: [管理端-用户与部门]
+      summary: 用户下拉选项
+      parameters:
+        - $ref: '#/components/parameters/KeywordQuery'
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /admin/users/{id}:
+    get:
+      tags: [管理端-用户与部门]
+      summary: 用户详情
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    put:
+      tags: [管理端-用户与部门]
+      summary: 更新用户
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserSaveRequest'
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [管理端-用户与部门]
+      summary: 删除用户
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      responses:
+        '200': { $ref: '#/components/responses/OkVoid' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /admin/users/{id}/status:
+    put:
+      tags: [管理端-用户与部门]
+      summary: 启用/禁用用户
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserStatusRequest'
+            example:
+              accountStatus: 2
+      responses:
+        '200': { $ref: '#/components/responses/OkVoid' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /admin/users/{id}/reset-password:
+    post:
+      tags: [管理端-用户与部门]
+      summary: 重置用户密码
+      description: 不传 newPassword 时重置为演示口令 123456。
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResetPasswordRequest'
+            example:
+              newPassword: '123456'
+      responses:
+        '200': { $ref: '#/components/responses/OkVoid' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /admin/departments:
+    get:
+      tags: [管理端-用户与部门]
+      summary: 部门列表（分页）
+      parameters:
+        - $ref: '#/components/parameters/PageQuery'
+        - $ref: '#/components/parameters/SizeQuery'
+        - $ref: '#/components/parameters/KeywordQuery'
+        - name: status
+          in: query
+          required: false
+          description: 1 启用 / 2 停用
+          schema: { type: integer, enum: [1, 2] }
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      tags: [管理端-用户与部门]
+      summary: 新增部门
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DepartmentSaveRequest'
+            example:
+              name: 数据平台部
+              managerName: 张伟
+              description: 负责数据中台与 BI 建设
+              status: 1
+              sortNo: 9
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /admin/departments/options:
+    get:
+      tags: [管理端-用户与部门]
+      summary: 部门下拉选项（管理端）
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /admin/departments/{id}:
+    get:
+      tags: [管理端-用户与部门]
+      summary: 部门详情
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    put:
+      tags: [管理端-用户与部门]
+      summary: 更新部门
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DepartmentSaveRequest'
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [管理端-用户与部门]
+      summary: 删除部门
+      description: 部门下仍有成员时返回 400。
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      responses:
+        '200': { $ref: '#/components/responses/OkVoid' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /admin/departments/{id}/status:
+    put:
+      tags: [管理端-用户与部门]
+      summary: 启用/停用部门
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StatusRequest'
+            example:
+              status: 2
+      responses:
+        '200': { $ref: '#/components/responses/OkVoid' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /admin/courses:
+    get:
+      tags: [管理端-课程与题库]
+      summary: 课程列表（分页）
+      parameters:
+        - $ref: '#/components/parameters/PageQuery'
+        - $ref: '#/components/parameters/SizeQuery'
+        - $ref: '#/components/parameters/KeywordQuery'
+        - name: categoryId
+          in: query
+          required: false
+          schema: { type: integer, format: int64 }
+        - name: status
+          in: query
+          required: false
+          description: 1 草稿 / 2 已上架 / 3 已下架
+          schema: { type: integer, enum: [1, 2, 3] }
+        - name: required
+          in: query
+          required: false
+          schema: { type: boolean }
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      tags: [管理端-课程与题库]
+      summary: 新增课程
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CourseSaveRequest'
+            example:
+              title: 云原生微服务架构实战
+              categoryId: 1
+              subcategoryLabel: 研发架构
+              instructorId: 1
+              isRequired: true
+              level: 进阶技术
+              totalHours: 6.5
+              thumbnailUrl: null
+              summary: 从 0 到 1 掌握微服务拆分与治理
+              description: 完整的微服务架构课程
+              status: 1
+              enrollCount: 0
+              tagIds: [1, 2]
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /admin/courses/options:
+    get:
+      tags: [管理端-课程与题库]
+      summary: 已上架课程下拉选项
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /admin/courses/{id}:
+    get:
+      tags: [管理端-课程与题库]
+      summary: 课程详情
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    put:
+      tags: [管理端-课程与题库]
+      summary: 更新课程
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CourseSaveRequest'
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [管理端-课程与题库]
+      summary: 删除课程
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      responses:
+        '200': { $ref: '#/components/responses/OkVoid' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /admin/courses/{id}/status:
+    put:
+      tags: [管理端-课程与题库]
+      summary: 更新课程状态
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StatusRequest'
+            example:
+              status: 2
+      responses:
+        '200': { $ref: '#/components/responses/OkVoid' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /admin/courses/{id}/chapters:
+    post:
+      tags: [管理端-课程与题库]
+      summary: 新增章节
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChapterSaveRequest'
+            example:
+              title: 第一章 微服务拆分
+              sortNo: 1
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /admin/courses/{id}/chapters/{chapterId}:
+    put:
+      tags: [管理端-课程与题库]
+      summary: 更新章节
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+        - $ref: '#/components/parameters/ChapterIdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChapterSaveRequest'
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [管理端-课程与题库]
+      summary: 删除章节
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+        - $ref: '#/components/parameters/ChapterIdPath'
+      responses:
+        '200': { $ref: '#/components/responses/OkVoid' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /admin/courses/{id}/chapters/{chapterId}/lessons:
+    post:
+      tags: [管理端-课程与题库]
+      summary: 新增课时
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+        - $ref: '#/components/parameters/ChapterIdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LessonSaveRequest'
+            example:
+              title: 1.1 服务边界划分
+              durationSeconds: 900
+              videoUrl: http://127.0.0.1:8080/api/files/view/course/demo.mp4
+              sortNo: 1
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /admin/courses/{id}/chapters/{chapterId}/lessons/{lessonId}:
+    put:
+      tags: [管理端-课程与题库]
+      summary: 更新课时
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+        - $ref: '#/components/parameters/ChapterIdPath'
+        - $ref: '#/components/parameters/LessonIdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LessonSaveRequest'
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [管理端-课程与题库]
+      summary: 删除课时
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+        - $ref: '#/components/parameters/ChapterIdPath'
+        - $ref: '#/components/parameters/LessonIdPath'
+      responses:
+        '200': { $ref: '#/components/responses/OkVoid' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /admin/course-categories:
+    get:
+      tags: [管理端-课程与题库]
+      summary: 课程分类列表
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /admin/course-tags:
+    get:
+      tags: [管理端-课程与题库]
+      summary: 课程标签列表
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      tags: [管理端-课程与题库]
+      summary: 新增课程标签
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NameRequest'
+            example:
+              name: 微服务
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /admin/instructors:
+    get:
+      tags: [管理端-课程与题库]
+      summary: 讲师列表
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      tags: [管理端-课程与题库]
+      summary: 新增讲师
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InstructorSaveRequest'
+            example:
+              name: 陈老师
+              title: 资深架构师
+              isOrg: false
+              avatarUrl: null
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /admin/instructors/{id}:
+    put:
+      tags: [管理端-课程与题库]
+      summary: 更新讲师
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InstructorSaveRequest'
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [管理端-课程与题库]
+      summary: 删除讲师
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      responses:
+        '200': { $ref: '#/components/responses/OkVoid' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /admin/tracks:
+    get:
+      tags: [管理端-研修通道]
+      summary: 研修通道列表（分页）
+      parameters:
+        - $ref: '#/components/parameters/PageQuery'
+        - $ref: '#/components/parameters/SizeQuery'
+        - $ref: '#/components/parameters/KeywordQuery'
+        - name: category
+          in: query
+          required: false
+          schema: { type: string }
+        - name: status
+          in: query
+          required: false
+          description: 1 草稿 / 2 已上架 / 3 已下架
+          schema: { type: integer, enum: [1, 2, 3] }
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      tags: [管理端-研修通道]
+      summary: 新增研修通道
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TrackSaveRequest'
+            example:
+              category: security
+              categoryLabel: 信息安全
+              title: 零信任安全架构实战
+              thumbnailUrl: null
+              summary: 从边界防护到零信任
+              description: 系统学习零信任架构
+              lectureCount: 12
+              studentCount: 0
+              durationLabel: 约 3 小时
+              level: 2
+              audience: 架构师、安全工程师
+              status: 1
+              sortNo: 1
+              outline: [身份认证, 权限模型, 微隔离]
+              courseIds: [1, 2]
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /admin/tracks/{id}:
+    get:
+      tags: [管理端-研修通道]
+      summary: 研修通道详情
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    put:
+      tags: [管理端-研修通道]
+      summary: 更新研修通道
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TrackSaveRequest'
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [管理端-研修通道]
+      summary: 删除研修通道
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      responses:
+        '200': { $ref: '#/components/responses/OkVoid' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /admin/tracks/{id}/status:
+    put:
+      tags: [管理端-研修通道]
+      summary: 更新研修通道状态
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StatusRequest'
+            example:
+              status: 2
+      responses:
+        '200': { $ref: '#/components/responses/OkVoid' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /admin/exams:
+    get:
+      tags: [管理端-考试]
+      summary: 考试列表（分页）
+      parameters:
+        - $ref: '#/components/parameters/PageQuery'
+        - $ref: '#/components/parameters/SizeQuery'
+        - $ref: '#/components/parameters/KeywordQuery'
+        - name: status
+          in: query
+          required: false
+          description: 1 草稿 / 2 未开始 / 3 进行中 / 4 已结束 / 5 随时可考
+          schema: { type: integer, enum: [1, 2, 3, 4, 5] }
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      tags: [管理端-考试]
+      summary: 新增考试
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExamSaveRequest'
+            example:
+              code: ZK-20261201-01
+              title: 2026年度微服务架构认证考试
+              organizer: 技术研发部 · 2026Q4
+              examType: 技术认证
+              status: 1
+              location: 在线网页自适应考试
+              startAt: '2026-12-01T14:00:00'
+              endAt: '2026-12-01T15:30:00'
+              durationMinutes: 90
+              totalScore: 100
+              passScore: 60
+              isDoubleCamera: false
+              relatedCourseId: 1
+              relatedCourseText: 《云原生微服务架构实战》
+              remainingChance: 2
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /admin/exams/{id}:
+    get:
+      tags: [管理端-考试]
+      summary: 考试详情
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    put:
+      tags: [管理端-考试]
+      summary: 更新考试
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExamSaveRequest'
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [管理端-考试]
+      summary: 删除考试
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      responses:
+        '200': { $ref: '#/components/responses/OkVoid' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /admin/exams/{id}/status:
+    put:
+      tags: [管理端-考试]
+      summary: 更新考试状态
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StatusRequest'
+            example:
+              status: 3
+      responses:
+        '200': { $ref: '#/components/responses/OkVoid' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /admin/exams/{id}/assignments:
+    get:
+      tags: [管理端-考试]
+      summary: 考试指派列表（分页）
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+        - $ref: '#/components/parameters/PageQuery'
+        - $ref: '#/components/parameters/SizeQuery'
+        - $ref: '#/components/parameters/KeywordQuery'
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      tags: [管理端-考试]
+      summary: 指派考试给学员
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssignRequest'
+            example:
+              userIds: [1, 2, 3]
+              attemptsAllowed: 2
+              deadlineAt: '2026-12-31T23:59:00'
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /admin/exams/{id}/assignments/{assignmentId}:
+    delete:
+      tags: [管理端-考试]
+      summary: 取消考试指派
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+        - $ref: '#/components/parameters/AssignmentIdPath'
+      responses:
+        '200': { $ref: '#/components/responses/OkVoid' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /admin/exam-attempts:
+    get:
+      tags: [管理端-考试]
+      summary: 答卷列表（分页）
+      parameters:
+        - $ref: '#/components/parameters/PageQuery'
+        - $ref: '#/components/parameters/SizeQuery'
+        - name: examId
+          in: query
+          required: false
+          schema: { type: integer, format: int64 }
+        - name: status
+          in: query
+          required: false
+          description: 1 作答中 / 2 待评分 / 3 已评分 / 4 系统强制交卷
+          schema: { type: integer, enum: [1, 2, 3, 4] }
+        - $ref: '#/components/parameters/KeywordQuery'
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /admin/exam-attempts/{id}:
+    get:
+      tags: [管理端-考试]
+      summary: 答卷详情（含逐题答案）
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /admin/exam-attempts/{id}/grade:
+    post:
+      tags: [管理端-考试]
+      summary: 评分
+      description: 传 answers 时按题评分；不传 answers 时可传 subjectiveScore 作为主观题总分。
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GradeRequest'
+            example:
+              subjectiveScore: 10
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /admin/questions:
+    get:
+      tags: [管理端-课程与题库]
+      summary: 题目列表
+      parameters:
+        - name: examId
+          in: query
+          required: false
+          schema: { type: integer, format: int64 }
+        - name: type
+          in: query
+          required: false
+          description: 1 单选 / 2 多选 / 3 判断 / 4 应用简答
+          schema: { type: integer, enum: [1, 2, 3, 4] }
+        - $ref: '#/components/parameters/KeywordQuery'
+        - name: standalone
+          in: query
+          required: false
+          description: true 只返回未组卷的备用题
+          schema: { type: boolean, default: false }
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      tags: [管理端-课程与题库]
+      summary: 新增题目
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QuestionSaveRequest'
+            example:
+              examId: 1
+              questionNo: 26
+              type: 1
+              score: 5
+              title: 微服务中用于服务发现与配置管理的组件是？
+              codeFilename: null
+              codeRuntime: null
+              codeContent: null
+              correctAnswer: A
+              referenceAnswer: null
+              analysis: Consul / Nacos 均提供注册中心能力。
+              options:
+                - key: A
+                  content: Nacos
+                  explanation: 正确，Nacos 同时提供服务发现与配置管理。
+                  sortNo: 1
+                - key: B
+                  content: Kafka
+                  explanation: Kafka 用于消息流处理。
+                  sortNo: 2
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /admin/questions/{id}:
+    get:
+      tags: [管理端-课程与题库]
+      summary: 题目详情
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    put:
+      tags: [管理端-课程与题库]
+      summary: 更新题目
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QuestionSaveRequest'
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [管理端-课程与题库]
+      summary: 删除题目
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      responses:
+        '200': { $ref: '#/components/responses/OkVoid' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /admin/leaves:
+    get:
+      tags: [管理端-考勤请假证书公告]
+      summary: 请假审批列表（分页）
+      parameters:
+        - $ref: '#/components/parameters/PageQuery'
+        - $ref: '#/components/parameters/SizeQuery'
+        - name: status
+          in: query
+          required: false
+          description: 1 待审批 / 2 已通过 / 3 已驳回
+          schema: { type: integer, enum: [1, 2, 3] }
+        - $ref: '#/components/parameters/KeywordQuery'
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /admin/leaves/stats:
+    get:
+      tags: [管理端-考勤请假证书公告]
+      summary: 请假状态统计
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /admin/leaves/{id}:
+    get:
+      tags: [管理端-考勤请假证书公告]
+      summary: 请假详情
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [管理端-考勤请假证书公告]
+      summary: 删除请假记录
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      responses:
+        '200': { $ref: '#/components/responses/OkVoid' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /admin/leaves/{id}/approve:
+    put:
+      tags: [管理端-考勤请假证书公告]
+      summary: 审批请假
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LeaveApproveRequest'
+            example:
+              status: 2
+              remark: 情况属实，同意请假
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /admin/checkins:
+    get:
+      tags: [管理端-考勤请假证书公告]
+      summary: 签到记录列表（分页）
+      parameters:
+        - $ref: '#/components/parameters/PageQuery'
+        - $ref: '#/components/parameters/SizeQuery'
+        - name: date
+          in: query
+          required: false
+          schema: { type: string, format: date }
+        - name: status
+          in: query
+          required: false
+          description: 1 正常 / 2 迟到 / 3 缺勤 / 4 早退
+          schema: { type: integer, enum: [1, 2, 3, 4] }
+        - $ref: '#/components/parameters/KeywordQuery'
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      tags: [管理端-考勤请假证书公告]
+      summary: 补录签到记录
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CheckinSaveRequest'
+            example:
+              userId: 1
+              courseId: 1
+              checkinDate: '2026-11-06'
+              checkInTime: '08:55:00'
+              checkOutTime: '18:05:00'
+              method: 1
+              status: 1
+              location: 企业总部
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /admin/checkins/stats:
+    get:
+      tags: [管理端-考勤请假证书公告]
+      summary: 签到统计
+      parameters:
+        - $ref: '#/components/parameters/FromDateQuery'
+        - $ref: '#/components/parameters/ToDateQuery'
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /admin/checkins/{id}:
+    put:
+      tags: [管理端-考勤请假证书公告]
+      summary: 更新签到记录
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CheckinSaveRequest'
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [管理端-考勤请假证书公告]
+      summary: 删除签到记录
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      responses:
+        '200': { $ref: '#/components/responses/OkVoid' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /admin/certificates:
+    get:
+      tags: [管理端-考勤请假证书公告]
+      summary: 证书签发列表（分页）
+      parameters:
+        - $ref: '#/components/parameters/PageQuery'
+        - $ref: '#/components/parameters/SizeQuery'
+        - name: status
+          in: query
+          required: false
+          description: 1 待发放 / 2 已发放 / 3 已撤销
+          schema: { type: integer, enum: [1, 2, 3] }
+        - $ref: '#/components/parameters/KeywordQuery'
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      tags: [管理端-考勤请假证书公告]
+      summary: 新增证书签发
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CertIssueSaveRequest'
+            example:
+              templateId: 1
+              userId: 1
+              serialNumber: ZX-2026-MSA-001
+              issueDate: '2026-12-01'
+              expireDate: '2028-12-01'
+              validityLabel: 24 个月
+              rankingScore: TOP 3%
+              status: 1
+              blockchainHash: null
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /admin/certificates/{id}:
+    get:
+      tags: [管理端-考勤请假证书公告]
+      summary: 证书详情
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    put:
+      tags: [管理端-考勤请假证书公告]
+      summary: 更新证书签发
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CertIssueSaveRequest'
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [管理端-考勤请假证书公告]
+      summary: 删除证书签发
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      responses:
+        '200': { $ref: '#/components/responses/OkVoid' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /admin/certificates/{id}/status:
+    put:
+      tags: [管理端-考勤请假证书公告]
+      summary: 更新证书状态（发放/撤销）
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StatusRequest'
+            example:
+              status: 2
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /admin/certificates/templates:
+    get:
+      tags: [管理端-考勤请假证书公告]
+      summary: 证书模板列表
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      tags: [管理端-考勤请假证书公告]
+      summary: 新增证书模板
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CertTemplateSaveRequest'
+            example:
+              title: 微服务架构实战专家认证
+              levelLabel: LEVEL 4 · 专家级认证
+              category: architecture
+              issueOrg: 企业学堂
+              validityMonths: 24
+              description: 面向架构师的专家级认证
+              badgeType: blockchain
+              privilegeText: 优先参与架构评审
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /admin/certificates/templates/{id}:
+    put:
+      tags: [管理端-考勤请假证书公告]
+      summary: 更新证书模板
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CertTemplateSaveRequest'
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [管理端-考勤请假证书公告]
+      summary: 删除证书模板
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      responses:
+        '200': { $ref: '#/components/responses/OkVoid' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /admin/announcements:
+    get:
+      tags: [管理端-考勤请假证书公告]
+      summary: 公告列表（分页）
+      parameters:
+        - $ref: '#/components/parameters/PageQuery'
+        - $ref: '#/components/parameters/SizeQuery'
+        - $ref: '#/components/parameters/KeywordQuery'
+        - name: status
+          in: query
+          required: false
+          description: 1 草稿 / 2 已发布
+          schema: { type: integer, enum: [1, 2] }
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      tags: [管理端-考勤请假证书公告]
+      summary: 新增公告
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AnnouncementSaveRequest'
+            example:
+              title: 2026 年第四季度培训安排
+              content: 请各部门按时参加培训。
+              isTop: false
+              status: 1
+              publishAt: '2026-12-01T09:00:00'
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /admin/announcements/{id}:
+    get:
+      tags: [管理端-考勤请假证书公告]
+      summary: 公告详情（管理端）
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    put:
+      tags: [管理端-考勤请假证书公告]
+      summary: 更新公告
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AnnouncementSaveRequest'
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [管理端-考勤请假证书公告]
+      summary: 删除公告
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      responses:
+        '200': { $ref: '#/components/responses/OkVoid' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /admin/announcements/{id}/status:
+    put:
+      tags: [管理端-考勤请假证书公告]
+      summary: 发布/撤回公告
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StatusRequest'
+            example:
+              status: 2
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /admin/announcements/{id}/top:
+    put:
+      tags: [管理端-考勤请假证书公告]
+      summary: 置顶/取消置顶公告
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TopRequest'
+            example:
+              isTop: true
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: 登录接口返回的 token，填入 `Bearer <token>`。
+
+  parameters:
+    PageQuery:
+      name: page
+      in: query
+      required: false
+      description: 页码，从 1 开始
+      schema: { type: integer, format: int64, default: 1, minimum: 1 }
+    SizeQuery:
+      name: size
+      in: query
+      required: false
+      description: 每页条数
+      schema: { type: integer, format: int64, default: 10, minimum: 1 }
+    SizeQuery12:
+      name: size
+      in: query
+      required: false
+      description: 每页条数（课程/通道默认 12）
+      schema: { type: integer, format: int64, default: 12, minimum: 1 }
+    KeywordQuery:
+      name: keyword
+      in: query
+      required: false
+      description: 关键词，通常匹配标题/名称/工号
+      schema: { type: string }
+    IdPath:
+      name: id
+      in: path
+      required: true
+      description: 主键 ID
+      schema: { type: integer, format: int64 }
+    ChapterIdPath:
+      name: chapterId
+      in: path
+      required: true
+      description: 章节 ID
+      schema: { type: integer, format: int64 }
+    LessonIdPath:
+      name: lessonId
+      in: path
+      required: true
+      description: 课时 ID
+      schema: { type: integer, format: int64 }
+    AssignmentIdPath:
+      name: assignmentId
+      in: path
+      required: true
+      description: 考试指派记录 ID
+      schema: { type: integer, format: int64 }
+    AttemptIdPath:
+      name: attemptId
+      in: path
+      required: true
+      description: 答卷 ID
+      schema: { type: integer, format: int64 }
+    SerialPath:
+      name: serial
+      in: path
+      required: true
+      description: 证书编号
+      schema: { type: string }
+    ObjectNameQuery:
+      name: objectName
+      in: query
+      required: true
+      description: MinIO 对象名（含目录），如 `avatar/2026/11/xxx.png`
+      schema: { type: string }
+    ObjectNamePath:
+      name: objectName
+      in: path
+      required: true
+      description: MinIO 对象名（含目录），路径中可包含 `/`
+      schema: { type: string }
+    FromDateQuery:
+      name: from
+      in: query
+      required: false
+      description: 开始日期，格式 yyyy-MM-dd
+      schema: { type: string, format: date }
+    ToDateQuery:
+      name: to
+      in: query
+      required: false
+      description: 结束日期，格式 yyyy-MM-dd
+      schema: { type: string, format: date }
+
+  responses:
+    Ok:
+      description: 成功
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiResponse'
+          example:
+            code: 0
+            message: ok
+            data: {}
+    OkVoid:
+      description: 成功（无业务数据）
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiResponse'
+          example:
+            code: 0
+            message: ok
+            data: null
+    BadRequest:
+      description: 参数错误 / 业务校验失败
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiResponse'
+          example:
+            code: 400
+            message: 参数校验失败
+            data: null
+    Unauthorized:
+      description: 未登录或 token 无效
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiResponse'
+          example:
+            code: 401
+            message: 未登录或登录已过期
+            data: null
+    Forbidden:
+      description: 无权限（管理员接口需要 role=2，或操作了他人数据）
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiResponse'
+          example:
+            code: 403
+            message: 无权限访问
+            data: null
+    NotFound:
+      description: 资源不存在
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiResponse'
+          example:
+            code: 404
+            message: 资源不存在
+            data: null
+    Conflict:
+      description: 数据冲突（工号/编号重复等）
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiResponse'
+          example:
+            code: 409
+            message: 该工号已注册
+            data: null
+    PayloadTooLarge:
+      description: 上传文件超过大小限制
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiResponse'
+          example:
+            code: 413
+            message: 上传文件超过大小限制
+            data: null
+    InternalError:
+      description: 服务器内部错误
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiResponse'
+          example:
+            code: 500
+            message: 服务器内部错误
+            data: null
+
+  schemas:
+    ApiResponse:
+      type: object
+      description: 统一响应体
+      required: [code, message]
+      properties:
+        code:
+          type: integer
+          description: 0 表示成功，其它与 HTTP 状态码一致
+          example: 0
+        message:
+          type: string
+          example: ok
+        data:
+          description: 业务数据，可能是对象、数组、字符串、数字、布尔或 null（未限定类型，任意 JSON 值均合法）
+      additionalProperties: false
+
+    PageResult:
+      type: object
+      description: 分页数据（通常位于 ApiResponse.data）
+      required: [total, page, size, records]
+      properties:
+        total:
+          type: integer
+          format: int64
+          example: 12
+        page:
+          type: integer
+          format: int64
+          example: 1
+        size:
+          type: integer
+          format: int64
+          example: 10
+        records:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+
+    LoginRequest:
+      type: object
+      required: [employeeNo, password]
+      properties:
+        employeeNo:
+          type: string
+          description: 企业工号
+          example: EMP-2024098
+        password:
+          type: string
+          description: 登录密码
+          format: password
+          example: '123456'
+
+    RegisterRequest:
+      type: object
+      required: [name, employeeNo, password]
+      properties:
+        name:
+          type: string
+          example: 王小明
+        employeeNo:
+          type: string
+          example: EMP-2026001
+        password:
+          type: string
+          format: password
+          minLength: 6
+          example: '123456'
+        departmentId:
+          type: integer
+          format: int64
+          nullable: true
+          example: 1
+        jobTitle:
+          type: string
+          nullable: true
+          example: 研发工程师
+        email:
+          type: string
+          format: email
+          nullable: true
+          example: wangxm@example.com
+        phone:
+          type: string
+          nullable: true
+          example: '13900000000'
+
+    ChangePasswordRequest:
+      type: object
+      required: [oldPassword, newPassword]
+      properties:
+        oldPassword:
+          type: string
+          format: password
+          example: '123456'
+        newPassword:
+          type: string
+          format: password
+          minLength: 6
+          example: '654321'
+
+    ProfileUpdateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          example: 李明
+        phone:
+          type: string
+          nullable: true
+          example: '13800000000'
+        email:
+          type: string
+          format: email
+          nullable: true
+          example: liming@example.com
+        jobTitle:
+          type: string
+          nullable: true
+          example: 高级研发工程师
+        specialty:
+          type: string
+          nullable: true
+          example: 云原生与微服务
+        grade:
+          type: string
+          nullable: true
+          example: P6 高级研发
+        avatarUrl:
+          type: string
+          nullable: true
+          example: http://127.0.0.1:8080/api/files/view/avatar/demo.png
+
+    ProgressRequest:
+      type: object
+      properties:
+        watchedSeconds:
+          type: integer
+          description: 已观看秒数
+          example: 600
+        completed:
+          type: boolean
+          description: 是否完成本课时
+          example: true
+
+    AnswerSaveRequest:
+      type: object
+      required: [questionId]
+      properties:
+        questionId:
+          type: integer
+          format: int64
+          example: 1
+        selectedKeys:
+          type: string
+          nullable: true
+          description: 客观题选项，多选按字母序拼接（如 `ABD`）
+          example: A
+        answerText:
+          type: string
+          nullable: true
+          description: 主观题作答内容
+        flagged:
+          type: boolean
+          nullable: true
+          description: 是否标记待复查
+          example: false
+        remainingSeconds:
+          type: integer
+          nullable: true
+          description: 剩余作答秒数，用于断点续考
+          example: 1800
+
+    LeaveSaveRequest:
+      type: object
+      required: [leaveType, startDate, reason]
+      properties:
+        leaveType:
+          type: string
+          description: 项目紧急发版 / 病假 / 因公外出 / 个人事务
+          example: 病假
+        trainingTitle:
+          type: string
+          nullable: true
+          description: 缺席的培训/课程名称
+          example: 云原生微服务架构实战
+        courseId:
+          type: integer
+          format: int64
+          nullable: true
+          example: 1
+        startDate:
+          type: string
+          format: date
+          example: '2026-12-01'
+        endDate:
+          type: string
+          format: date
+          nullable: true
+          description: 不传时等于 startDate
+          example: '2026-12-02'
+        leaveDays:
+          type: number
+          format: double
+          nullable: true
+          description: 不传时按日期区间自动计算
+          example: 2
+        reason:
+          type: string
+          example: 身体不适需要休息
+        attachmentUrl:
+          type: string
+          nullable: true
+          description: 病假单据等附件地址
+          example: null
+
+    CheckinAction:
+      type: object
+      properties:
+        location:
+          type: string
+          nullable: true
+          example: 企业总部·移动端定位
+        method:
+          type: integer
+          nullable: true
+          description: 1 人脸识别 / 2 工牌刷卡 / 3 移动端定位
+          example: 3
+
+    NotificationReadRequest:
+      type: object
+      properties:
+        isRead:
+          type: boolean
+          nullable: true
+          description: 不传默认为 true
+          example: true
+
+    NotificationSendRequest:
+      type: object
+      required: [userIds, type, title]
+      properties:
+        userIds:
+          type: array
+          items: { type: integer, format: int64 }
+          example: [1, 2]
+        type:
+          type: integer
+          description: 1 考试 / 2 课程 / 3 考勤 / 4 公告 / 5 培训考勤
+          example: 1
+        typeLabel:
+          type: string
+          nullable: true
+          example: 考试
+        priority:
+          type: integer
+          nullable: true
+          description: 1 普通 / 2 加急
+          example: 1
+        title:
+          type: string
+          example: 考试提醒
+        summary:
+          type: string
+          nullable: true
+          example: 您有一场考试即将开始
+        content:
+          type: string
+          nullable: true
+          example: 请在规定时间内完成考试。
+        bulletPoints:
+          type: array
+          nullable: true
+          items: { type: string }
+          example: [提前 10 分钟进入考场, 保持网络稳定]
+        senderName:
+          type: string
+          nullable: true
+          example: 培训中心
+        officialRefNo:
+          type: string
+          nullable: true
+          example: SEC-2025-Q2-0892
+        refType:
+          type: string
+          nullable: true
+          description: exam / course / attendance / announcement
+          example: exam
+        refId:
+          type: integer
+          format: int64
+          nullable: true
+          example: 1
+        durationLabel:
+          type: string
+          nullable: true
+          example: 90 分钟
+        passingScoreLabel:
+          type: string
+          nullable: true
+          example: 60分及格
+
+    PresignUploadRequest:
+      type: object
+      required: [fileName]
+      properties:
+        fileName:
+          type: string
+          example: course-video.mp4
+        contentType:
+          type: string
+          nullable: true
+          example: video/mp4
+        folder:
+          type: string
+          nullable: true
+          description: 自定义目录，如 avatar / course / attachment
+          example: course
+
+    UserSaveRequest:
+      type: object
+      required: [name, employeeNo]
+      properties:
+        name:
+          type: string
+          example: 王小明
+        employeeNo:
+          type: string
+          example: EMP-2026002
+        password:
+          type: string
+          format: password
+          nullable: true
+          description: 新增时使用，不传默认 123456；更新时忽略
+          example: '123456'
+        departmentId:
+          type: integer
+          format: int64
+          nullable: true
+          example: 1
+        jobTitle:
+          type: string
+          nullable: true
+          example: 研发工程师
+        grade:
+          type: string
+          nullable: true
+          example: P5
+        specialty:
+          type: string
+          nullable: true
+          example: 前端工程
+        avatarUrl:
+          type: string
+          nullable: true
+          example: null
+        phone:
+          type: string
+          nullable: true
+          example: '13900000000'
+        email:
+          type: string
+          format: email
+          nullable: true
+          example: wangxm@example.com
+        role:
+          type: integer
+          nullable: true
+          description: 1 学员 / 2 管理员，默认 1
+          example: 1
+        accountStatus:
+          type: integer
+          nullable: true
+          description: 1 正常 / 2 禁用，默认 1
+          example: 1
+
+    UserStatusRequest:
+      type: object
+      required: [accountStatus]
+      properties:
+        accountStatus:
+          type: integer
+          description: 1 正常 / 2 禁用
+          example: 2
+
+    ResetPasswordRequest:
+      type: object
+      properties:
+        newPassword:
+          type: string
+          format: password
+          nullable: true
+          description: 不传时重置为 123456
+          example: '123456'
+
+    DepartmentSaveRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          example: 数据平台部
+        managerName:
+          type: string
+          nullable: true
+          example: 张伟
+        description:
+          type: string
+          nullable: true
+          example: 负责数据中台与 BI 建设
+        status:
+          type: integer
+          nullable: true
+          description: 1 启用 / 2 停用，默认 1
+          example: 1
+        sortNo:
+          type: integer
+          nullable: true
+          example: 9
+
+    StatusRequest:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: integer
+          description: 目标状态值，含义随业务不同
+          example: 2
+
+    CourseSaveRequest:
+      type: object
+      required: [title, categoryId]
+      properties:
+        title:
+          type: string
+          example: 云原生微服务架构实战
+        categoryId:
+          type: integer
+          format: int64
+          example: 1
+        subcategoryLabel:
+          type: string
+          nullable: true
+          example: 研发架构
+        instructorId:
+          type: integer
+          format: int64
+          nullable: true
+          example: 1
+        isRequired:
+          type: boolean
+          nullable: true
+          description: true 必修 / false 选修
+          example: true
+        level:
+          type: string
+          nullable: true
+          example: 进阶技术
+        totalHours:
+          type: number
+          format: double
+          nullable: true
+          example: 6.5
+        thumbnailUrl:
+          type: string
+          nullable: true
+          example: null
+        summary:
+          type: string
+          nullable: true
+          example: 从 0 到 1 掌握微服务拆分与治理
+        description:
+          type: string
+          nullable: true
+          example: 完整的微服务架构课程
+        status:
+          type: integer
+          nullable: true
+          description: 1 草稿 / 2 已上架 / 3 已下架
+          example: 1
+        enrollCount:
+          type: integer
+          nullable: true
+          description: 展示用报名人数
+          example: 0
+        tagIds:
+          type: array
+          nullable: true
+          items: { type: integer, format: int64 }
+          example: [1, 2]
+
+    ChapterSaveRequest:
+      type: object
+      required: [title]
+      properties:
+        title:
+          type: string
+          example: 第一章 微服务拆分
+        sortNo:
+          type: integer
+          nullable: true
+          example: 1
+
+    LessonSaveRequest:
+      type: object
+      required: [title]
+      properties:
+        title:
+          type: string
+          example: 1.1 服务边界划分
+        durationSeconds:
+          type: integer
+          nullable: true
+          example: 900
+        videoUrl:
+          type: string
+          nullable: true
+          example: http://127.0.0.1:8080/api/files/view/course/demo.mp4
+        sortNo:
+          type: integer
+          nullable: true
+          example: 1
+
+    NameRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          example: 微服务
+
+    InstructorSaveRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          example: 陈老师
+        title:
+          type: string
+          nullable: true
+          example: 资深架构师
+        isOrg:
+          type: boolean
+          nullable: true
+          description: true 机构讲师 / false 个人讲师
+          example: false
+        avatarUrl:
+          type: string
+          nullable: true
+          example: null
+
+    TrackSaveRequest:
+      type: object
+      required: [title]
+      properties:
+        category:
+          type: string
+          nullable: true
+          description: security / tech / leadership
+          example: security
+        categoryLabel:
+          type: string
+          nullable: true
+          example: 信息安全
+        title:
+          type: string
+          example: 零信任安全架构实战
+        thumbnailUrl:
+          type: string
+          nullable: true
+          example: null
+        summary:
+          type: string
+          nullable: true
+          example: 从边界防护到零信任
+        description:
+          type: string
+          nullable: true
+          example: 系统学习零信任架构
+        lectureCount:
+          type: integer
+          nullable: true
+          example: 12
+        studentCount:
+          type: integer
+          nullable: true
+          description: 展示用学习人数
+          example: 0
+        durationLabel:
+          type: string
+          nullable: true
+          example: 约 3 小时
+        level:
+          type: integer
+          nullable: true
+          description: 1 入门 / 2 进阶 / 3 高级
+          example: 2
+        audience:
+          type: string
+          nullable: true
+          example: 架构师、安全工程师
+        status:
+          type: integer
+          nullable: true
+          description: 1 草稿 / 2 已上架 / 3 已下架
+          example: 1
+        sortNo:
+          type: integer
+          nullable: true
+          example: 1
+        outline:
+          type: array
+          nullable: true
+          items: { type: string }
+          example: [身份认证, 权限模型, 微隔离]
+        courseIds:
+          type: array
+          nullable: true
+          items: { type: integer, format: int64 }
+          example: [1, 2]
+
+    ExamSaveRequest:
+      type: object
+      required: [code, title]
+      properties:
+        code:
+          type: string
+          description: 考试编号，全局唯一
+          example: ZK-20261201-01
+        title:
+          type: string
+          example: 2026年度微服务架构认证考试
+        organizer:
+          type: string
+          nullable: true
+          example: 技术研发部 · 2026Q4
+        examType:
+          type: string
+          nullable: true
+          example: 技术认证
+        status:
+          type: integer
+          nullable: true
+          description: 1 草稿 / 2 未开始 / 3 进行中 / 4 已结束 / 5 随时可考
+          example: 1
+        location:
+          type: string
+          nullable: true
+          example: 在线网页自适应考试
+        startAt:
+          type: string
+          format: date-time
+          nullable: true
+          example: '2026-12-01T14:00:00'
+        endAt:
+          type: string
+          format: date-time
+          nullable: true
+          example: '2026-12-01T15:30:00'
+        durationMinutes:
+          type: integer
+          nullable: true
+          description: 默认 60
+          example: 90
+        totalScore:
+          type: number
+          format: double
+          nullable: true
+          description: 默认 100
+          example: 100
+        passScore:
+          type: number
+          format: double
+          nullable: true
+          description: 默认 60
+          example: 60
+        isDoubleCamera:
+          type: boolean
+          nullable: true
+          example: false
+        relatedCourseId:
+          type: integer
+          format: int64
+          nullable: true
+          example: 1
+        relatedCourseText:
+          type: string
+          nullable: true
+          example: 《云原生微服务架构实战》
+        remainingChance:
+          type: integer
+          nullable: true
+          description: 展示用剩余机会次数
+          example: 2
+
+    AssignRequest:
+      type: object
+      required: [userIds]
+      properties:
+        userIds:
+          type: array
+          items: { type: integer, format: int64 }
+          example: [1, 2, 3]
+        attemptsAllowed:
+          type: integer
+          nullable: true
+          description: 允许作答次数，默认 1
+          example: 2
+        deadlineAt:
+          type: string
+          format: date-time
+          nullable: true
+          example: '2026-12-31T23:59:00'
+
+    GradeRequest:
+      type: object
+      description: answers 与 subjectiveScore 二选一；answers 存在时按题评分
+      properties:
+        subjectiveScore:
+          type: number
+          format: double
+          nullable: true
+          example: 10
+        answers:
+          type: array
+          nullable: true
+          items:
+            type: object
+            required: [answerId, scoreGained]
+            properties:
+              answerId:
+                type: integer
+                format: int64
+                example: 1
+              scoreGained:
+                type: number
+                format: double
+                example: 5
+
+    QuestionSaveRequest:
+      type: object
+      required: [type, title]
+      properties:
+        examId:
+          type: integer
+          format: int64
+          nullable: true
+          description: 为空表示未组卷的备用题
+          example: 1
+        questionNo:
+          type: integer
+          nullable: true
+          example: 26
+        type:
+          type: integer
+          description: 1 单选 / 2 多选 / 3 判断 / 4 应用简答
+          example: 1
+        score:
+          type: number
+          format: double
+          nullable: true
+          description: 默认 5
+          example: 5
+        title:
+          type: string
+          example: 微服务中用于服务发现与配置管理的组件是？
+        codeFilename:
+          type: string
+          nullable: true
+          example: null
+        codeRuntime:
+          type: string
+          nullable: true
+          example: null
+        codeContent:
+          type: string
+          nullable: true
+          example: null
+        correctAnswer:
+          type: string
+          nullable: true
+          description: 客观题必填，如 `A` 或 `ABD`
+          example: A
+        referenceAnswer:
+          type: string
+          nullable: true
+          description: 主观题参考答案/评分要点
+        analysis:
+          type: string
+          nullable: true
+          example: Consul / Nacos 均提供注册中心能力。
+        options:
+          type: array
+          nullable: true
+          description: 客观题至少一个选项
+          items:
+            type: object
+            required: [key, content]
+            properties:
+              key:
+                type: string
+                example: A
+              content:
+                type: string
+                example: Nacos
+              explanation:
+                type: string
+                nullable: true
+                example: 正确，Nacos 同时提供服务发现与配置管理。
+              sortNo:
+                type: integer
+                nullable: true
+                example: 1
+
+    LeaveApproveRequest:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: integer
+          description: 2 通过 / 3 驳回
+          example: 2
+        remark:
+          type: string
+          nullable: true
+          example: 情况属实，同意请假
+
+    CheckinSaveRequest:
+      type: object
+      required: [userId, checkinDate]
+      properties:
+        userId:
+          type: integer
+          format: int64
+          example: 1
+        courseId:
+          type: integer
+          format: int64
+          nullable: true
+          example: 1
+        checkinDate:
+          type: string
+          format: date
+          example: '2026-11-06'
+        checkInTime:
+          type: string
+          nullable: true
+          description: 时间格式 HH:mm:ss
+          example: '08:55:00'
+        checkOutTime:
+          type: string
+          nullable: true
+          description: 时间格式 HH:mm:ss
+          example: '18:05:00'
+        method:
+          type: integer
+          nullable: true
+          description: 1 人脸识别 / 2 工牌刷卡 / 3 移动端定位，默认 1
+          example: 1
+        status:
+          type: integer
+          nullable: true
+          description: 1 正常 / 2 迟到 / 3 缺勤 / 4 早退；不传按是否有签到时间推断
+          example: 1
+        location:
+          type: string
+          nullable: true
+          example: 企业总部
+
+    CertIssueSaveRequest:
+      type: object
+      required: [templateId, userId]
+      properties:
+        templateId:
+          type: integer
+          format: int64
+          example: 1
+        userId:
+          type: integer
+          format: int64
+          example: 1
+        serialNumber:
+          type: string
+          nullable: true
+          description: 不传自动生成
+          example: ZX-2026-MSA-001
+        issueDate:
+          type: string
+          format: date
+          nullable: true
+          description: 不传默认当天
+          example: '2026-12-01'
+        expireDate:
+          type: string
+          format: date
+          nullable: true
+          description: 不传按模板有效期计算
+          example: '2028-12-01'
+        validityLabel:
+          type: string
+          nullable: true
+          example: 24 个月
+        rankingScore:
+          type: string
+          nullable: true
+          example: TOP 3%
+        status:
+          type: integer
+          nullable: true
+          description: 1 待发放 / 2 已发放 / 3 已撤销
+          example: 1
+        blockchainHash:
+          type: string
+          nullable: true
+          description: 不传自动生成
+          example: null
+
+    CertTemplateSaveRequest:
+      type: object
+      required: [title]
+      properties:
+        title:
+          type: string
+          example: 微服务架构实战专家认证
+        levelLabel:
+          type: string
+          nullable: true
+          example: LEVEL 4 · 专家级认证
+        category:
+          type: string
+          nullable: true
+          description: architecture / compliance / devops / ai
+          example: architecture
+        issueOrg:
+          type: string
+          nullable: true
+          example: 企业学堂
+        validityMonths:
+          type: integer
+          nullable: true
+          description: 有效期月数，null 表示长期有效
+          example: 24
+        description:
+          type: string
+          nullable: true
+          example: 面向架构师的专家级认证
+        badgeType:
+          type: string
+          nullable: true
+          description: blockchain / security / cloud / ai
+          example: blockchain
+        privilegeText:
+          type: string
+          nullable: true
+          example: 优先参与架构评审
+
+    AnnouncementSaveRequest:
+      type: object
+      required: [title, content]
+      properties:
+        title:
+          type: string
+          example: 2026 年第四季度培训安排
+        content:
+          type: string
+          example: 请各部门按时参加培训。
+        isTop:
+          type: boolean
+          nullable: true
+          example: false
+        status:
+          type: integer
+          nullable: true
+          description: 1 草稿 / 2 已发布
+          example: 1
+        publishAt:
+          type: string
+          format: date-time
+          nullable: true
+          example: '2026-12-01T09:00:00'
+
+    TopRequest:
+      type: object
+      required: [isTop]
+      properties:
+        isTop:
+          type: boolean
+          example: true

@@ -22,6 +22,16 @@
           class="search-input"
           placeholder="搜索姓名 / 工号 / 职级..."
         />
+        <button
+          v-if="keyword"
+          type="button"
+          class="search-clear"
+          aria-label="清除搜索内容"
+          title="清除搜索内容"
+          @click="keyword = ''"
+        >
+          <Close />
+        </button>
       </div>
       <select v-model="deptFilter" class="select">
         <option value="">全部部门</option>
@@ -102,32 +112,18 @@
       </table>
     </div>
 
-    <!-- 分页：始终固定在页面底部，不随记录条数上下移动 -->
-    <div class="pager">
-      <span class="pager-info">
-        共 {{ filteredLearners.length }} 条 · 第 {{ page }} / {{ totalPages }} 页
-      </span>
-      <div class="pager-controls">
-        <button class="pager-btn" :disabled="page === 1" @click="page--">上一页</button>
-        <button
-          v-for="p in pageNumbers"
-          :key="p"
-          class="pager-btn pager-btn--num"
-          :class="{ 'pager-btn--active': p === page }"
-          @click="page = p"
-        >
-          {{ p }}
-        </button>
-        <button class="pager-btn" :disabled="page === totalPages" @click="page++">下一页</button>
-      </div>
-    </div>
+    <AdminPager
+      v-model:page="page"
+      :total="filteredLearners.length"
+      :total-pages="totalPages"
+    />
 
     <!-- 新增 / 编辑弹窗 -->
     <div v-if="modalOpen" class="modal-backdrop" @click.self="closeModal">
       <div class="modal">
         <div class="modal-head">
           <h2 class="modal-title">{{ editingId ? '编辑学员' : '新增学员' }}</h2>
-          <button class="modal-close" @click="closeModal"><Close /></button>
+          <button type="button" class="modal-close" @click="closeModal"><Close /></button>
         </div>
         <form class="modal-body" @submit.prevent="saveLearner">
           <label class="field">
@@ -175,7 +171,7 @@
               <div class="avatar-upload-info">
                 <div class="avatar-upload-btn">
                   <Plus class="upload-btn-icon" />
-                  <span>{{ form.avatarUrl ? '点击更换本地头像' : '点击上传本地头像' }}</span>
+                  <span>{{ uploadingAvatar ? '上传中…' : (form.avatarUrl ? '点击更换头像' : '点击上传头像') }}</span>
                 </div>
                 <p class="avatar-upload-hint">支持 JPG、PNG、WebP 图片，点击即可选择本地文件</p>
               </div>
@@ -193,7 +189,7 @@
           <p v-if="formError" class="form-error">{{ formError }}</p>
           <div class="modal-actions">
             <button type="button" class="btn btn--ghost" @click="closeModal">取消</button>
-            <button type="submit" class="btn btn--primary">{{ editingId ? '保存修改' : '创建学员' }}</button>
+            <button type="submit" class="btn btn--primary" :disabled="saving">{{ saving ? '保存中…' : (editingId ? '保存修改' : '创建学员') }}</button>
           </div>
         </form>
       </div>
@@ -217,15 +213,25 @@
 <script setup>
 import { computed, ref, watch } from 'vue';
 import { Plus, EditPen, Delete, Close, CircleClose, CircleCheck, Key } from '@element-plus/icons-vue';
-import { ADMIN_LEARNERS_DATA } from '../../mockData.js';
-import { adminStore } from '../../adminStore.js';
+import { adminStore, loadUsers } from '../../adminStore.js';
+import {
+  createAdminUser,
+  deleteAdminUser,
+  resetAdminUserPassword,
+  updateAdminUser,
+  updateAdminUserStatus,
+  uploadFile,
+} from '../../api/index.js';
 import { useConfirm } from '../../composables/useConfirm.js';
+import { usePager } from '../../composables/usePager.js';
 import { useToast } from '../../composables/useToast.js';
+import AdminPager from '../../components/AdminPager.vue';
 import ConfirmDialog from '../../components/ConfirmDialog.vue';
 
 const { show: showToast } = useToast();
 
-const learners = ref(ADMIN_LEARNERS_DATA.map(l => ({ ...l })));
+/* 学员列表取自共享 store（视图只读，写操作一律走接口后重新加载） */
+const learners = computed(() => adminStore.users);
 
 const { confirmState, askConfirm, cancelConfirm, acceptConfirm } = useConfirm();
 
@@ -250,42 +256,25 @@ const filteredLearners = computed(() => {
 });
 
 /* ---------- 分页 ---------- */
-const PAGE_SIZE = 11;
-const page = ref(1);
-
-const totalPages = computed(() =>
-  Math.max(1, Math.ceil(filteredLearners.value.length / PAGE_SIZE))
-);
-
-const pagedLearners = computed(() => {
-  const start = (page.value - 1) * PAGE_SIZE;
-  return filteredLearners.value.slice(start, start + PAGE_SIZE);
-});
-
-const pageNumbers = computed(() => {
-  const total = totalPages.value;
-  const current = page.value;
-  const max = 5;
-  let start = Math.max(1, current - 2);
-  const end = Math.min(total, start + max - 1);
-  start = Math.max(1, end - max + 1);
-  return Array.from({ length: end - start + 1 }, (_, i) => start + i);
-});
+const { page, totalPages, paged: pagedLearners, resetPage } = usePager(filteredLearners);
 
 /* 筛选条件变化时回到第一页 */
-watch([keyword, deptFilter, statusFilter], () => { page.value = 1; });
-
-/* 删除/筛选后页码越界时自动收拢 */
-watch(totalPages, (n) => {
-  if (page.value > n) page.value = n;
-});
+watch([keyword, deptFilter, statusFilter], resetPage);
 
 /* ---------- 弹窗表单 ---------- */
 const modalOpen = ref(false);
 const editingId = ref(null);
 const formError = ref('');
+const saving = ref(false);
+const uploadingAvatar = ref(false);
 const fileInputRef = ref(null);
 const form = ref({ name: '', employeeId: '', department: '', title: '', status: 'active', avatarUrl: '' });
+
+const accountStatusToCode = (status) => (status === 'inactive' ? 2 : 1);
+
+/* 表单按部门名称选择，接口需要 departmentId */
+const departmentIdOf = (name) =>
+  adminStore.departments.find(d => d.name === name)?.numericId ?? null;
 
 /* 只允许分配到启用中的部门；编辑时保留学员原部门，避免下拉回落把部门静默改掉 */
 const assignableDepts = computed(() => {
@@ -300,19 +289,24 @@ const triggerFileInput = () => {
   fileInputRef.value?.click();
 };
 
-const handleAvatarFile = (e) => {
+const handleAvatarFile = async (e) => {
   const file = e.target.files?.[0];
+  e.target.value = '';
   if (!file) return;
   if (!file.type.startsWith('image/')) {
     showToast('请上传有效的图片文件', 'error');
     return;
   }
-  const reader = new FileReader();
-  reader.onload = (loadEvent) => {
-    form.value.avatarUrl = loadEvent.target.result;
-    showToast('头像已载入，保存后生效', 'success');
-  };
-  reader.readAsDataURL(file);
+  uploadingAvatar.value = true;
+  try {
+    const result = await uploadFile(file, 'avatar');
+    form.value.avatarUrl = result?.url || result?.directUrl || '';
+    showToast('头像已上传，保存后生效', 'success');
+  } catch (error) {
+    showToast(error?.message || '头像上传失败', 'error');
+  } finally {
+    uploadingAvatar.value = false;
+  }
 };
 
 const openCreate = () => {
@@ -353,14 +347,18 @@ const resetPassword = (learner) => {
     ],
     tip: '重置后该学员的登录密码将统一恢复为 123456。',
     confirmText: '确认重置为 123456',
-    action: () => {
-      learner.password = '123456';
-      showToast(`已成功将【${learner.name}】的密码重置为 123456`, 'success');
+    action: async () => {
+      try {
+        await resetAdminUserPassword(learner.numericId ?? learner.id);
+        showToast(`已成功将【${learner.name}】的密码重置为 123456`, 'success');
+      } catch (error) {
+        showToast(error?.message || '密码重置失败', 'error');
+      }
     }
   });
 };
 
-const saveLearner = () => {
+const saveLearner = async () => {
   if (!form.value.name) { formError.value = '请输入学员姓名。'; return; }
   if (!form.value.employeeId) { formError.value = '请输入企业工号。'; return; }
   if (!form.value.department) {
@@ -374,27 +372,43 @@ const saveLearner = () => {
   );
   if (dup) { formError.value = '该工号已存在,请勿重复创建。'; return; }
 
-  if (editingId.value) {
-    const target = learners.value.find(l => l.id === editingId.value);
-    Object.assign(target, { ...form.value });
-    showToast(`已更新学员【${form.value.name}】信息`, 'success');
-  } else {
-    learners.value.unshift({
-      id: `u-${Date.now()}`,
-      ...form.value,
-      password: '123456',
-      learningHours: 0,
-      completedCourses: 0,
-      certificateCount: 0,
-      lastActive: '—'
-    });
-    showToast(`成功新增学员【${form.value.name}】，初始密码为 123456`, 'success');
+  const payload = {
+    name: form.value.name,
+    employeeNo: form.value.employeeId,
+    departmentId: departmentIdOf(form.value.department),
+    jobTitle: form.value.title,
+    avatarUrl: form.value.avatarUrl || '',
+    role: 1,
+    accountStatus: accountStatusToCode(form.value.status)
+  };
+
+  saving.value = true;
+  try {
+    if (editingId.value) {
+      await updateAdminUser(editingId.value, payload);
+      showToast(`已更新学员【${form.value.name}】信息`, 'success');
+    } else {
+      await createAdminUser({ ...payload, password: '123456' });
+      showToast(`成功新增学员【${form.value.name}】，初始密码为 123456`, 'success');
+    }
+    await loadUsers();
+    closeModal();
+  } catch (error) {
+    formError.value = error?.message || '保存失败，请稍后重试。';
+  } finally {
+    saving.value = false;
   }
-  closeModal();
 };
 
-const toggleStatus = (learner) => {
-  learner.status = learner.status === 'active' ? 'inactive' : 'active';
+const toggleStatus = async (learner) => {
+  const next = learner.status === 'active' ? 'inactive' : 'active';
+  try {
+    await updateAdminUserStatus(learner.numericId ?? learner.id, accountStatusToCode(next));
+    await loadUsers();
+    showToast(`【${learner.name}】已${next === 'active' ? '启用' : '停用'}`, 'success');
+  } catch (error) {
+    showToast(error?.message || '状态更新失败', 'error');
+  }
 };
 
 const removeLearner = (learner) => {
@@ -409,8 +423,14 @@ const removeLearner = (learner) => {
     ],
     tip: '删除后该学员的账号与学习记录将一并移除，此操作不可恢复。',
     confirmText: '确认删除',
-    action: () => {
-      learners.value = learners.value.filter(l => l.id !== learner.id);
+    action: async () => {
+      try {
+        await deleteAdminUser(learner.numericId ?? learner.id);
+        await loadUsers();
+        showToast(`已删除学员【${learner.name}】`, 'success');
+      } catch (error) {
+        showToast(error?.message || '删除失败', 'error');
+      }
     }
   });
 };
@@ -552,6 +572,23 @@ button { cursor: pointer; }
   outline: none;
 }
 
+.search-clear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 24px;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  color: var(--app-text-4);
+  background: transparent;
+  border: 0;
+  border-radius: 50%;
+  cursor: pointer;
+}
+.search-clear:hover { color: var(--app-text-2); background: var(--app-chip); }
+.search-clear svg { width: 14px; height: 14px; }
+
 .select {
   padding: 9px 12px;
   font-size: 13px;
@@ -629,64 +666,6 @@ th.ops, td.ops { text-align: right; }
 .mono { font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 12px; }
 .cell-muted { color: var(--app-text-4); }
 .empty-cell { text-align: center; color: var(--app-text-5); padding: 28px 0 !important; }
-
-/* ========== 分页 ========== */
-.pager {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  flex-wrap: wrap;
-  margin-top: auto;
-  flex-shrink: 0;
-}
-
-.pager-info {
-  font-size: 12px;
-  color: var(--app-text-5);
-}
-
-.pager-controls {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.pager-btn {
-  min-width: 32px;
-  height: 32px;
-  padding: 0 12px;
-  font-family: inherit;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--app-text-3);
-  background: var(--app-surface);
-  border: 1px solid var(--app-border);
-  border-radius: 8px;
-  cursor: pointer;
-  transition: background 0.15s, color 0.15s, border-color 0.15s;
-}
-
-.pager-btn:hover:not(:disabled) {
-  background: var(--app-brand-wash);
-  color: var(--app-brand-ink);
-  border-color: var(--app-brand);
-}
-
-.pager-btn:disabled {
-  color: var(--app-text-6);
-  background: var(--app-surface-2);
-  cursor: not-allowed;
-}
-
-.pager-btn--num { padding: 0; }
-
-.pager-btn--active,
-.pager-btn--active:hover:not(:disabled) {
-  color: #fff;
-  background: linear-gradient(135deg, var(--app-brand), var(--app-brand-deep));
-  border-color: var(--app-brand-deep);
-}
 
 .cell-user { display: flex; align-items: center; gap: 8px; }
 

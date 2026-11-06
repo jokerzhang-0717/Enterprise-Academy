@@ -1,32 +1,23 @@
 import { reactive } from 'vue';
 import {
-  ADMIN_DEPARTMENTS,
-  COURSES_DATA,
-  EXAMS_DATA,
-  PAST_EXAMS,
-  ADMIN_QUESTION_BANK
-} from './mockData.js';
+  fetchAdminAnnouncements,
+  fetchAdminCertificates,
+  fetchAdminCheckins,
+  fetchAdminCourses,
+  fetchAdminDashboard,
+  fetchAdminDepartments,
+  fetchAdminExams,
+  fetchAdminLeaves,
+  fetchAdminQuestions,
+  fetchAdminUsers,
+} from './api/index.js';
 
 /**
  * 管理端共享响应式状态
- * 课程导入页 → 课程管理页、题库页 → 考试页 之间通过该模块同步数据
- * (演示 mock:内存态,刷新页面后还原为种子数据)
+ * 课程管理页 → 课程导入页、题库页 → 考试页 之间通过该模块同步数据。
+ * 数据源为后端接口；所有列表都通过 splice 原地替换，保证视图里
+ * `const courses = adminStore.courses` 这类引用始终是同一数组。
  */
-
-const seedExams = [
-  ...EXAMS_DATA.map(e => ({
-    ...e,
-    state: e.status === 'in_progress' ? 'running' : 'scheduled',
-    participants: e.status === 'in_progress' ? 486 : e.status === 'not_started' ? 128 : 672
-  })),
-  ...PAST_EXAMS.map(p => ({
-    ...p,
-    state: 'ended',
-    durationMinutes: 60,
-    timeWindow: p.completionDate,
-    participants: p.type === '全员合规必修' ? 2450 : 486
-  }))
-];
 
 /** 预设封面库:课程管理中可直接选用 */
 export const PRESET_COVERS = [
@@ -45,58 +36,123 @@ export const SAMPLE_VIDEOS = {
   elephant: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4'
 };
 
+const replaceAll = (target, list) => {
+  target.splice(0, target.length, ...(list || []));
+};
+
 export const adminStore = reactive({
-  departments: ADMIN_DEPARTMENTS.map(d => ({ ...d })),
-  courses: COURSES_DATA.map(c => ({
-    ...c,
-    published: c.status !== 'offline',
-    syllabus: c.id === 'c1'
-      ? [
-          {
-            id: 'ch-1',
-            title: '第 1 章: 微服务架构选型与升级',
-            lessons: [
-              { id: 'ls-1', name: '1.1 微服务架构选型与升级路线', duration: '22分', url: SAMPLE_VIDEOS.bunny },
-              { id: 'ls-2', name: '1.2 Spring Boot 3 核心与自动装配', duration: '28分', url: SAMPLE_VIDEOS.sintel },
-              { id: 'ls-3', name: '1.3 高并发场景下的架构权衡', duration: '19分', url: SAMPLE_VIDEOS.elephant }
-            ]
-          },
-          {
-            id: 'ch-2',
-            title: '第 2 章: 高并发削峰与消息事务实战',
-            lessons: [
-              { id: 'ls-4', name: '2.1 削峰填谷与消息队列选型', duration: '25分', url: SAMPLE_VIDEOS.bunny },
-              { id: 'ls-5', name: '2.2 消息事务与最终一致性方案', duration: '31分', url: SAMPLE_VIDEOS.sintel }
-            ]
-          },
-          {
-            id: 'ch-3',
-            title: '第 3 章: 分布式缓存与数据一致性',
-            lessons: [
-              { id: 'ls-6', name: '3.1 Redis 哨兵与 Cluster 集群架构选型', duration: '22分', url: SAMPLE_VIDEOS.bunny },
-              { id: 'ls-7', name: '3.2 Redis 集群分布式锁与缓存击穿防护', duration: '28分', url: SAMPLE_VIDEOS.sintel },
-              { id: 'ls-8', name: '3.3 缓存穿透布隆过滤器实战', duration: '20分', url: SAMPLE_VIDEOS.elephant }
-            ]
-          }
-        ]
-      : c.id === 'c3'
-        ? [
-            {
-              id: 'ch-10',
-              title: '第 1 章: 敏捷协作与 Scrum 基础',
-              lessons: [
-                { id: 'ls-10', name: '1.1 敏捷协作与 Scrum 基础', duration: '18分', url: SAMPLE_VIDEOS.elephant }
-              ]
-            }
-          ]
-        : []
-  })),
-  exams: seedExams,
-  questions: ADMIN_QUESTION_BANK.map(q => ({
-    ...q,
-    options: (q.options || []).map(o => ({ ...o }))
-  }))
+  dashboard: null,
+  departments: [],
+  courses: [],
+  exams: [],
+  questions: [],
+  users: [],
+  leaves: [],
+  checkins: [],
+  certificates: [],
+  announcements: [],
+  loaded: false,
+  loading: false,
 });
+
+/* ============================== 单个列表加载 ============================== */
+
+export const loadDepartments = async () => {
+  const page = await fetchAdminDepartments();
+  replaceAll(adminStore.departments, page?.records || []);
+  return adminStore.departments;
+};
+
+export const loadCourses = async () => {
+  const page = await fetchAdminCourses();
+  replaceAll(adminStore.courses, page?.records || []);
+  return adminStore.courses;
+};
+
+export const loadExams = async () => {
+  const page = await fetchAdminExams();
+  replaceAll(adminStore.exams, page?.records || []);
+  return adminStore.exams;
+};
+
+export const loadQuestions = async () => {
+  const list = await fetchAdminQuestions();
+  replaceAll(adminStore.questions, list || []);
+  return adminStore.questions;
+};
+
+export const loadUsers = async () => {
+  const page = await fetchAdminUsers();
+  replaceAll(adminStore.users, page?.records || []);
+  return adminStore.users;
+};
+
+export const loadLeaves = async () => {
+  const page = await fetchAdminLeaves();
+  replaceAll(adminStore.leaves, page?.records || []);
+  return adminStore.leaves;
+};
+
+export const loadCheckins = async () => {
+  const page = await fetchAdminCheckins();
+  replaceAll(adminStore.checkins, page?.records || []);
+  return adminStore.checkins;
+};
+
+export const loadCertificates = async () => {
+  const page = await fetchAdminCertificates();
+  replaceAll(adminStore.certificates, page?.records || []);
+  return adminStore.certificates;
+};
+
+export const loadAnnouncements = async () => {
+  const page = await fetchAdminAnnouncements();
+  replaceAll(adminStore.announcements, page?.records || []);
+  return adminStore.announcements;
+};
+
+export const loadDashboard = async () => {
+  adminStore.dashboard = await fetchAdminDashboard();
+  return adminStore.dashboard;
+};
+
+/** 一次加载管理端全部基础数据（失败的列表保持原值，不阻塞其它页面） */
+export const loadAdminStore = async () => {
+  if (adminStore.loading) return adminStore;
+  adminStore.loading = true;
+  const tasks = [
+    loadDashboard,
+    loadDepartments,
+    loadCourses,
+    loadExams,
+    loadQuestions,
+    loadUsers,
+    loadLeaves,
+    loadCheckins,
+    loadCertificates,
+    loadAnnouncements,
+  ];
+  await Promise.allSettled(tasks.map((task) => task()));
+  adminStore.loading = false;
+  adminStore.loaded = true;
+  return adminStore;
+};
+
+/** 退出登录时清空管理端缓存 */
+export const resetAdminStore = () => {
+  adminStore.dashboard = null;
+  adminStore.departments.splice(0);
+  adminStore.courses.splice(0);
+  adminStore.exams.splice(0);
+  adminStore.questions.splice(0);
+  adminStore.users.splice(0);
+  adminStore.leaves.splice(0);
+  adminStore.checkins.splice(0);
+  adminStore.certificates.splice(0);
+  adminStore.announcements.splice(0);
+  adminStore.loaded = false;
+};
+
 /** 统计某场考试的题目数 */
 export const questionCount = (examId) =>
-  adminStore.questions.filter(q => q.examId === examId).length;
+  adminStore.questions.filter(q => String(q.examId) === String(examId)).length;

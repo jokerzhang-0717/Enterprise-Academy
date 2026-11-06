@@ -32,9 +32,43 @@
       </div>
     </div>
 
+    <div class="filter-toolbar">
+      <select v-model="statusFilter" class="filter-select" aria-label="按证书状态筛选">
+        <option value="">全部状态</option>
+        <option value="issued">已发放</option>
+        <option value="pending">待发放</option>
+        <option value="revoked">已撤销</option>
+      </select>
+      <select v-model="issuerFilter" class="filter-select" aria-label="按颁发机构筛选">
+        <option value="">全部机构</option>
+        <option v-for="issuer in issuers" :key="issuer" :value="issuer">{{ issuer }}</option>
+      </select>
+      <label class="filter-search">
+        <span class="search-icon" aria-hidden="true"></span>
+        <input
+          v-model.trim="keyword"
+          class="filter-search-input"
+          type="text"
+          placeholder="搜索持证人 / 证书名称 / 编号..."
+          aria-label="搜索持证人、证书名称或编号"
+        />
+        <button
+          v-if="keyword"
+          type="button"
+          class="filter-clear"
+          aria-label="清除搜索内容"
+          title="清除搜索内容"
+          @click="keyword = ''"
+        >
+          <Close />
+        </button>
+      </label>
+      <span class="filter-count">{{ filteredCertificates.length }} 张证书</span>
+    </div>
+
     <!-- 证书表格 -->
     <div class="table-wrap">
-      <table class="data-table">
+      <table class="data-table data-table--wide">
         <thead>
           <tr>
             <th>持证人</th>
@@ -89,8 +123,10 @@
               </div>
             </td>
           </tr>
-          <tr v-if="!certificates.length">
-            <td colspan="8" class="empty-cell">暂无证书记录</td>
+          <tr v-if="!filteredCertificates.length">
+            <td colspan="8" class="empty-cell">
+              {{ certificates.length ? '没有匹配的证书' : '暂无证书记录' }}
+            </td>
           </tr>
         </tbody>
       </table>
@@ -98,7 +134,7 @@
 
     <AdminPager
       v-model:page="page"
-      :total="certificates.length"
+      :total="filteredCertificates.length"
       :total-pages="totalPages"
     />
 
@@ -124,7 +160,7 @@
       <div class="modal">
         <div class="modal-head">
           <h2 class="modal-title">{{ editingId ? '编辑证书' : '发放证书' }}</h2>
-          <button class="modal-close" @click="closeModal"><Close /></button>
+          <button type="button" class="modal-close" @click="closeModal"><Close /></button>
         </div>
         <form class="modal-body" @submit.prevent="saveIssue">
           <label class="field">
@@ -151,11 +187,11 @@
             </label>
           </div>
           <p v-if="editingId" class="form-hint">证书编号保持不变:{{ form.serialNumber }}</p>
-          <p v-else class="form-hint">证书防伪编号将自动生成:{{ autoSerial }}</p>
+          <p v-else class="form-hint">证书防伪编号由服务端在发放时自动生成</p>
           <p v-if="formError" class="form-error">{{ formError }}</p>
           <div class="modal-actions">
             <button type="button" class="btn btn--ghost" @click="closeModal">取消</button>
-            <button type="submit" class="btn btn--primary">{{ editingId ? '保存修改' : '确认发放' }}</button>
+            <button type="submit" class="btn btn--primary" :disabled="saving">{{ saving ? '提交中…' : (editingId ? '保存修改' : '确认发放') }}</button>
           </div>
         </form>
       </div>
@@ -177,21 +213,75 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { Plus, EditPen, Delete, Close } from '@element-plus/icons-vue';
-import { ADMIN_CERTIFICATE_ISSUES, ADMIN_LEARNERS_DATA } from '../../mockData.js';
+import { adminStore, loadCertificates } from '../../adminStore.js';
+import {
+  createAdminCertificateTemplate,
+  deleteAdminCertificate,
+  fetchAdminCertificateTemplates,
+  issueAdminCertificate,
+  updateAdminCertificate,
+  updateAdminCertificateStatus,
+  updateAdminCertificateTemplate
+} from '../../api/index.js';
 import { usePager } from '../../composables/usePager.js';
 import { useConfirm } from '../../composables/useConfirm.js';
+import { useToast } from '../../composables/useToast.js';
 import AdminPager from '../../components/AdminPager.vue';
 import AdminDetailModal from '../../components/AdminDetailModal.vue';
 import ConfirmDialog from '../../components/ConfirmDialog.vue';
 
-const certificates = ref(ADMIN_CERTIFICATE_ISSUES.map(c => ({ ...c })));
+const { show: showToast } = useToast();
+
+const certificates = computed(() => adminStore.certificates);
 
 const { confirmState, askConfirm, cancelConfirm, acceptConfirm } = useConfirm();
-const learners = ADMIN_LEARNERS_DATA;
+const learners = computed(() => adminStore.users);
 
-const { page, totalPages, paged: pagedCertificates } = usePager(certificates, 6);
+/* 证书名称与颁发机构属于模板，接口按 templateId 关联，名称不在模板内时新建一条模板 */
+const templates = ref([]);
+onMounted(async () => {
+  templates.value = await fetchAdminCertificateTemplates().catch(() => []) || [];
+});
+
+const resolveTemplate = async (title, issueOrg) => {
+  const hit = templates.value.find(t => t.title === title);
+  if (!hit) {
+    const created = await createAdminCertificateTemplate({
+      title,
+      issueOrg: issueOrg || '企业大学教培中心',
+      levelLabel: '企业认证'
+    });
+    if (created?.id) templates.value = [...templates.value, created];
+    return created || null;
+  }
+  if ((hit.issueOrg || '') !== (issueOrg || '')) {
+    const saved = await updateAdminCertificateTemplate(hit.id, { ...hit, issueOrg });
+    templates.value = templates.value.map(t => t.id === hit.id ? { ...t, issueOrg } : t);
+    return saved || { ...hit, issueOrg };
+  }
+  return hit;
+};
+
+const statusFilter = ref('');
+const issuerFilter = ref('');
+const keyword = ref('');
+const issuers = computed(() => [...new Set(certificates.value.map(c => c.issueOrg).filter(Boolean))].sort());
+
+const filteredCertificates = computed(() => {
+  const search = keyword.value.toLowerCase();
+  return certificates.value.filter((cert) => {
+    const matchesStatus = !statusFilter.value || cert.status === statusFilter.value;
+    const matchesIssuer = !issuerFilter.value || cert.issueOrg === issuerFilter.value;
+    const matchesKeyword = !search ||
+      `${cert.holder} ${cert.employeeId} ${cert.title} ${cert.serialNumber} ${cert.issueOrg}`.toLowerCase().includes(search);
+    return matchesStatus && matchesIssuer && matchesKeyword;
+  });
+});
+
+const { page, totalPages, paged: pagedCertificates, resetPage } = usePager(filteredCertificates, 7);
+watch([statusFilter, issuerFilter, keyword], resetPage);
 
 const issuedCount = computed(() => certificates.value.filter(c => c.status === 'issued').length);
 const pendingCount = computed(() => certificates.value.filter(c => c.status === 'pending').length);
@@ -208,20 +298,11 @@ const statusLabel = (status) => statusLabelMap[status] || status;
 const detailCert = ref(null);
 const openDetail = (cert) => { detailCert.value = cert; };
 
-const todayText = () => {
-  const d = new Date();
-  const pad = (n) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-};
-
 /* ---------- 发放 / 编辑弹窗 ---------- */
 const modalOpen = ref(false);
 const editingId = ref(null);
 const formError = ref('');
-const autoSerial = computed(() => {
-  const seq = String(certificates.value.length + 1).padStart(3, '0');
-  return `ZX-${new Date().getFullYear()}-AUTO-${seq}`;
-});
+const saving = ref(false);
 const form = ref({
   holder: '', title: '', issueOrg: '', validity: '长期有效', serialNumber: ''
 });
@@ -236,7 +317,7 @@ const openIssue = () => {
 };
 
 const openEdit = (cert) => {
-  editingId.value = cert.id;
+  editingId.value = cert.numericId ?? cert.id;
   formError.value = '';
   form.value = {
     holder: cert.holder,
@@ -254,45 +335,50 @@ const closeModal = () => {
   formError.value = '';
 };
 
-const saveIssue = () => {
+const saveIssue = async () => {
   if (!form.value.holder) { formError.value = '请选择持证学员。'; return; }
   if (!form.value.title) { formError.value = '请输入证书名称。'; return; }
 
-  if (editingId.value) {
-    const cert = certificates.value.find(c => c.id === editingId.value);
-    if (cert) {
-      cert.title = form.value.title;
-      cert.issueOrg = form.value.issueOrg;
-      cert.validity = form.value.validity || '长期有效';
-      if (cert.holder !== form.value.holder) {
-        const learner = learners.find(l => l.name === form.value.holder);
-        cert.holder = form.value.holder;
-        cert.employeeId = learner?.employeeId || '—';
-      }
-    }
-    closeModal();
-    return;
-  }
+  const learner = learners.value.find(l => l.name === form.value.holder);
+  if (!learner) { formError.value = '未找到该学员，请重新选择持证人。'; return; }
 
-  const learner = learners.find(l => l.name === form.value.holder);
-  certificates.value.unshift({
-    id: `aci-${Date.now()}`,
-    holder: form.value.holder,
-    employeeId: learner?.employeeId || '—',
-    title: form.value.title,
-    serialNumber: autoSerial.value,
-    level: '企业认证',
-    issueOrg: form.value.issueOrg,
-    issueDate: todayText(),
-    validity: form.value.validity || '长期有效',
-    status: 'issued'
-  });
-  closeModal();
+  saving.value = true;
+  const isEdit = !!editingId.value;
+  try {
+    const template = await resolveTemplate(form.value.title, form.value.issueOrg);
+    if (!template?.id) { throw new Error('证书模板准备失败，请重试。'); }
+
+    const payload = {
+      templateId: template.id,
+      userId: learner.numericId ?? learner.id,
+      validityLabel: form.value.validity || '长期有效'
+    };
+    if (form.value.serialNumber) payload.serialNumber = form.value.serialNumber;
+
+    if (isEdit) {
+      await updateAdminCertificate(editingId.value, payload);
+    } else {
+      payload.status = 2;
+      await issueAdminCertificate(payload);
+    }
+    await loadCertificates();
+    closeModal();
+    showToast(isEdit ? '证书记录已更新' : `已向 ${form.value.holder} 发放证书`, 'success');
+  } catch (err) {
+    formError.value = err?.message || '保存证书失败，请重试。';
+  } finally {
+    saving.value = false;
+  }
 };
 
-const issueCert = (cert) => {
-  cert.status = 'issued';
-  cert.issueDate = todayText();
+const issueCert = async (cert) => {
+  try {
+    await updateAdminCertificateStatus(cert.numericId ?? cert.id, 2);
+    await loadCertificates();
+    showToast(`已发放证书 ${cert.serialNumber}`, 'success');
+  } catch (err) {
+    showToast(err?.message || '发放证书失败', 'error');
+  }
 };
 
 const revokeCert = (cert) => {
@@ -307,7 +393,15 @@ const revokeCert = (cert) => {
     ],
     tip: '撤销后该证书将失效，学员端不再展示，可用于纠错重新发放。',
     confirmText: '确认撤销',
-    action: () => { cert.status = 'revoked'; }
+    action: async () => {
+      try {
+        await updateAdminCertificateStatus(cert.numericId ?? cert.id, 3);
+        await loadCertificates();
+        showToast('证书已撤销', 'success');
+      } catch (err) {
+        showToast(err?.message || '撤销证书失败', 'error');
+      }
+    }
   });
 };
 
@@ -320,10 +414,16 @@ const removeCert = (cert) => {
       { label: '证书编号', value: cert.serialNumber },
       { label: '颁发日期', value: cert.issueDate }
     ],
-    tip: '删除后该发放记录将从列表中移除，此操作不可恢复。',
+    tip: '删除后该发放记录将从列表和学员端移除，此操作不可恢复。',
     confirmText: '确认删除',
-    action: () => {
-      certificates.value = certificates.value.filter(c => c.id !== cert.id);
+    action: async () => {
+      try {
+        await deleteAdminCertificate(cert.numericId ?? cert.id);
+        await loadCertificates();
+        showToast('证书记录已删除', 'success');
+      } catch (err) {
+        showToast(err?.message || '删除证书记录失败', 'error');
+      }
     }
   });
 };
@@ -426,6 +526,55 @@ button { cursor: pointer; }
 .overview-label {
   font-size: 12px;
   color: var(--app-text-4);
+}
+
+/* ========== 筛选工具栏 ========== */
+.filter-toolbar {
+  display: grid;
+  grid-template-columns: minmax(140px, 180px) minmax(150px, 210px) minmax(220px, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  min-height: 64px;
+  padding: 12px 16px;
+  background: var(--app-surface);
+  border: 1px solid var(--app-border);
+  border-radius: 12px;
+}
+.filter-select, .filter-search {
+  width: 100%; min-width: 0; height: 40px; color: var(--app-text-2);
+  background: var(--app-surface); border: 1px solid var(--app-border); border-radius: 10px;
+}
+.filter-select { padding: 0 34px 0 12px; font-size: 13px; outline: none; cursor: pointer; }
+.filter-select:focus, .filter-search:focus-within {
+  border-color: var(--app-accent-strong); box-shadow: 0 0 0 3px var(--app-accent-a12);
+}
+.filter-search { display: flex; align-items: center; gap: 8px; padding: 0 12px; }
+.search-icon { position: relative; width: 14px; height: 14px; flex: 0 0 14px; }
+.search-icon::before {
+  position: absolute; top: 0; left: 0; width: 9px; height: 9px;
+  border: 2px solid var(--app-text-4); border-radius: 50%; content: '';
+}
+.search-icon::after {
+  position: absolute; right: 0; bottom: 0; width: 6px; height: 2px;
+  background: var(--app-text-4); border-radius: 1px; content: '';
+  transform: rotate(45deg); transform-origin: right center;
+}
+.filter-search-input {
+  flex: 1; min-width: 0; height: 100%; font-size: 13px; color: var(--app-text);
+  background: transparent; border: 0; outline: 0;
+}
+.filter-search-input::placeholder { color: var(--app-text-5); }
+.filter-clear {
+  display: inline-flex; flex: 0 0 24px; align-items: center; justify-content: center;
+  width: 24px; height: 24px; padding: 0; color: var(--app-text-4);
+  background: transparent; border: 0; border-radius: 50%;
+}
+.filter-clear:hover { color: var(--app-text-2); background: var(--app-chip); }
+.filter-clear svg { width: 14px; height: 14px; }
+.filter-count {
+  justify-self: end; padding: 7px 11px; font-size: 12px; font-weight: 600;
+  color: var(--app-accent-deep); background: var(--app-accent-soft);
+  border-radius: 999px; white-space: nowrap;
 }
 
 /* ========== 表格 ========== */
@@ -694,6 +843,17 @@ th.ops, td.ops { text-align: right; white-space: nowrap; }
 
 @media (max-width: 640px) {
   .overview-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 900px) {
+  .filter-toolbar { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .filter-search, .filter-count { grid-column: 1 / -1; }
+  .filter-count { justify-self: start; }
+}
+
+@media (max-width: 420px) {
+  .filter-toolbar { grid-template-columns: minmax(0, 1fr); }
+  .filter-select, .filter-search, .filter-count { grid-column: 1; }
   .field-row { grid-template-columns: 1fr; }
 }
 </style>

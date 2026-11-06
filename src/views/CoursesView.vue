@@ -1,19 +1,68 @@
 <template>
   <div class="crs-page">
     <!-- 0. 视频课程分类筛选条 -->
-    <div class="crs-category-bar">
-      <button
-        v-for="tab in categoryTabs"
-        :key="tab.key"
-        type="button"
-        class="crs-category-pill"
-        :class="{ 'crs-category-pill--active': activeCategory === tab.key }"
-        @click="activeCategory = tab.key"
-      >
-        <span>{{ tab.label }}</span>
-        <span class="crs-category-count">{{ tab.count }}</span>
-      </button>
-    </div>
+    <section class="crs-toolbar" aria-label="课程筛选">
+      <div class="crs-toolbar__top">
+        <div class="crs-toolbar__heading">
+          <h1 class="crs-toolbar__title">课程中心</h1>
+          <span class="crs-toolbar__result">{{ filteredCourses.length }} 门课程</span>
+        </div>
+        <label class="crs-search">
+          <Search class="crs-search__icon" aria-hidden="true" />
+          <input
+            v-model.trim="keyword"
+            type="text"
+            placeholder="搜索课程名称、讲师或内容"
+            aria-label="搜索课程名称、讲师或内容"
+          />
+          <button
+            v-if="keyword"
+            type="button"
+            class="crs-search__clear"
+            aria-label="清除搜索内容"
+            title="清除搜索内容"
+            @click="keyword = ''"
+          >
+            <X class="crs-search__clear-icon" aria-hidden="true" />
+          </button>
+        </label>
+      </div>
+      <div class="crs-category-rail">
+        <button
+          v-if="showCategoryArrows"
+          type="button"
+          class="crs-category-arrow"
+          :disabled="!canScrollCategoryLeft"
+          aria-label="向左移动分类"
+          @click="scrollCategories(-1)"
+        >
+          <ArrowLeft class="crs-category-arrow__icon" aria-hidden="true" />
+        </button>
+        <nav ref="categoryNav" class="crs-category-options" aria-label="课程分类" @scroll="updateCategoryScroll">
+          <button
+            v-for="tab in categoryTabs"
+            :key="tab.key"
+            type="button"
+            class="crs-category-pill"
+            :class="{ 'crs-category-pill--active': activeCategory === tab.key }"
+            @click="activeCategory = tab.key"
+          >
+            <span>{{ tab.label }}</span>
+            <span class="crs-category-count">{{ tab.count }}</span>
+          </button>
+        </nav>
+        <button
+          v-if="showCategoryArrows"
+          type="button"
+          class="crs-category-arrow"
+          :disabled="!canScrollCategoryRight"
+          aria-label="向右移动分类"
+          @click="scrollCategories(1)"
+        >
+          <ArrowRight class="crs-category-arrow__icon" aria-hidden="true" />
+        </button>
+      </div>
+    </section>
 
     <!-- 1. Course Cards Grid -->
     <div class="crs-grid">
@@ -51,20 +100,9 @@
 
             <!-- Action -->
             <div class="crs-card__actions">
-              <!-- 已完成：重新学习（替代原先温故复习） -->
-              <button
-                v-if="course.status === 'completed'"
-                type="button"
-                class="crs-btn crs-btn--review"
-                @click="$emit('open-course', course)"
-              >
-                <Play class="crs-icon crs-icon--sm crs-icon--fill" />
-                <span>重新学习</span>
-              </button>
-
               <!-- 未开始：立即学习 -->
               <button
-                v-else-if="course.status === 'not_started'"
+                v-if="course.status === 'not_started'"
                 type="button"
                 class="crs-btn crs-btn--start"
                 @click="$emit('open-course', course)"
@@ -72,7 +110,7 @@
                 <span>立即学习</span>
               </button>
 
-              <!-- 进行中：继续学习 -->
+              <!-- 进行中 / 已结课：继续学习 -->
               <button
                 v-else
                 type="button"
@@ -87,23 +125,23 @@
         </div>
       </article>
       <div v-if="!filteredCourses.length" class="crs-empty">
-        暂无该分类下的课程视频
+        {{ keyword ? '没有找到匹配的课程' : '暂无该分类下的课程视频' }}
       </div>
     </div>
 
     <!-- 2. Pagination Footer -->
     <footer class="crs-footer">
       <div>
-        当前分类 {{ filteredCourses.length }} 门课程，课程库共 {{ courses.length }} 门
+        显示 {{ filteredCourses.length }} 门课程，课程库共 {{ courses.length }} 门
       </div>
     </footer>
   </div>
 </template>
 
 <script setup>
-import { computed, ref, nextTick, watch } from 'vue';
-import { Play } from 'lucide-vue-next';
-import { adminStore } from '../adminStore.js';
+import { computed, onBeforeUnmount, onMounted, ref, nextTick, watch } from 'vue';
+import { ArrowLeft, ArrowRight, Play, Search, X } from 'lucide-vue-next';
+import { learnerStore } from '../learnerStore.js';
 
 const props = defineProps({
   searchTargetId: {
@@ -114,9 +152,15 @@ const props = defineProps({
 defineEmits(['open-course']);
 
 const activeCategory = ref('all');
+const keyword = ref('');
+const categoryNav = ref(null);
+const showCategoryArrows = ref(false);
+const canScrollCategoryLeft = ref(false);
+const canScrollCategoryRight = ref(false);
+let categoryResizeObserver;
 
-/** 与管理端同一份课程数据：新建档并发布后这里就出现，下架即消失 */
-const courses = computed(() => adminStore.courses.filter(c => c.published));
+/** 学员端只看到已上架课程；管理端下架后这里跟着消失 */
+const courses = computed(() => learnerStore.courses.filter(c => c.published));
 
 const categoryTabs = computed(() => {
   const counts = {};
@@ -131,11 +175,48 @@ const categoryTabs = computed(() => {
   return tabs;
 });
 
+const updateCategoryScroll = () => {
+  const nav = categoryNav.value;
+  if (!nav) return;
+  const maxScroll = nav.scrollWidth - nav.clientWidth;
+  showCategoryArrows.value = maxScroll > 1;
+  canScrollCategoryLeft.value = nav.scrollLeft > 1;
+  canScrollCategoryRight.value = nav.scrollLeft < maxScroll - 1;
+};
+
+const scrollCategories = direction => {
+  const nav = categoryNav.value;
+  if (!nav) return;
+  nav.scrollBy({ left: direction * Math.max(nav.clientWidth * 0.7, 160), behavior: 'smooth' });
+};
+
+onMounted(() => {
+  nextTick(() => {
+    updateCategoryScroll();
+    categoryResizeObserver = new ResizeObserver(updateCategoryScroll);
+    if (categoryNav.value) categoryResizeObserver.observe(categoryNav.value);
+  });
+});
+
+onBeforeUnmount(() => categoryResizeObserver?.disconnect());
+
+watch(categoryTabs, () => nextTick(updateCategoryScroll), { flush: 'post' });
+
 const filteredCourses = computed(() => {
   let list = courses.value;
-  if (props.searchTargetId) {
+  if (props.searchTargetId && !keyword.value) {
     const courseId = props.searchTargetId.replace('course-card-', '');
     list = list.filter(course => course.id === courseId);
+  }
+  const query = keyword.value.toLocaleLowerCase();
+  if (query) {
+    list = list.filter(course => [
+      course.title,
+      course.summary,
+      course.categoryLabel,
+      course.instructor?.name,
+      course.instructor?.title,
+    ].some(value => value?.toLocaleLowerCase().includes(query)));
   }
   if (activeCategory.value !== 'all') {
     list = list.filter(course => (course.categoryLabel || '通识课程') === activeCategory.value);
@@ -156,18 +237,18 @@ watch(
 <style scoped>
 /* ============ Design tokens ============ */
 .crs-page {
-  --c-text: #1e293b;
-  --c-text-sub: #334155;
-  --c-muted: #64748b;
-  --c-text-soft: #475569;
-  --c-border: #e2e8f0;
-  --c-border-soft: #f1f5f9;
-  --c-bg-soft: #f8fafc;
-  --c-blue: #005576;
-  --c-blue-bg: #d9f0ff;
-  --c-sky: #83c9f4;
-  --c-sky-hover: #6fb9e8;
-  --c-purple: #6555b0;
+  --c-text: var(--app-text);
+  --c-text-sub: var(--app-text-2);
+  --c-muted: var(--app-text-4);
+  --c-text-soft: var(--app-text-3);
+  --c-border: var(--app-border);
+  --c-border-soft: var(--app-surface-3);
+  --c-bg-soft: var(--app-surface-2);
+  --c-blue: var(--app-accent-deep);
+  --c-blue-bg: var(--app-accent-soft);
+  --c-sky: var(--app-accent);
+  --c-sky-hover: var(--app-accent-hover-strong);
+  --c-purple: var(--app-violet-fg);
 
   display: flex;
   flex-direction: column;
@@ -176,53 +257,212 @@ watch(
   font-family: 'PingFang SC', 'Microsoft YaHei', 'Helvetica Neue', sans-serif;
 }
 
-/* ============ Category Filter Bar ============ */
-.crs-category-bar {
+/* ============ Course search and categories ============ */
+.crs-toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 4px 0 0;
+}
+
+.crs-toolbar__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.crs-toolbar__heading {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  min-width: 0;
+}
+
+.crs-toolbar__title {
+  margin: 0;
+  color: var(--c-text);
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.crs-toolbar__result {
+  flex-shrink: 0;
+  color: var(--c-muted);
+  font-size: 12px;
+}
+
+.crs-category-rail {
   display: flex;
   align-items: center;
   gap: 8px;
-  flex-wrap: wrap;
-  padding: 12px 16px;
-  background: #fff;
+  min-width: 0;
+}
+
+.crs-category-options {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  min-width: 0;
+  flex: 1;
+  padding: 0 2px;
+  border-bottom: 1px solid var(--c-border);
+  scrollbar-width: none;
+  overscroll-behavior-x: contain;
+  scroll-behavior: smooth;
+}
+
+.crs-category-options::-webkit-scrollbar {
+  display: none;
+}
+
+.crs-category-arrow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
   border: 1px solid var(--c-border);
-  border-radius: 12px;
+  border-radius: 50%;
+  background: var(--app-surface);
+  color: var(--c-text-soft);
+  cursor: pointer;
+  transition: background-color 0.2s ease, color 0.2s ease, opacity 0.2s ease;
+}
+
+.crs-category-arrow:hover:not(:disabled) {
+  background: var(--c-blue-bg);
+  color: var(--c-blue);
+}
+
+.crs-category-arrow:disabled {
+  cursor: default;
+  opacity: 0.4;
+}
+
+.crs-category-arrow__icon {
+  width: 16px;
+  height: 16px;
+}
+
+.crs-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: min(100%, 360px);
+  min-width: 240px;
+  height: 42px;
+  flex-shrink: 0;
+  padding: 0 14px;
+  border: 1px solid var(--app-blue-line-100);
+  border-radius: 11px;
+  background: var(--app-surface);
+  color: var(--c-muted);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.crs-search:focus-within {
+  border-color: var(--c-sky);
+  box-shadow: 0 0 0 3px rgba(131, 201, 244, 0.18);
+}
+
+.crs-search__icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.crs-search input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--c-text);
+  font: inherit;
+  font-size: 13px;
+}
+
+.crs-search input::placeholder {
+  color: var(--app-text-5);
+}
+
+.crs-search__clear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--app-text-4);
+  cursor: pointer;
+}
+
+.crs-search__clear:hover {
+  background: var(--app-surface-3);
+  color: var(--app-text);
+}
+
+.crs-search__clear-icon {
+  width: 14px;
+  height: 14px;
 }
 
 .crs-category-pill {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 14px;
+  gap: 7px;
+  padding: 10px 2px 11px;
+  flex-shrink: 0;
   font-size: 13px;
-  font-weight: 600;
-  color: var(--c-text-soft);
-  background: var(--c-border-soft);
-  border: 1px solid transparent;
-  border-radius: 9999px;
+  font-weight: 500;
+  color: var(--c-muted);
+  background: transparent;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: color 0.2s ease, border-color 0.2s ease;
 }
 
 .crs-category-pill:hover {
-  background: #e2e8f0;
   color: var(--c-text);
 }
 
 .crs-category-pill--active {
-  background: linear-gradient(135deg, #005576, #003B52) !important;
-  color: #fff !important;
-  box-shadow: 0 2px 8px rgba(0, 85, 118, 0.25);
+  border-bottom-color: var(--c-blue);
+  color: var(--c-blue);
+  font-weight: 700;
 }
 
 .crs-category-count {
   font-size: 11px;
-  padding: 1px 6px;
-  border-radius: 9999px;
-  background: rgba(0, 0, 0, 0.08);
+  color: var(--app-text-5);
 }
-.crs-category-pill--active .crs-category-count {
-  background: rgba(255, 255, 255, 0.25);
-  color: #fff;
+
+@media (max-width: 720px) {
+  .crs-toolbar__top {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .crs-search {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .crs-category-rail {
+    width: 100%;
+    gap: 18px;
+  }
 }
 
 .crs-card__category-tag {
@@ -232,7 +472,7 @@ watch(
   padding: 3px 8px;
   font-size: 11px;
   font-weight: 700;
-  color: #fff;
+  color: var(--app-on-scrim);
   background: rgba(15, 23, 42, 0.7);
   backdrop-filter: blur(4px);
   border-radius: 6px;
@@ -281,7 +521,7 @@ watch(
   overflow: hidden;
   border: 1px solid var(--c-border);
   border-radius: 12px;
-  background: #fff;
+  background: var(--app-surface);
   transition: border-color 0.25s ease, box-shadow 0.25s ease;
 }
 .crs-card:hover {
@@ -294,7 +534,7 @@ watch(
   position: relative;
   height: 176px;
   overflow: hidden;
-  background: #0f172a;
+  background: var(--app-ink-900);
 }
 .crs-card__img {
   width: 100%;
@@ -404,16 +644,6 @@ watch(
   transition: background-color 0.2s ease, border-color 0.2s ease;
 }
 
-/* 已完成：温故复习 */
-.crs-btn--review {
-  border: 1px solid var(--c-border);
-  background: var(--c-bg-soft);
-  color: var(--c-text-soft);
-}
-.crs-btn--review:hover {
-  background: var(--c-border-soft);
-}
-
 /* 未开始：立即学习 */
 .crs-btn--start {
   border: 1px solid rgba(131, 201, 244, 0.4);
@@ -428,7 +658,7 @@ watch(
 .crs-btn--continue {
   border: 1px solid transparent;
   background: var(--c-sky);
-  color: #fff;
+  color: var(--app-on-fill);
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
 }
 .crs-btn--continue:hover {

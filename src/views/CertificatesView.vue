@@ -66,40 +66,15 @@
       <!-- 证书分类筛选 -->
       <nav class="filter-list" aria-label="证书分类">
           <button
+            v-for="filter in CERT_FILTERS"
+            :key="filter.key"
             type="button"
-            @click="selectedFilter = 'all'"
+            @click="selectedFilter = filter.key"
             class="filter-button"
-            :class="{ 'filter-button--active': selectedFilter === 'all' }"
-            :aria-pressed="selectedFilter === 'all'"
+            :class="{ 'filter-button--active': selectedFilter === filter.key }"
+            :aria-pressed="selectedFilter === filter.key"
           >
-            全部证书 (4)
-          </button>
-          <button
-            type="button"
-            @click="selectedFilter = 'architecture'"
-            class="filter-button"
-            :class="{ 'filter-button--active': selectedFilter === 'architecture' }"
-            :aria-pressed="selectedFilter === 'architecture'"
-          >
-            架构实战类 (2)
-          </button>
-          <button
-            type="button"
-            @click="selectedFilter = 'compliance'"
-            class="filter-button"
-            :class="{ 'filter-button--active': selectedFilter === 'compliance' }"
-            :aria-pressed="selectedFilter === 'compliance'"
-          >
-            合规风控类 (1)
-          </button>
-          <button
-            type="button"
-            @click="selectedFilter = 'devops'"
-            class="filter-button"
-            :class="{ 'filter-button--active': selectedFilter === 'devops' }"
-            :aria-pressed="selectedFilter === 'devops'"
-          >
-            运维与容灾 (1)
+            {{ filter.label }} ({{ countOf(filter.key) }})
           </button>
       </nav>
 
@@ -200,6 +175,18 @@ const props = defineProps({
 
 const selectedFilter = ref('all');
 
+const CERT_FILTERS = [
+  { key: 'all',          label: '全部证书' },
+  { key: 'architecture', label: '架构实战类' },
+  { key: 'compliance',   label: '合规风控类' },
+  { key: 'devops',       label: '运维与容灾' }
+];
+
+const countOf = (key) =>
+  key === 'all'
+    ? CERTIFICATES_DATA.length
+    : CERTIFICATES_DATA.filter(c => c.category === key).length;
+
 const filteredCerts = computed(() => {
   return CERTIFICATES_DATA.filter(c => {
     if (selectedFilter.value === 'all') return true;
@@ -225,7 +212,7 @@ watch(
   flex-direction: column;
   gap: 24px;
   padding-bottom: 48px;
-  color: #1e293b;
+  color: var(--app-text);
 }
 
 .certificate-content {
@@ -253,8 +240,8 @@ watch(
   margin-bottom: 4px;
   padding: 3px 10px;
   border-radius: 999px;
-  background: #d9f0ff;
-  color: #005576;
+  background: var(--app-accent-soft);
+  color: var(--app-accent-deep);
   font-size: 10px;
   font-weight: 700;
 }
@@ -273,7 +260,7 @@ watch(
 
 .page-description {
   margin: 2px 0 0;
-  color: #64748b;
+  color: var(--app-text-4);
   font-size: 12px;
 }
 
@@ -291,9 +278,9 @@ watch(
   gap: 12px;
   min-width: 0;
   padding: 20px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--app-border);
   border-radius: 16px;
-  background: #fff;
+  background: var(--app-surface);
   box-shadow: 0 1px 2px rgb(15 23 42 / 5%);
 }
 
@@ -302,13 +289,13 @@ watch(
 }
 
 .metric-label {
-  color: #64748b;
+  color: var(--app-text-4);
   font-size: 12px;
 }
 
 .metric-value {
   margin: 4px 0;
-  color: #1e293b;
+  color: var(--app-text);
   font-family: 'JetBrains Mono', Consolas, monospace;
   font-size: 30px;
   font-weight: 800;
@@ -317,16 +304,16 @@ watch(
 
 .metric-value--purple,
 .metric-note--purple {
-  color: #6555b0;
+  color: var(--app-violet-fg);
 }
 
 .metric-value--green,
 .metric-note--green {
-  color: #059669;
+  color: var(--app-emerald-strong);
 }
 
 .metric-unit {
-  color: #64748b;
+  color: var(--app-text-4);
   font-family: inherit;
   font-size: 12px;
   font-weight: 400;
@@ -341,14 +328,14 @@ watch(
 }
 
 .metric-note--blue {
-  color: #005576;
+  color: var(--app-accent-deep);
 }
 
 .status-dot {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: #10b981;
+  background: var(--app-emerald-solid);
 }
 
 .metric-icon,
@@ -357,7 +344,7 @@ watch(
   flex: 0 0 auto;
   align-items: center;
   justify-content: center;
-  color: #005576;
+  color: var(--app-accent-deep);
 }
 
 .metric-icon {
@@ -368,16 +355,16 @@ watch(
 
 .metric-icon--blue,
 .award-icon {
-  background: #d9f0ff;
+  background: var(--app-accent-soft);
 }
 
 .metric-icon--purple {
-  color: #6555b0;
+  color: var(--app-violet-fg);
 }
 
 .metric-icon--green {
-  background: #ecfdf5;
-  color: #059669;
+  background: var(--app-emerald-soft);
+  color: var(--app-emerald-strong);
 }
 
 /* 图标尺寸 */
@@ -410,10 +397,10 @@ watch(
 
 .filter-button {
   padding: 6px 16px;
-  border: 1px solid #cbd5e1;
+  border: 1px solid var(--app-border-strong);
   border-radius: 12px;
-  background: #fff;
-  color: #475569;
+  background: var(--app-surface);
+  color: var(--app-text-3);
   font-size: 12px;
   font-weight: 700;
   cursor: pointer;
@@ -421,23 +408,23 @@ watch(
 }
 
 .filter-button:hover {
-  background: #f1f5f9;
+  background: var(--app-surface-3);
 }
 
 .filter-button--active {
-  border-color: #83c9f4;
-  background: #83c9f4;
-  color: #005576;
+  border-color: var(--app-accent);
+  background: var(--app-accent);
+  color: var(--app-on-accent-solid);
   box-shadow: 0 1px 2px rgb(15 23 42 / 8%);
 }
 
 .filter-button--active:hover {
-  background: #83c9f4;
+  background: var(--app-accent);
 }
 
 .filter-button:focus-visible,
 .preview-button:focus-visible {
-  outline: 3px solid rgb(0 85 118 / 25%);
+  outline: 3px solid var(--app-ring-accent);
   outline-offset: 2px;
 }
 
@@ -457,15 +444,15 @@ watch(
   gap: 16px;
   overflow: hidden;
   padding: 24px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--app-border);
   border-radius: 16px;
-  background: #fff;
+  background: var(--app-surface);
   box-shadow: 0 1px 2px rgb(15 23 42 / 5%);
   transition: border-color 150ms ease;
 }
 
 .certificate-card:hover {
-  border-color: #83c9f4;
+  border-color: var(--app-accent);
 }
 
 .certificate-main {
@@ -477,7 +464,7 @@ watch(
   position: absolute;
   right: -32px;
   bottom: -32px;
-  color: #005576;
+  color: var(--app-accent-deep);
   opacity: 0.035;
   pointer-events: none;
 }
@@ -510,7 +497,7 @@ watch(
 }
 
 .level-name {
-  color: #005576;
+  color: var(--app-accent-deep);
   font-size: 11px;
   font-weight: 700;
 }
@@ -519,22 +506,22 @@ watch(
   flex: 0 0 auto;
   padding: 3px 10px;
   border-radius: 999px;
-  background: #d9f0ff;
-  color: #005576;
+  background: var(--app-accent-soft);
+  color: var(--app-accent-deep);
   font-size: 10px;
   font-weight: 700;
 }
 
 .certificate-title {
   margin: 0 0 8px;
-  color: #1e293b;
+  color: var(--app-text);
   font-size: 16px;
   font-weight: 700;
 }
 
 .certificate-description {
   margin: 0 0 16px;
-  color: #64748b;
+  color: var(--app-text-4);
   font-size: 12px;
   line-height: 1.6;
 }
@@ -545,9 +532,9 @@ watch(
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 8px;
   padding: 12px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--app-border);
   border-radius: 12px;
-  background: #f8fafc;
+  background: var(--app-surface-2);
 }
 
 .detail-item {
@@ -557,14 +544,14 @@ watch(
 .detail-label {
   display: block;
   margin-bottom: 2px;
-  color: #94a3b8;
+  color: var(--app-text-5);
   font-size: 10px;
 }
 
 .detail-value {
   display: block;
   overflow: hidden;
-  color: #1e293b;
+  color: var(--app-text);
   font-size: 11px;
   font-weight: 600;
   text-overflow: ellipsis;
@@ -577,7 +564,7 @@ watch(
 }
 
 .detail-value--purple {
-  color: #6555b0;
+  color: var(--app-violet-fg);
   font-weight: 700;
 }
 
@@ -591,7 +578,7 @@ watch(
   justify-content: space-between;
   gap: 8px;
   padding-top: 12px;
-  border-top: 1px solid #f1f5f9;
+  border-top: 1px solid var(--app-surface-3);
 }
 
 .certificate-privilege {
@@ -599,7 +586,7 @@ watch(
   min-width: 0;
   align-items: center;
   gap: 4px;
-  color: #005576;
+  color: var(--app-accent-deep);
   font-size: 11px;
   font-weight: 500;
 }
@@ -609,10 +596,10 @@ watch(
   align-items: center;
   gap: 4px;
   padding: 6px 12px;
-  border: 1px solid #cbd5e1;
+  border: 1px solid var(--app-border-strong);
   border-radius: 12px;
-  background: #f8fafc;
-  color: #475569;
+  background: var(--app-surface-2);
+  color: var(--app-text-3);
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
@@ -620,7 +607,7 @@ watch(
 }
 
 .preview-button:hover {
-  background: #f1f5f9;
+  background: var(--app-surface-3);
 }
 
 /* 平板和手机布局 */

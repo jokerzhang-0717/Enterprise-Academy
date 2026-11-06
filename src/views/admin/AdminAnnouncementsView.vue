@@ -87,7 +87,7 @@
       <div class="modal">
         <div class="modal-head">
           <h2 class="modal-title">{{ editingId ? '编辑公告' : '撰写公告' }}</h2>
-          <button class="modal-close" @click="closeModal"><Close /></button>
+          <button type="button" class="modal-close" @click="closeModal"><Close /></button>
         </div>
         <form class="modal-body" @submit.prevent="saveDraft(false)">
           <label class="field">
@@ -106,10 +106,10 @@
           <p v-if="formError" class="form-error">{{ formError }}</p>
           <div class="modal-actions">
             <button type="button" class="btn btn--ghost" @click="closeModal">取消</button>
-            <button v-if="editingId" type="submit" class="btn btn--primary">保存修改</button>
+            <button v-if="editingId" type="submit" class="btn btn--primary" :disabled="saving">{{ saving ? '保存中…' : '保存修改' }}</button>
             <template v-else>
-              <button type="button" class="btn btn--ghost" @click="saveDraft(false)">存为草稿</button>
-              <button type="button" class="btn btn--primary" @click="saveDraft(true)">立即发布</button>
+              <button type="button" class="btn btn--ghost" :disabled="saving" @click="saveDraft(false)">{{ saving ? '提交中…' : '存为草稿' }}</button>
+              <button type="button" class="btn btn--primary" :disabled="saving" @click="saveDraft(true)">{{ saving ? '提交中…' : '立即发布' }}</button>
             </template>
           </div>
         </form>
@@ -134,14 +134,24 @@
 <script setup>
 import { computed, ref } from 'vue';
 import { Plus, EditPen, Delete, Close } from '@element-plus/icons-vue';
-import { ADMIN_ANNOUNCEMENTS_DATA } from '../../mockData.js';
+import { adminStore, loadAnnouncements } from '../../adminStore.js';
+import {
+  createAdminAnnouncement,
+  deleteAdminAnnouncement,
+  toggleAdminAnnouncementTop,
+  updateAdminAnnouncement,
+  updateAdminAnnouncementStatus
+} from '../../api/index.js';
 import { usePager } from '../../composables/usePager.js';
 import { useConfirm } from '../../composables/useConfirm.js';
+import { useToast } from '../../composables/useToast.js';
 import AdminPager from '../../components/AdminPager.vue';
 import AdminDetailModal from '../../components/AdminDetailModal.vue';
 import ConfirmDialog from '../../components/ConfirmDialog.vue';
 
-const announcements = ref(ADMIN_ANNOUNCEMENTS_DATA.map(a => ({ ...a })));
+const { show: showToast } = useToast();
+
+const announcements = computed(() => adminStore.announcements);
 
 const { confirmState, askConfirm, cancelConfirm, acceptConfirm } = useConfirm();
 
@@ -164,6 +174,7 @@ const detailTags = computed(() => {
 const modalOpen = ref(false);
 const editingId = ref(null);
 const formError = ref('');
+const saving = ref(false);
 const form = ref({ title: '', content: '' });
 
 const openCompose = () => {
@@ -174,7 +185,7 @@ const openCompose = () => {
 };
 
 const openEdit = (notice) => {
-  editingId.value = notice.id;
+  editingId.value = notice.numericId ?? notice.id;
   formError.value = '';
   form.value = { title: notice.title, content: notice.content };
   modalOpen.value = true;
@@ -186,46 +197,54 @@ const closeModal = () => {
   formError.value = '';
 };
 
-const nowText = () => {
-  const d = new Date();
-  const pad = (n) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
-};
-
-const saveDraft = (publishNow = false) => {
+const saveDraft = async (publishNow = false) => {
   if (!form.value.title) { formError.value = '请输入公告标题。'; return; }
   if (!form.value.content) { formError.value = '请输入公告内容。'; return; }
 
-  if (editingId.value) {
-    const notice = announcements.value.find(a => a.id === editingId.value);
-    if (notice) {
-      notice.title = form.value.title;
-      notice.content = form.value.content;
+  saving.value = true;
+  const isEdit = !!editingId.value;
+  try {
+    if (isEdit) {
+      await updateAdminAnnouncement(editingId.value, {
+        title: form.value.title,
+        content: form.value.content
+      });
+    } else {
+      await createAdminAnnouncement({
+        title: form.value.title,
+        content: form.value.content,
+        isTop: false,
+        status: publishNow ? 2 : 1
+      });
     }
+    await loadAnnouncements();
     closeModal();
-    return;
+    showToast(isEdit ? '公告已保存' : (publishNow ? '公告已发布' : '已存为草稿'), 'success');
+  } catch (err) {
+    formError.value = err?.message || '保存公告失败，请重试。';
+  } finally {
+    saving.value = false;
   }
-
-  announcements.value.unshift({
-    id: `ann-${Date.now()}`,
-    title: form.value.title,
-    content: form.value.content,
-    isTop: false,
-    status: publishNow ? 'published' : 'draft',
-    author: '王智远',
-    publishTime: publishNow ? nowText() : `${nowText()} (草稿)`,
-    views: 0
-  });
-  closeModal();
 };
 
-const publishNotice = (notice) => {
-  notice.status = 'published';
-  notice.publishTime = nowText();
+const publishNotice = async (notice) => {
+  try {
+    await updateAdminAnnouncementStatus(notice.numericId ?? notice.id, 2);
+    await loadAnnouncements();
+    showToast(`已发布公告「${notice.title}」`, 'success');
+  } catch (err) {
+    showToast(err?.message || '发布公告失败', 'error');
+  }
 };
 
-const toggleTop = (notice) => {
-  notice.isTop = !notice.isTop;
+const toggleTop = async (notice) => {
+  try {
+    await toggleAdminAnnouncementTop(notice.numericId ?? notice.id, !notice.isTop);
+    await loadAnnouncements();
+    showToast(notice.isTop ? '已取消置顶' : '已置顶该公告', 'success');
+  } catch (err) {
+    showToast(err?.message || '置顶操作失败', 'error');
+  }
 };
 
 const removeNotice = (notice) => {
@@ -237,10 +256,16 @@ const removeNotice = (notice) => {
       { label: '公告状态', value: notice.status === 'published' ? '已发布' : '草稿' },
       { label: '发布时间', value: notice.publishTime }
     ],
-    tip: '删除后公告将从前台和列表中移除，此操作不可恢复。',
+    tip: '删除后公告及其阅读记录将从前台和列表中移除，此操作不可恢复。',
     confirmText: '确认删除',
-    action: () => {
-      announcements.value = announcements.value.filter(a => a.id !== notice.id);
+    action: async () => {
+      try {
+        await deleteAdminAnnouncement(notice.numericId ?? notice.id);
+        await loadAnnouncements();
+        showToast('公告已删除', 'success');
+      } catch (err) {
+        showToast(err?.message || '删除公告失败', 'error');
+      }
     }
   });
 };

@@ -476,7 +476,7 @@ export const EXAMS_DATA = [
     code: 'ZK-20250410-01',
     title: '2025年度企业生成式 AI 研发与数据脱敏应用上岗资格考核',
     category: '算法与AI合规部',
-    status: 'anytime',
+    status: 'not_started',
     location: '在线网页自适应考试端',
     timeWindow: '2025-04-10 ~ 04-30',
     durationMinutes: 45,
@@ -508,7 +508,7 @@ export const EXAMS_DATA = [
     code: 'ZK-20250428-03',
     title: '2025年度信息安全意识全员测评',
     category: '信息安全部',
-    status: 'anytime',
+    status: 'not_started',
     location: '在线网页自适应考试端',
     timeWindow: '2025-05-01 ~ 05-31',
     durationMinutes: 30,
@@ -542,6 +542,7 @@ export const PAST_EXAMS = [
     id: 'past-1',
     code: 'CER-202503-ARCH-0914',
     title: '2025Q1 微服务高可用与架构容灾实战测评',
+    category: '基础架构委员会',
     type: '技术晋升认证',
     completionDate: '2025-03-28 15:40',
     score: 92,
@@ -554,6 +555,7 @@ export const PAST_EXAMS = [
     id: 'past-2',
     code: 'CER-202501-SEC-3321',
     title: '企业数据安全与隐私合规 (GDPR/PIPL) 标准考评',
+    category: '信息安全部',
     type: '全员合规必修',
     completionDate: '2025-01-14 10:22',
     score: 100,
@@ -659,7 +661,7 @@ export const CERTIFICATES_DATA = [
     serialNumber: 'ZX-2024-AI-015',
     title: '企业生成式 AI 研发提效工程专家',
     level: 'AI 效能 · 先锋认证',
-    category: 'ai',
+    category: 'architecture',
     issueOrg: 'AI 创新实验室',
     issueDate: '2024-04-10',
     validity: '长期有效',
@@ -732,9 +734,39 @@ export const MESSAGES_DATA = [
     typeLabel: '系统公告',
     isRead: true,
     title: '智慧学习平台 3.8.0 架构升级与新特性说明',
-    sender: '智训云平台技术运维中心',
+    sender: '云舒艺境平台技术运维中心',
     time: '05-14',
-    preview: '云学平台将于本周五晚23:00至次日凌晨02:00进行只读维护升级，届时将上线AI智能陪练助手与知识库精准检索功能。'
+    preview: '云舒艺境平台将于本周五晚23:00至次日凌晨02:00进行只读维护升级，届时将上线AI智能陪练助手与知识库精准检索功能。'
+  },
+  {
+    id: 'msg-5',
+    type: 'exam',
+    typeLabel: '考试与测评',
+    isRead: false,
+    title: '云原生运维能力认证成绩已发布',
+    sender: '集团教培中心',
+    time: '05-13',
+    preview: '您参加的云原生运维能力认证考核成绩已发布，可前往考试与测评中心查看成绩及答题解析。'
+  },
+  {
+    id: 'msg-6',
+    type: 'course',
+    typeLabel: '课程学习',
+    isRead: true,
+    title: '数据分析实战课程新增学习章节',
+    sender: '数字化培训部',
+    time: '05-12',
+    preview: '《业务数据分析与可视化实战》已更新第5章内容，包含案例演示与练习题，欢迎继续学习。'
+  },
+  {
+    id: 'msg-7',
+    type: 'attendance',
+    typeLabel: '培训考勤',
+    isRead: false,
+    title: '线下技术培训签到提醒',
+    sender: '研发培训项目组',
+    time: '05-11',
+    preview: '您报名的技术专题培训将于明日9:30开始，请提前到场并在培训考勤页面完成签到。'
   }
 ];
 
@@ -986,7 +1018,7 @@ export const ADMIN_ANNOUNCEMENTS_DATA = [
   },
   {
     id: 'ann-2',
-    title: '2025「智训内训师」金牌讲师团第二期招募启动',
+    title: '2025「云舒内训师」金牌讲师团第二期招募启动',
     content: '第二期金牌讲师团招募现已启动,面向全员开放报名。入选讲师将获得课程研发津贴与年度评优加分,报名截止5月31日。',
     isTop: false,
     status: 'published',

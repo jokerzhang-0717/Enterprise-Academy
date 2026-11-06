@@ -1,11 +1,13 @@
 import { computed, ref, watch } from 'vue';
 
+export const ADMIN_PAGE_SIZE = 10;
+
 /**
  * 列表分页
  * @param {import('vue').ComputedRef<Array>|import('vue').Ref<Array>} source 数据源
  * @param {number} pageSize 每页条数
  */
-export function usePager(source, pageSize = 8) {
+export function usePager(source, pageSize = ADMIN_PAGE_SIZE) {
   const page = ref(1);
 
   const getList = () => {

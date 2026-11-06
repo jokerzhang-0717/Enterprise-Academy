@@ -163,8 +163,8 @@ a {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  background: #fff;
-  border: 1px solid #E2E8F0;
+  background: var(--app-surface);
+  border: 1px solid var(--app-border);
   border-radius: 16px;
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
 }
@@ -175,8 +175,8 @@ a {
   align-items: center;
   justify-content: space-between;
   padding: 16px 24px;
-  background: #F8FAFC;
-  border-bottom: 1px solid #E2E8F0;
+  background: var(--app-surface-2);
+  border-bottom: 1px solid var(--app-border);
   flex-shrink: 0;
 }
 
@@ -194,7 +194,7 @@ a {
   align-items: center;
   justify-content: center;
   background: rgba(131, 201, 244, 0.2);
-  color: #005576;
+  color: var(--app-accent-deep);
   border-radius: 8px;
   flex-shrink: 0;
 }
@@ -204,7 +204,7 @@ a {
   position: relative;
   width: 16px;
   height: 16px;
-  border: 1.5px solid #005576;
+  border: 1.5px solid var(--app-accent-deep);
   border-radius: 3px;
 }
 
@@ -215,7 +215,7 @@ a {
   left: 2px;
   width: 4px;
   height: 4px;
-  background: #005576;
+  background: var(--app-accent-deep);
   border-radius: 50%;
 }
 
@@ -226,7 +226,7 @@ a {
   left: 1px;
   width: 10px;
   height: 6px;
-  background: #005576;
+  background: var(--app-accent-deep);
   clip-path: polygon(0 100%, 40% 20%, 65% 55%, 85% 35%, 100% 100%);
 }
 
@@ -240,22 +240,22 @@ a {
   gap: 8px;
   font-size: 14px;
   font-weight: 700;
-  color: #1E293B;
+  color: var(--app-text);
 }
 
 .page-counter {
   padding: 2px 8px;
   font-size: 12px;
   font-family: "SFMono-Regular", Consolas, Menlo, monospace;
-  color: #005576;
-  background: #D9F0FF;
+  color: var(--app-accent-deep);
+  background: var(--app-accent-soft);
   border-radius: 9999px;
 }
 
 .header-subtitle {
   margin-top: 2px;
   font-size: 12px;
-  color: #64748B;
+  color: var(--app-text-4);
 }
 
 /* ========== 右侧操作按钮 ========== */
@@ -272,16 +272,16 @@ a {
   padding: 6px 12px;
   font-size: 12px;
   font-weight: 500;
-  color: #475569;
+  color: var(--app-text-3);
   background: transparent;
-  border: 1px solid #E2E8F0;
+  border: 1px solid var(--app-border);
   border-radius: 8px;
   transition: color 0.15s, background 0.15s;
 }
 
 .btn-link:hover {
-  color: #005576;
-  background: #fff;
+  color: var(--app-accent-deep);
+  background: var(--app-surface);
 }
 
 .btn-close {
@@ -289,7 +289,7 @@ a {
   align-items: center;
   justify-content: center;
   padding: 6px;
-  color: #64748B;
+  color: var(--app-text-4);
   background: transparent;
   border: none;
   border-radius: 8px;
@@ -297,8 +297,8 @@ a {
 }
 
 .btn-close:hover {
-  color: #1E293B;
-  background: #E2E8F0;
+  color: var(--app-text);
+  background: var(--app-border);
 }
 
 /* --- 外链图标（CSS 画的） --- */
@@ -366,8 +366,8 @@ a {
   align-items: center;
   gap: 8px;
   padding: 10px 24px;
-  background: #F1F5F9;
-  border-bottom: 1px solid #E2E8F0;
+  background: var(--app-surface-3);
+  border-bottom: 1px solid var(--app-border);
   overflow-x: auto;
   flex-shrink: 0;
 }
@@ -376,22 +376,22 @@ a {
   padding: 6px 12px;
   font-size: 12px;
   font-weight: 500;
-  color: #475569;
-  background: #fff;
-  border: 1px solid #E2E8F0;
+  color: var(--app-text-3);
+  background: var(--app-surface);
+  border: 1px solid var(--app-border);
   border-radius: 8px;
   white-space: nowrap;
   transition: background 0.15s, color 0.15s, border-color 0.15s;
 }
 
 .thumb-btn:hover {
-  background: #E2E8F0;
+  background: var(--app-border);
 }
 
 .thumb-btn--active {
-  color: #005576;
-  background: #83C9F4;
-  border-color: #83C9F4;
+  color: var(--app-accent-deep);
+  background: var(--app-accent);
+  border-color: var(--app-accent);
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
@@ -420,14 +420,14 @@ a {
   object-fit: contain;
   border-radius: 12px;
   box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-  border: 1px solid #CBD5E1;
+  border: 1px solid var(--app-border-strong);
 }
 
 .viewer-desc {
   margin-top: 12px;
   max-width: 672px;
   font-size: 12px;
-  color: #64748B;
+  color: var(--app-text-4);
   text-align: center;
 }
 
@@ -442,16 +442,16 @@ a {
   align-items: center;
   justify-content: center;
   background: rgba(255, 255, 255, 0.9);
-  border: 1px solid #E2E8F0;
+  border: 1px solid var(--app-border);
   border-radius: 50%;
-  color: #1E293B;
+  color: var(--app-text);
   box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
   transition: background 0.15s, transform 0.15s;
   z-index: 10;
 }
 
 .nav-arrow:hover {
-  background: #fff;
+  background: var(--app-surface);
   transform: translateY(-50%) scale(1.05);
 }
 
@@ -469,7 +469,7 @@ a {
   height: 0;
   border-top: 6px solid transparent;
   border-bottom: 6px solid transparent;
-  border-right: 8px solid #1E293B;
+  border-right: 8px solid var(--app-text);
   margin-right: 2px;
 }
 
@@ -479,7 +479,7 @@ a {
   height: 0;
   border-top: 6px solid transparent;
   border-bottom: 6px solid transparent;
-  border-left: 8px solid #1E293B;
+  border-left: 8px solid var(--app-text);
   margin-left: 2px;
 }
 </style>

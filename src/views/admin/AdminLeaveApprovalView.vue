@@ -24,22 +24,45 @@
         <span class="overview-label">已驳回</span>
       </div>
       <div class="overview-item">
-        <span class="overview-value">12</span>
+        <span class="overview-value">{{ weekCount }}</span>
         <span class="overview-label">本周请假人次</span>
       </div>
     </div>
 
-    <!-- 筛选 Tab -->
-    <div class="filter-tabs">
-      <button
-        v-for="tab in tabs"
-        :key="tab.key"
-        :class="['filter-tab', statusFilter === tab.key ? 'filter-tab--active' : '']"
-        @click="statusFilter = tab.key"
-      >
-        {{ tab.label }}
-        <span class="filter-tab-count">{{ tabCount(tab.key) }}</span>
-      </button>
+    <div class="filter-toolbar">
+      <select v-model="statusFilter" class="filter-select" aria-label="按审批状态筛选">
+        <option value="">全部状态</option>
+        <option value="pending">待审批</option>
+        <option value="approved">已通过</option>
+        <option value="rejected">已驳回</option>
+      </select>
+      <select v-model="departmentFilter" class="filter-select" aria-label="按部门筛选">
+        <option value="">全部部门</option>
+        <option v-for="department in departments" :key="department" :value="department">
+          {{ department }}
+        </option>
+      </select>
+      <label class="filter-search">
+        <span class="search-icon" aria-hidden="true"></span>
+        <input
+          v-model.trim="keyword"
+          class="filter-search-input"
+          type="text"
+          placeholder="搜索姓名 / 工号 / 请假类型 / 事由..."
+          aria-label="搜索申请人、工号、请假类型或事由"
+        />
+        <button
+          v-if="keyword"
+          type="button"
+          class="filter-clear"
+          aria-label="清除搜索内容"
+          title="清除搜索内容"
+          @click="keyword = ''"
+        >
+          <Close />
+        </button>
+      </label>
+      <span class="filter-count">{{ filteredRequests.length }} 条申请</span>
     </div>
 
     <!-- 请假审批表 -->
@@ -154,40 +177,53 @@
 
 <script setup>
 import { computed, ref, watch, onMounted, onBeforeUnmount } from 'vue';
-import { ADMIN_LEAVE_REQUESTS } from '../../mockData.js';
+import { Close } from '@element-plus/icons-vue';
+import { adminStore, loadLeaves } from '../../adminStore.js';
+import { approveAdminLeave } from '../../api/index.js';
 import { usePager } from '../../composables/usePager.js';
 import { useConfirm } from '../../composables/useConfirm.js';
+import { useToast } from '../../composables/useToast.js';
 import AdminPager from '../../components/AdminPager.vue';
 import ConfirmDialog from '../../components/ConfirmDialog.vue';
 
-const requests = ref(ADMIN_LEAVE_REQUESTS.map(r => ({ ...r })));
+const { show: showToast } = useToast();
+
+const requests = computed(() => adminStore.leaves);
 const statusFilter = ref('pending');
+const departmentFilter = ref('');
+const keyword = ref('');
 
 const { confirmState, askConfirm, cancelConfirm, acceptConfirm } = useConfirm();
-
-const tabs = [
-  { key: '',        label: '全部' },
-  { key: 'pending', label: '待审批' },
-  { key: 'approved', label: '已通过' },
-  { key: 'rejected', label: '已驳回' }
-];
 
 const pendingCount = computed(() => requests.value.filter(r => r.status === 'pending').length);
 const approvedCount = computed(() => requests.value.filter(r => r.status === 'approved').length);
 const rejectedCount = computed(() => requests.value.filter(r => r.status === 'rejected').length);
+const departments = computed(() => [...new Set(requests.value.map(r => r.department).filter(Boolean))].sort());
 
-const filteredRequests = computed(() => {
-  if (!statusFilter.value) return requests.value;
-  return requests.value.filter(r => r.status === statusFilter.value);
+/* 接口只给按状态的统计，本周人次按提交时间在本地算 */
+const weekCount = computed(() => {
+  const now = new Date();
+  const day = (now.getDay() + 6) % 7;
+  const monday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - day);
+  return requests.value.filter(r => {
+    const at = r.submittedAt ? new Date(r.submittedAt) : null;
+    return at && at >= monday;
+  }).length;
 });
 
-const { page, totalPages, paged: pagedRequests, resetPage } = usePager(filteredRequests, 7);
-watch(statusFilter, resetPage);
+const filteredRequests = computed(() => {
+  const search = keyword.value.toLowerCase();
+  return requests.value.filter((request) => {
+    const matchesStatus = !statusFilter.value || request.status === statusFilter.value;
+    const matchesDepartment = !departmentFilter.value || request.department === departmentFilter.value;
+    const matchesKeyword = !search ||
+      `${request.applicant} ${request.employeeId} ${request.department} ${request.type} ${request.reason}`.toLowerCase().includes(search);
+    return matchesStatus && matchesDepartment && matchesKeyword;
+  });
+});
 
-const tabCount = (key) => {
-  if (!key) return requests.value.length;
-  return requests.value.filter(r => r.status === key).length;
-};
+const { page, totalPages, paged: pagedRequests, resetPage } = usePager(filteredRequests, 6);
+watch([statusFilter, departmentFilter, keyword], resetPage);
 
 const statusLabelMap = {
   pending: '待审批',
@@ -219,15 +255,20 @@ const decide = (item, status) => {
       ? '通过后，该学员培训考勤将按请假记录，不计入缺勤。'
       : '驳回后，该学员将收到驳回通知，需正常参加培训。',
     confirmText: approve ? '确认通过' : '确认驳回',
-    action: () => { item.status = status; }
+    action: async () => {
+      try {
+        await approveAdminLeave(item.numericId ?? item.id, status);
+        await loadLeaves();
+        showToast(approve ? '已通过该请假申请' : '已驳回该请假申请', 'success');
+      } catch (err) {
+        showToast(err?.message || '审批失败，请重试', 'error');
+      }
+    }
   });
 };
 </script>
 
 <style scoped>
-/* ============================================================
-   AdminLeaveApproval · 请假审批 · 纯原生 CSS
-   ============================================================ */
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
 button { font-family: inherit; cursor: pointer; }
@@ -294,49 +335,66 @@ button { font-family: inherit; cursor: pointer; }
   color: var(--app-text-4);
 }
 
-/* ========== 筛选 Tab ========== */
-.filter-tabs {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.filter-tab {
-  display: inline-flex;
+/* ========== 筛选工具栏 ========== */
+.filter-toolbar {
+  display: grid;
+  grid-template-columns: minmax(140px, 180px) minmax(140px, 180px) minmax(220px, 1fr) auto;
   align-items: center;
-  gap: 6px;
-  padding: 8px 14px;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--app-text-3);
+  gap: 12px;
+  min-height: 64px;
+  padding: 12px 16px;
   background: var(--app-surface);
   border: 1px solid var(--app-border);
-  border-radius: 9999px;
-  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  border-radius: 12px;
 }
-
-.filter-tab:hover {
-  border-color: var(--app-brand);
-  color: var(--app-brand-ink);
+.filter-select,
+.filter-search {
+  width: 100%;
+  min-width: 0;
+  height: 40px;
+  color: var(--app-text-2);
+  background: var(--app-surface);
+  border: 1px solid var(--app-border);
+  border-radius: 10px;
 }
-
-.filter-tab--active {
-  background: linear-gradient(135deg, var(--app-brand), var(--app-brand-deep));
-  border-color: var(--app-brand-deep);
-  color: var(--app-brand-on);
+.filter-select {
+  padding: 0 34px 0 12px;
+  font-size: 13px;
+  outline: none;
+  cursor: pointer;
 }
-
-.filter-tab-count {
-  min-width: 18px;
-  height: 18px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0 5px;
-  font-size: 11px;
-  font-weight: 700;
-  background: rgba(255, 255, 255, 0.6);
-  border-radius: 9999px;
+.filter-select:focus,
+.filter-search:focus-within {
+  border-color: var(--app-accent-strong);
+  box-shadow: 0 0 0 3px var(--app-accent-a12);
+}
+.filter-search { display: flex; align-items: center; gap: 8px; padding: 0 12px; }
+.search-icon { position: relative; width: 14px; height: 14px; flex: 0 0 14px; }
+.search-icon::before {
+  position: absolute; top: 0; left: 0; width: 9px; height: 9px;
+  border: 2px solid var(--app-text-4); border-radius: 50%; content: '';
+}
+.search-icon::after {
+  position: absolute; right: 0; bottom: 0; width: 6px; height: 2px;
+  background: var(--app-text-4); border-radius: 1px; content: '';
+  transform: rotate(45deg); transform-origin: right center;
+}
+.filter-search-input {
+  flex: 1; min-width: 0; height: 100%; font-size: 13px; color: var(--app-text);
+  background: transparent; border: 0; outline: 0;
+}
+.filter-search-input::placeholder { color: var(--app-text-5); }
+.filter-clear {
+  display: inline-flex; flex: 0 0 24px; align-items: center; justify-content: center;
+  width: 24px; height: 24px; padding: 0; color: var(--app-text-4);
+  background: transparent; border: 0; border-radius: 50%;
+}
+.filter-clear:hover { color: var(--app-text-2); background: var(--app-chip); }
+.filter-clear svg { width: 14px; height: 14px; }
+.filter-count {
+  justify-self: end; padding: 7px 11px; font-size: 12px; font-weight: 600;
+  color: var(--app-accent-deep); background: var(--app-accent-soft);
+  border-radius: 999px; white-space: nowrap;
 }
 
 /* ========== 表格 ========== */
@@ -627,6 +685,28 @@ th.ops, td.ops { text-align: right; white-space: nowrap; }
 
 @media (max-width: 640px) {
   .overview-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 900px) {
+  .filter-toolbar { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .filter-search, .filter-count { grid-column: 1 / -1; }
+  .filter-count { justify-self: start; }
+}
+
+@media (max-width: 420px) {
+  .filter-toolbar { grid-template-columns: minmax(0, 1fr); }
+  .filter-select, .filter-search, .filter-count { grid-column: 1; }
+}
+
+/* 1366 / 1440 这类窄屏:收窄左右内边距,
+   否则 8 列的最小宽度会超过容器,挤出横向滚动条并连带压出纵向滚动条 */
+@media (max-width: 1440px) {
+  .data-table thead th,
+  .data-table tbody td {
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+  .reason-cell { width: 280px; min-width: 220px; }
 }
 
 /* 窄屏下收窄事由列,避免表格横向溢出 */

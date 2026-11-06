@@ -39,38 +39,65 @@
       </div>
 
       <div class="att-punch__grid">
-        <!-- 已签到 -->
-        <div class="att-punch__card att-punch__card--done">
+        <!-- 签到状态 -->
+        <div v-if="isCheckedIn" class="att-punch__card att-punch__card--done">
           <span class="att-punch__badge att-punch__badge--done">
             <CircleCheck class="att-icon" aria-hidden="true" />
           </span>
           <div>
             <p class="att-punch__state">今日已签到</p>
             <p class="att-punch__time">
-              08:52 <span class="att-punch__time-note">签到成功</span>
+              {{ checkedInAt }} <span class="att-punch__time-note">签到成功</span>
             </p>
           </div>
         </div>
+        <button
+          v-else
+          type="button"
+          class="att-punch__card att-punch__btn is-active"
+          @click="handlePunchIn"
+        >
+          <span class="att-punch__btn-main">
+            <span class="att-punch__badge is-active">
+              <CircleCheck class="att-icon" aria-hidden="true" />
+            </span>
+            <span class="att-punch__btn-text">
+              <span class="att-punch__state">今日尚未签到</span>
+              <span class="att-punch__time">点击完成签到</span>
+            </span>
+          </span>
+          <ChevronRight class="att-icon att-punch__arrow" aria-hidden="true" />
+        </button>
 
         <!-- 签退 -->
+        <div v-if="isCheckedOut" class="att-punch__card att-punch__card--done">
+          <span class="att-punch__badge att-punch__badge--done">
+            <CircleCheck class="att-icon" aria-hidden="true" />
+          </span>
+          <div>
+            <p class="att-punch__state">今日已签退</p>
+            <p class="att-punch__time">
+              {{ checkedOutAt || punchedOutFallback || '—' }}
+              <span class="att-punch__time-note">签退成功</span>
+            </p>
+          </div>
+        </div>
         <button
+          v-else
           type="button"
-          class="att-punch__card att-punch__btn"
-          :class="isCheckedOut ? 'is-done' : 'is-active'"
-          :disabled="isCheckedOut"
+          class="att-punch__card att-punch__btn is-active"
           @click="handlePunchOut"
         >
           <span class="att-punch__btn-main">
-            <span class="att-punch__badge" :class="isCheckedOut ? 'is-done' : 'is-active'">
-              <CircleCheck v-if="isCheckedOut" class="att-icon" aria-hidden="true" />
-              <LogOut v-else class="att-icon" aria-hidden="true" />
+            <span class="att-punch__badge is-active">
+              <LogOut class="att-icon" aria-hidden="true" />
             </span>
             <span class="att-punch__btn-text">
-              <span class="att-punch__state">{{ isCheckedOut ? '签退已完成' : '完成今日培训' }}</span>
-              <span class="att-punch__time">{{ isCheckedOut ? '已成功签退' : '点击签退' }}</span>
+              <span class="att-punch__state">完成今日培训</span>
+              <span class="att-punch__time">点击签退</span>
             </span>
           </span>
-          <ChevronRight v-if="!isCheckedOut" class="att-icon att-punch__arrow" aria-hidden="true" />
+          <ChevronRight class="att-icon att-punch__arrow" aria-hidden="true" />
         </button>
       </div>
     </section>
@@ -274,7 +301,8 @@ import {
   Send,
   X,
 } from 'lucide-vue-next';
-import { LEAVE_REQUESTS_DATA } from '../mockData.js';
+import { useAttendance } from '../composables/useAttendance.js';
+import { useLeaveRequests, loadLeaves, submitLeave } from '../composables/useLeaveRequests.js';
 
 const props = defineProps({
   employeeId: {
@@ -284,9 +312,17 @@ const props = defineProps({
 });
 
 const currentTime = ref('16:56:55');
-const isCheckedIn = ref(true);
-const isCheckedOut = ref(false);
-const leaveRecords = ref([...LEAVE_REQUESTS_DATA]);
+const punchedOutFallback = ref('');
+const {
+  isCheckedIn,
+  isCheckedOut,
+  checkedInAt,
+  checkedOutAt,
+  checkIn,
+  checkOut,
+  loadAttendance,
+} = useAttendance();
+const leaveRecords = useLeaveRequests();
 const currentPage = ref(1);
 const pageSize = 3;
 const totalPages = computed(() => Math.ceil(leaveRecords.value.length / pageSize));
@@ -319,6 +355,12 @@ onMounted(() => {
     const s = String(now.getSeconds()).padStart(2, '0');
     currentTime.value = `${h}:${m}:${s}`;
   }, 1000);
+
+  // 签到/签退状态以后端为准，页面刷新后仍能恢复今日状态
+  loadAttendance().catch((err) => {
+    showNotice('考勤状态加载失败', err?.message || '请稍后重试');
+  });
+  loadLeaves(true).catch(() => {});
 });
 
 onUnmounted(() => {
@@ -326,12 +368,39 @@ onUnmounted(() => {
   if (noticeTimer) clearTimeout(noticeTimer);
 });
 
-const handlePunchOut = () => {
-  isCheckedOut.value = true;
-  showNotice('签退成功', `签退时间：${currentTime.value}`);
+const punching = ref(false);
+
+const handlePunchOut = async () => {
+  if (isCheckedOut.value || punching.value) return;
+  punching.value = true;
+  try {
+    await checkOut();
+    if (!checkedOutAt.value) punchedOutFallback.value = currentTime.value;
+    showNotice('签退成功', `签退时间：${checkedOutAt.value || punchedOutFallback.value || currentTime.value}`);
+  } catch (err) {
+    showNotice('签退失败', err?.message || '请先完成签到');
+  } finally {
+    punching.value = false;
+  }
 };
 
-const handleSubmitLeave = () => {
+const handlePunchIn = async () => {
+  if (isCheckedIn.value || punching.value) return;
+  punching.value = true;
+  try {
+    await checkIn();
+    showNotice('签到成功', `签到时间：${checkedInAt.value || currentTime.value}`);
+  } catch (err) {
+    showNotice('签到失败', err?.message || '请稍后重试');
+  } finally {
+    punching.value = false;
+  }
+};
+
+const leaveSubmitting = ref(false);
+
+const handleSubmitLeave = async () => {
+  if (leaveSubmitting.value) return;
   const days = Number(leaveDays.value);
   leaveErrors.value = {
     type: leaveType.value.trim() ? '' : '请填写请假类型。',
@@ -341,45 +410,31 @@ const handleSubmitLeave = () => {
   };
   if (Object.values(leaveErrors.value).some(Boolean)) return;
 
-  const newLeave = {
-    id: `lv-${Date.now()}`,
-    type: leaveType.value.trim(),
-    flowNumber: createFlowNumber(),
-    title: '《2025 架构设计委员会春季技术研讨与实操培训》',
-    timeRange: formatLeaveTime(leaveTime.value),
-    days: String(days),
-    reason: leaveReason.value.trim(),
-    status: 'pending',
-    submittedTime: new Intl.DateTimeFormat('zh-CN', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false,
-    }).format(new Date()),
-  };
-
-  leaveRecords.value.unshift(newLeave);
-  currentPage.value = 1;
-  showNotice('请假申请已提交', '申请已流转至研发组负责人与 HR 审批。');
+  leaveSubmitting.value = true;
+  try {
+    await submitLeave({
+      leaveType: leaveType.value.trim(),
+      trainingTitle: '《2025 架构设计委员会春季技术研讨与实操培训》',
+      startDate: leaveTime.value,
+      leaveDays: days,
+      reason: leaveReason.value.trim(),
+    });
+    currentPage.value = 1;
+    leaveType.value = '';
+    leaveTime.value = '';
+    leaveDays.value = '';
+    leaveReason.value = '';
+    showNotice('请假申请已提交', '申请已流转至研发组负责人与 HR 审批。');
+  } catch (err) {
+    showNotice('请假申请提交失败', err?.message || '请稍后重试');
+  } finally {
+    leaveSubmitting.value = false;
+  }
 };
 
 const openLeaveDatePicker = () => {
   const input = leaveTimeInput.value;
   if (input && typeof input.showPicker === 'function') input.showPicker();
-};
-
-const formatLeaveTime = (value) => {
-  const [year, month, day] = value.split('-');
-  return year && month && day ? `${year}年${month}月${day}日` : value;
-};
-
-const createFlowNumber = () => {
-  const date = new Date();
-  const datePart = `${date.getFullYear()}${String(date.getMonth() + 1).padStart(2, '0')}${String(date.getDate()).padStart(2, '0')}`;
-  const sequence = String(leaveRecords.value.length + 1).padStart(3, '0');
-  return `LV-${datePart}-${sequence}`;
 };
 
 const showNotice = (title, message = '') => {
@@ -397,20 +452,20 @@ const clearNotice = () => {
 <style scoped>
 /* ============ Design tokens ============ */
 .att-page {
-  --c-text: #1e293b;
-  --c-text-sub: #475569;
-  --c-muted: #64748b;
-  --c-faint: #94a3b8;
-  --c-border: #e2e8f0;
-  --c-border-strong: #cbd5e1;
-  --c-bg-soft: #f8fafc;
-  --c-blue: #005576;
-  --c-blue-bg: #d9f0ff;
-  --c-sky: #83c9f4;
-  --c-sky-hover: #6fb9e8;
-  --c-purple: #9381ff;
-  --c-purple-hover: #7866e0;
-  --c-purple-icon: #6555b0;
+  --c-text: var(--app-text);
+  --c-text-sub: var(--app-text-3);
+  --c-muted: var(--app-text-4);
+  --c-faint: var(--app-text-5);
+  --c-border: var(--app-border);
+  --c-border-strong: var(--app-border-strong);
+  --c-bg-soft: var(--app-surface-2);
+  --c-blue: var(--app-accent-deep);
+  --c-blue-bg: var(--app-accent-soft);
+  --c-sky: var(--app-accent);
+  --c-sky-hover: var(--app-accent-hover-strong);
+  --c-purple: var(--app-violet);
+  --c-purple-hover: var(--app-violet-strong);
+  --c-purple-icon: var(--app-violet-fg);
 
   display: flex;
   flex-direction: column;
@@ -437,16 +492,19 @@ const clearNotice = () => {
   position: fixed;
   left: 50%;
   top: 80px;
+  /* 入场动画的 translate(-50%,-8px) 只在 enter-from 帧生效,
+     基础态必须自己带 -50%,否则动画结束后整块会向右偏移自身宽度的一半 */
+  transform: translateX(-50%);
   z-index: 70;
   display: flex;
   align-items: flex-start;
   gap: 16px;
   width: min(92vw, 520px);
   padding: 16px 20px;
-  border: 1px solid #a7f3d0;
+  border: 1px solid var(--app-emerald-line);
   border-radius: 16px;
-  background: #fff;
-  box-shadow: 0 20px 40px rgba(15, 23, 42, 0.2), 0 0 0 1px #d1fae5;
+  background: var(--app-surface);
+  box-shadow: 0 20px 40px rgba(15, 23, 42, 0.2), 0 0 0 1px var(--app-emerald-bg);
 }
 .att-toast__icon {
   display: flex;
@@ -456,8 +514,8 @@ const clearNotice = () => {
   height: 44px;
   flex-shrink: 0;
   border-radius: 50%;
-  background: #d1fae5;
-  color: #047857;
+  background: var(--app-emerald-bg);
+  color: var(--app-emerald-fg);
 }
 .att-toast__body { min-width: 0; flex: 1; }
 .att-toast__title {
@@ -481,7 +539,7 @@ const clearNotice = () => {
   cursor: pointer;
 }
 .att-toast__close:hover {
-  background: #f1f5f9;
+  background: var(--app-surface-3);
   color: var(--c-text);
 }
 
@@ -521,7 +579,7 @@ const clearNotice = () => {
 
 /* ============ Panels ============ */
 .att-panel {
-  background: #fff;
+  background: var(--app-surface);
   border: 1px solid var(--c-border);
   border-radius: 16px;
   padding: 24px;
@@ -606,8 +664,8 @@ const clearNotice = () => {
   text-align: left;
 }
 .att-punch__card--done {
-  border: 1px solid #a7f3d0;
-  background: linear-gradient(135deg, #ecfdf5 0%, #fff 100%);
+  border: 1px solid var(--app-emerald-line);
+  background: linear-gradient(135deg, var(--app-emerald-soft) 0%, var(--app-surface) 100%);
 }
 
 .att-punch__badge {
@@ -620,16 +678,16 @@ const clearNotice = () => {
   border-radius: 50%;
 }
 .att-punch__badge--done {
-  background: #d1fae5;
-  color: #059669;
+  background: var(--app-emerald-bg);
+  color: var(--app-emerald-strong);
 }
 .att-punch__badge.is-done {
-  background: #e0f2fe;
+  background: var(--app-blue-100);
   color: var(--c-blue);
 }
 .att-punch__badge.is-active {
   background: rgba(255, 255, 255, 0.15);
-  color: #fff;
+  color: var(--app-on-scrim);
 }
 
 .att-punch__state {
@@ -637,7 +695,7 @@ const clearNotice = () => {
   margin: 0;
   font-size: 12px;
   font-weight: 600;
-  color: #065f46;
+  color: var(--app-emerald-deep);
 }
 .att-punch__time {
   display: block;
@@ -645,7 +703,7 @@ const clearNotice = () => {
   font-size: 14px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
-  color: #047857;
+  color: var(--app-emerald-fg);
 }
 .att-punch__time-note {
   font-size: 11px;
@@ -675,15 +733,15 @@ const clearNotice = () => {
 .att-punch__btn.is-active {
   border-color: var(--c-sky);
   background: var(--c-sky);
-  color: var(--c-blue);
+  color: var(--app-on-accent-solid);
 }
 .att-punch__btn.is-active:hover { background: var(--c-sky-hover); }
 .att-punch__btn.is-active .att-punch__state,
-.att-punch__btn.is-active .att-punch__time { color: var(--c-blue); }
+.att-punch__btn.is-active .att-punch__time { color: var(--app-on-accent-solid); }
 
 .att-punch__btn.is-done {
-  border-color: #bae6fd;
-  background: #f0f9ff;
+  border-color: var(--app-blue-line-200);
+  background: var(--app-blue-50);
   color: var(--c-blue);
   cursor: default;
 }
@@ -692,7 +750,7 @@ const clearNotice = () => {
 
 .att-punch__btn:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 4px #e0f2fe;
+  box-shadow: 0 0 0 4px var(--app-blue-100);
 }
 .att-punch__arrow {
   color: rgba(255, 255, 255, 0.7);
@@ -736,7 +794,7 @@ const clearNotice = () => {
 .att-field__error {
   margin: 4px 0 0;
   font-size: 11px;
-  color: #dc2626;
+  color: var(--app-red-600);
 }
 
 .att-input,
@@ -761,7 +819,7 @@ const clearNotice = () => {
 .att-input:focus,
 .att-textarea:focus { border-color: var(--c-sky); }
 .att-input.is-error,
-.att-textarea.is-error { border-color: #f87171; }
+.att-textarea.is-error { border-color: var(--app-red-400); }
 .att-input::placeholder,
 .att-textarea::placeholder { color: var(--c-faint); }
 
@@ -790,7 +848,7 @@ const clearNotice = () => {
   transition: background-color 0.2s ease, color 0.2s ease;
 }
 .att-input-suffix:hover {
-  background: #eaf4fb;
+  background: var(--app-blue-75);
   color: var(--c-blue);
 }
 
@@ -804,7 +862,7 @@ const clearNotice = () => {
   border: 0;
   border-radius: 12px;
   background: var(--c-purple);
-  color: #fff;
+  color: var(--app-on-fill);
   font-size: 12px;
   font-weight: 700;
   cursor: pointer;
@@ -829,7 +887,7 @@ const clearNotice = () => {
   font-size: 12px;
   transition: background-color 0.2s ease;
 }
-.att-record:hover { background: #fff; }
+.att-record:hover { background: var(--app-surface); }
 
 .att-record__top {
   display: flex;
@@ -846,7 +904,7 @@ const clearNotice = () => {
   padding: 2px 8px;
   border: 1px solid var(--c-border-strong);
   border-radius: 4px;
-  background: #fff;
+  background: var(--app-surface);
   font-size: 10px;
   font-weight: 600;
   color: var(--c-text);
@@ -859,16 +917,16 @@ const clearNotice = () => {
   white-space: nowrap;
 }
 .att-record__status.is-pending {
-  background: #fef3c7;
-  color: #92400e;
+  background: var(--app-amber-bg);
+  color: var(--app-amber-deep);
 }
 .att-record__status.is-passed {
-  background: #d1fae5;
-  color: #065f46;
+  background: var(--app-emerald-bg);
+  color: var(--app-emerald-deep);
 }
 .att-record__status.is-rejected {
-  background: #fee2e2;
-  color: #b91c1c;
+  background: var(--app-red-100);
+  color: var(--app-red-700);
 }
 
 .att-record__title {
@@ -892,14 +950,14 @@ const clearNotice = () => {
   color: var(--c-muted);
 }
 .att-record__days strong {
-  color: #334155;
+  color: var(--app-text-2);
 }
 .att-record__reason {
   margin: 8px 0 0;
   padding: 8px;
-  border: 1px solid #f1f5f9;
+  border: 1px solid var(--app-surface-3);
   border-radius: 8px;
-  background: #fff;
+  background: var(--app-surface);
   font-size: 11px;
   line-height: 1.625;
   color: var(--c-text-sub);
@@ -950,7 +1008,7 @@ const clearNotice = () => {
 .att-page-num.is-current {
   border-color: var(--c-sky);
   background: var(--c-sky);
-  color: var(--c-text);
+  color: var(--app-ink-solid);
   font-weight: 700;
 }
 

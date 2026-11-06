@@ -77,79 +77,79 @@
           <svg class="chart-svg" viewBox="0 0 700 250" role="img" aria-label="10月至3月每月学习时长柱状图">
 
             <!-- 横向网格线 -->
-            <line x1="56" y1="35"  x2="680" y2="35"  stroke="#E8EEF5" stroke-width="1" />
-            <line x1="56" y1="75"  x2="680" y2="75"  stroke="#E8EEF5" stroke-width="1" />
-            <line x1="56" y1="115" x2="680" y2="115" stroke="#E8EEF5" stroke-width="1" />
-            <line x1="56" y1="155" x2="680" y2="155" stroke="#E8EEF5" stroke-width="1" />
-            <line x1="56" y1="195" x2="680" y2="195" stroke="#CBD5E1" stroke-width="1.5" />
+            <line x1="56" y1="35"  x2="680" y2="35"  stroke="var(--app-blue-70)" stroke-width="1" />
+            <line x1="56" y1="75"  x2="680" y2="75"  stroke="var(--app-blue-70)" stroke-width="1" />
+            <line x1="56" y1="115" x2="680" y2="115" stroke="var(--app-blue-70)" stroke-width="1" />
+            <line x1="56" y1="155" x2="680" y2="155" stroke="var(--app-blue-70)" stroke-width="1" />
+            <line x1="56" y1="195" x2="680" y2="195" stroke="var(--app-border-strong)" stroke-width="1.5" />
 
             <!-- 纵轴刻度 -->
-            <text x="46" y="39"  text-anchor="end" fill="#94A3B8" font-size="11">40h</text>
-            <text x="46" y="79"  text-anchor="end" fill="#94A3B8" font-size="11">30h</text>
-            <text x="46" y="119" text-anchor="end" fill="#94A3B8" font-size="11">20h</text>
-            <text x="46" y="159" text-anchor="end" fill="#94A3B8" font-size="11">10h</text>
+            <text x="46" y="39"  text-anchor="end" fill="var(--app-text-5)" font-size="11">40h</text>
+            <text x="46" y="79"  text-anchor="end" fill="var(--app-text-5)" font-size="11">30h</text>
+            <text x="46" y="119" text-anchor="end" fill="var(--app-text-5)" font-size="11">20h</text>
+            <text x="46" y="159" text-anchor="end" fill="var(--app-text-5)" font-size="11">10h</text>
 
             <!-- 10月 -->
             <g class="bar-group">
-              <rect x="88" y="129" width="40" height="66" rx="5" fill="#D9F0FF" class="bar-rect" />
+              <rect x="88" y="129" width="40" height="66" rx="5" fill="var(--app-accent-soft)" class="bar-rect" />
               <g class="bar-tooltip">
-                <rect x="82" y="103" width="52" height="20" rx="10" fill="#83C9F4" />
-                <text x="108" y="117" text-anchor="middle" fill="#FFFFFF" font-size="10" font-weight="bold">16.5h</text>
+                <rect x="82" y="103" width="52" height="20" rx="10" fill="var(--app-accent)" />
+                <text x="108" y="117" text-anchor="middle" fill="var(--app-on-fill)" font-size="10" font-weight="bold">16.5h</text>
               </g>
             </g>
 
             <!-- 11月 -->
             <g class="bar-group">
-              <rect x="198" y="96" width="40" height="99" rx="5" fill="#D9F0FF" class="bar-rect" />
+              <rect x="198" y="96" width="40" height="99" rx="5" fill="var(--app-accent-soft)" class="bar-rect" />
               <g class="bar-tooltip">
-                <rect x="192" y="70" width="52" height="20" rx="10" fill="#83C9F4" />
-                <text x="218" y="84" text-anchor="middle" fill="#FFFFFF" font-size="10" font-weight="bold">24.7h</text>
+                <rect x="192" y="70" width="52" height="20" rx="10" fill="var(--app-accent)" />
+                <text x="218" y="84" text-anchor="middle" fill="var(--app-on-fill)" font-size="10" font-weight="bold">24.7h</text>
               </g>
             </g>
 
             <!-- 12月 -->
             <g class="bar-group">
-              <rect x="308" y="119" width="40" height="76" rx="5" fill="#D9F0FF" class="bar-rect" />
+              <rect x="308" y="119" width="40" height="76" rx="5" fill="var(--app-accent-soft)" class="bar-rect" />
               <g class="bar-tooltip">
-                <rect x="302" y="93" width="52" height="20" rx="10" fill="#83C9F4" />
-                <text x="328" y="107" text-anchor="middle" fill="#FFFFFF" font-size="10" font-weight="bold">18.9h</text>
+                <rect x="302" y="93" width="52" height="20" rx="10" fill="var(--app-accent)" />
+                <text x="328" y="107" text-anchor="middle" fill="var(--app-on-fill)" font-size="10" font-weight="bold">18.9h</text>
               </g>
             </g>
 
             <!-- 1月 -->
             <g class="bar-group">
-              <rect x="418" y="82" width="40" height="113" rx="5" fill="#D9F0FF" class="bar-rect" />
+              <rect x="418" y="82" width="40" height="113" rx="5" fill="var(--app-accent-soft)" class="bar-rect" />
               <g class="bar-tooltip">
-                <rect x="412" y="56" width="52" height="20" rx="10" fill="#83C9F4" />
-                <text x="438" y="70" text-anchor="middle" fill="#FFFFFF" font-size="10" font-weight="bold">28.3h</text>
+                <rect x="412" y="56" width="52" height="20" rx="10" fill="var(--app-accent)" />
+                <text x="438" y="70" text-anchor="middle" fill="var(--app-on-fill)" font-size="10" font-weight="bold">28.3h</text>
               </g>
             </g>
 
             <!-- 2月（峰值高亮） -->
             <g class="bar-group">
-              <rect x="528" y="42" width="40" height="153" rx="5" fill="#D9F0FF" class="bar-rect" />
+              <rect x="528" y="42" width="40" height="153" rx="5" fill="var(--app-accent-soft)" class="bar-rect" />
               <g class="bar-tooltip">
-                <rect x="522" y="16" width="52" height="20" rx="10" fill="#83C9F4" />
-                <text x="548" y="30" text-anchor="middle" fill="#FFFFFF" font-size="10" font-weight="bold">38.2h</text>
+                <rect x="522" y="16" width="52" height="20" rx="10" fill="var(--app-accent)" />
+                <text x="548" y="30" text-anchor="middle" fill="var(--app-on-fill)" font-size="10" font-weight="bold">38.2h</text>
               </g>
             </g>
 
             <!-- 3月 -->
             <g class="bar-group">
-              <rect x="638" y="112" width="40" height="83" rx="5" fill="#D9F0FF" class="bar-rect" />
+              <rect x="638" y="112" width="40" height="83" rx="5" fill="var(--app-accent-soft)" class="bar-rect" />
               <g class="bar-tooltip">
-                <rect x="632" y="86" width="52" height="20" rx="10" fill="#83C9F4" />
-                <text x="658" y="100" text-anchor="middle" fill="#FFFFFF" font-size="10" font-weight="bold">20.8h</text>
+                <rect x="632" y="86" width="52" height="20" rx="10" fill="var(--app-accent)" />
+                <text x="658" y="100" text-anchor="middle" fill="var(--app-on-fill)" font-size="10" font-weight="bold">20.8h</text>
               </g>
             </g>
 
             <!-- 横轴月份 -->
-            <text x="108" y="222" text-anchor="middle" fill="#64748B" font-size="12">10月</text>
-            <text x="218" y="222" text-anchor="middle" fill="#64748B" font-size="12">11月</text>
-            <text x="328" y="222" text-anchor="middle" fill="#64748B" font-size="12">12月</text>
-            <text x="438" y="222" text-anchor="middle" fill="#64748B" font-size="12">1月</text>
-            <text x="548" y="222" text-anchor="middle" fill="#9381FF" font-size="12" font-weight="bold">2月</text>
-            <text x="658" y="222" text-anchor="middle" fill="#64748B" font-size="12">3月</text>
+            <text x="108" y="222" text-anchor="middle" fill="var(--app-text-4)" font-size="12">10月</text>
+            <text x="218" y="222" text-anchor="middle" fill="var(--app-text-4)" font-size="12">11月</text>
+            <text x="328" y="222" text-anchor="middle" fill="var(--app-text-4)" font-size="12">12月</text>
+            <text x="438" y="222" text-anchor="middle" fill="var(--app-text-4)" font-size="12">1月</text>
+            <text x="548" y="222" text-anchor="middle" fill="var(--app-violet)" font-size="12" font-weight="bold">2月</text>
+            <text x="658" y="222" text-anchor="middle" fill="var(--app-text-4)" font-size="12">3月</text>
           </svg>
         </div>
 
@@ -201,7 +201,7 @@ const emit = defineEmits(['navigate', 'open-certificate-modal']);
   align-items: center;
   gap: 6px;
   font-size: 12px;
-  color: #64748B;
+  color: var(--app-text-4);
   margin-bottom: 4px;
 }
 
@@ -210,14 +210,14 @@ const emit = defineEmits(['navigate', 'open-certificate-modal']);
 }
 
 .breadcrumb-current {
-  color: #005576;
+  color: var(--app-accent-deep);
   font-weight: 600;
 }
 
 .page-title {
   font-size: 28px;
   font-weight: 800;
-  color: #1E293B;
+  color: var(--app-text);
   letter-spacing: -0.025em;
 }
 
@@ -231,8 +231,8 @@ const emit = defineEmits(['navigate', 'open-certificate-modal']);
 .metric-card {
   min-height: 148px;
   padding: 20px;
-  background: #fff;
-  border: 1px solid #E2E8F0;
+  background: var(--app-surface);
+  border: 1px solid var(--app-border);
   border-radius: 16px;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
   transition: box-shadow 0.2s;
@@ -247,12 +247,12 @@ const emit = defineEmits(['navigate', 'open-certificate-modal']);
   align-items: center;
   justify-content: space-between;
   font-size: 12px;
-  color: #64748B;
+  color: var(--app-text-4);
 }
 
 .metric-label {
   font-size: 12px;
-  color: #64748B;
+  color: var(--app-text-4);
 }
 
 /* 图标背景 */
@@ -272,13 +272,13 @@ const emit = defineEmits(['navigate', 'open-certificate-modal']);
 }
 
 .metric-icon--blue {
-  background: #D9F0FF;
-  color: #005576;
+  background: var(--app-accent-soft);
+  color: var(--app-accent-deep);
 }
 
 .metric-icon--purple {
-  background: #D9F0FF;
-  color: #6555B0;
+  background: var(--app-accent-soft);
+  color: var(--app-violet-fg);
 }
 
 /* 数字 */
@@ -293,17 +293,17 @@ const emit = defineEmits(['navigate', 'open-certificate-modal']);
   font-family: "SFMono-Regular", Consolas, Menlo, monospace;
   font-size: 30px;
   font-weight: 800;
-  color: #1E293B;
+  color: var(--app-text);
   letter-spacing: -0.025em;
 }
 
 .metric-number--purple {
-  color: #6555B0;
+  color: var(--app-violet-fg);
 }
 
 .metric-unit {
   font-size: 12px;
-  color: #64748B;
+  color: var(--app-text-4);
 }
 
 /* ========== 图表区域 ========== */
@@ -319,8 +319,8 @@ const emit = defineEmits(['navigate', 'open-certificate-modal']);
   flex-direction: column;
   gap: 16px;
   padding: 24px;
-  background: #fff;
-  border: 1px solid #E2E8F0;
+  background: var(--app-surface);
+  border: 1px solid var(--app-border);
   border-radius: 16px;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
@@ -336,7 +336,7 @@ const emit = defineEmits(['navigate', 'open-certificate-modal']);
 .chart-title {
   font-size: 16px;
   font-weight: 700;
-  color: #1E293B;
+  color: var(--app-text);
 }
 
 .chart-legend {
@@ -350,16 +350,16 @@ const emit = defineEmits(['navigate', 'open-certificate-modal']);
   width: 12px;
   height: 12px;
   border-radius: 4px;
-  background: #83C9F4;
+  background: var(--app-accent);
 }
 
 .legend-text {
-  color: #64748B;
+  color: var(--app-text-4);
 }
 
 .chart-desc {
   font-size: 12px;
-  color: #64748B;
+  color: var(--app-text-4);
 }
 
 /* 图表主体 */
@@ -383,7 +383,7 @@ const emit = defineEmits(['navigate', 'open-certificate-modal']);
 }
 
 .bar-group:hover .bar-rect {
-  fill: #63B8E8;
+  fill: var(--app-accent-sky-400);
 }
 
 /* 提示气泡（默认隐藏，hover 显示） */

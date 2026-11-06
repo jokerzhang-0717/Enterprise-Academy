@@ -28,6 +28,35 @@
       </div>
     </div>
 
+    <div class="filter-toolbar">
+      <select v-model="statusFilter" class="filter-select" aria-label="按部门状态筛选">
+        <option value="">全部状态</option>
+        <option value="active">启用</option>
+        <option value="inactive">已停用</option>
+      </select>
+      <label class="filter-search">
+        <span class="search-icon" aria-hidden="true"></span>
+        <input
+          v-model.trim="keyword"
+          class="filter-search-input"
+          type="text"
+          placeholder="搜索部门名称 / 负责人 / 简介..."
+          aria-label="搜索部门名称、负责人或简介"
+        />
+        <button
+          v-if="keyword"
+          type="button"
+          class="filter-clear"
+          aria-label="清除搜索内容"
+          title="清除搜索内容"
+          @click="keyword = ''"
+        >
+          <Close />
+        </button>
+      </label>
+      <span class="filter-count">{{ filteredDepartments.length }} 个部门</span>
+    </div>
+
     <!-- 部门表格 -->
     <div class="table-wrap">
       <table class="data-table">
@@ -83,8 +112,10 @@
               </div>
             </td>
           </tr>
-          <tr v-if="!departments.length">
-            <td colspan="6" class="empty-cell">暂无部门数据</td>
+          <tr v-if="!filteredDepartments.length">
+            <td colspan="6" class="empty-cell">
+              {{ departments.length ? '没有匹配的部门' : '暂无部门数据' }}
+            </td>
           </tr>
         </tbody>
       </table>
@@ -92,7 +123,7 @@
 
     <AdminPager
       v-model:page="page"
-      :total="departments.length"
+      :total="filteredDepartments.length"
       :total-pages="totalPages"
     />
 
@@ -101,7 +132,7 @@
       <div class="modal modal--detail">
         <div class="modal-head">
           <h2 class="modal-title">部门详细资料</h2>
-          <button class="modal-close" @click="detailModalOpen = false"><Close /></button>
+          <button type="button" class="modal-close" @click="detailModalOpen = false"><Close /></button>
         </div>
         <div v-if="selectedDept" class="modal-body detail-body">
           <div class="detail-header-card">
@@ -152,7 +183,7 @@
       <div class="modal">
         <div class="modal-head">
           <h2 class="modal-title">{{ editingId ? '编辑部门' : '新增部门' }}</h2>
-          <button class="modal-close" @click="closeModal"><Close /></button>
+          <button type="button" class="modal-close" @click="closeModal"><Close /></button>
         </div>
         <form class="modal-body" @submit.prevent="saveDept">
           <label class="field">
@@ -179,7 +210,7 @@
           <p v-if="formError" class="form-error">{{ formError }}</p>
           <div class="modal-actions">
             <button type="button" class="btn btn--ghost" @click="closeModal">取消</button>
-            <button type="submit" class="btn btn--primary">{{ editingId ? '保存修改' : '创建部门' }}</button>
+            <button type="submit" class="btn btn--primary" :disabled="saving">{{ saving ? '保存中…' : (editingId ? '保存修改' : '创建部门') }}</button>
           </div>
         </form>
       </div>
@@ -201,19 +232,42 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { Plus, EditPen, Delete, Close, CircleClose, CircleCheck } from '@element-plus/icons-vue';
-import { adminStore } from '../../adminStore.js';
+import { adminStore, loadDepartments } from '../../adminStore.js';
+import {
+  createAdminDepartment,
+  deleteAdminDepartment,
+  updateAdminDepartment,
+  updateAdminDepartmentStatus,
+} from '../../api/index.js';
 import { usePager } from '../../composables/usePager.js';
 import { useConfirm } from '../../composables/useConfirm.js';
+import { useToast } from '../../composables/useToast.js';
 import AdminPager from '../../components/AdminPager.vue';
 import ConfirmDialog from '../../components/ConfirmDialog.vue';
 
 const departments = adminStore.departments;
 
+const { show: showToast } = useToast();
+
 const { confirmState, askConfirm, cancelConfirm, acceptConfirm } = useConfirm();
 
-const { page, totalPages, paged: pagedDepartments } = usePager(departments, 9);
+const keyword = ref('');
+const statusFilter = ref('');
+
+const filteredDepartments = computed(() => {
+  const search = keyword.value.toLowerCase();
+  return departments.filter((dept) => {
+    const matchesStatus = !statusFilter.value || dept.status === statusFilter.value;
+    const matchesKeyword = !search ||
+      `${dept.name} ${dept.manager} ${dept.desc} ${dept.id}`.toLowerCase().includes(search);
+    return matchesStatus && matchesKeyword;
+  });
+});
+
+const { page, totalPages, paged: pagedDepartments, resetPage } = usePager(filteredDepartments, 9);
+watch([keyword, statusFilter], resetPage);
 
 const activeCount = computed(() => departments.filter(d => d.status === 'active').length);
 const totalLearners = computed(() => departments.reduce((s, d) => s + d.learners, 0));
@@ -242,6 +296,7 @@ const openEditFromDetail = () => {
 const modalOpen = ref(false);
 const editingId = ref(null);
 const formError = ref('');
+const saving = ref(false);
 const form = ref({ name: '', manager: '', desc: '', status: 'active' });
 
 const openCreate = () => {
@@ -268,7 +323,9 @@ const closeModal = () => {
   formError.value = '';
 };
 
-const saveDept = () => {
+const departmentStatusToCode = (status) => (status === 'inactive' ? 2 : 1);
+
+const saveDept = async () => {
   if (!form.value.name) { formError.value = '请输入部门名称。'; return; }
   if (!form.value.manager) { formError.value = '请输入负责人姓名。'; return; }
   const dup = departments.some(
@@ -276,22 +333,40 @@ const saveDept = () => {
   );
   if (dup) { formError.value = '该部门已存在,请勿重复创建。'; return; }
 
-  if (editingId.value) {
-    const target = departments.find(d => d.id === editingId.value);
-    Object.assign(target, { ...form.value });
-  } else {
-    departments.push({
-      id: `d-${Date.now()}`,
-      ...form.value,
-      learners: 0,
-      hours: 0
-    });
+  const payload = {
+    name: form.value.name.trim(),
+    managerName: form.value.manager.trim(),
+    description: form.value.desc.trim(),
+    status: departmentStatusToCode(form.value.status),
+  };
+
+  saving.value = true;
+  try {
+    if (editingId.value) {
+      await updateAdminDepartment(editingId.value, payload);
+      showToast(`已更新部门「${payload.name}」`, 'success');
+    } else {
+      await createAdminDepartment(payload);
+      showToast(`已创建部门「${payload.name}」`, 'success');
+    }
+    await loadDepartments();
+    closeModal();
+  } catch (error) {
+    formError.value = error?.message || '保存失败，请稍后重试。';
+  } finally {
+    saving.value = false;
   }
-  closeModal();
 };
 
-const toggleStatus = (dept) => {
-  dept.status = dept.status === 'active' ? 'inactive' : 'active';
+const toggleStatus = async (dept) => {
+  const next = dept.status === 'active' ? 'inactive' : 'active';
+  try {
+    await updateAdminDepartmentStatus(dept.numericId ?? dept.id, departmentStatusToCode(next));
+    await loadDepartments();
+    showToast(`「${dept.name}」已${next === 'active' ? '启用' : '停用'}`, 'success');
+  } catch (error) {
+    showToast(error?.message || '状态更新失败', 'error');
+  }
 };
 
 const removeDept = (dept) => {
@@ -302,11 +377,18 @@ const removeDept = (dept) => {
     rows: [
       { label: '部门人数', value: `${dept.learners} 人` }
     ],
-    tip: `删除后，该部门下 ${dept.learners} 名学员将变为「无部门」状态，此操作不可恢复。`,
+    tip: dept.learners > 0
+      ? `该部门下仍有 ${dept.learners} 名成员，需先转移成员后才能删除。`
+      : '删除后不可恢复。',
     confirmText: '确认删除',
-    action: () => {
-      const idx = departments.findIndex(d => d.id === dept.id);
-      if (idx > -1) departments.splice(idx, 1);
+    action: async () => {
+      try {
+        await deleteAdminDepartment(dept.numericId ?? dept.id);
+        await loadDepartments();
+        showToast(`已删除部门「${dept.name}」`, 'success');
+      } catch (error) {
+        showToast(error?.message || '删除失败', 'error');
+      }
     }
   });
 };
@@ -408,6 +490,110 @@ button { cursor: pointer; }
 .overview-label {
   font-size: 12px;
   color: var(--app-text-4);
+}
+
+/* ========== 筛选工具栏 ========== */
+.filter-toolbar {
+  display: grid;
+  grid-template-columns: minmax(140px, 190px) minmax(220px, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  min-height: 64px;
+  padding: 12px 16px;
+  background: var(--app-surface);
+  border: 1px solid var(--app-border);
+  border-radius: 12px;
+}
+.filter-select,
+.filter-search {
+  width: 100%;
+  min-width: 0;
+  height: 40px;
+  color: var(--app-text-2);
+  background: var(--app-surface);
+  border: 1px solid var(--app-border);
+  border-radius: 10px;
+}
+.filter-select {
+  padding: 0 34px 0 12px;
+  font-size: 13px;
+  outline: none;
+  cursor: pointer;
+}
+.filter-select:focus,
+.filter-search:focus-within {
+  border-color: var(--app-accent-strong);
+  box-shadow: 0 0 0 3px var(--app-accent-a12);
+}
+.filter-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+}
+.search-icon {
+  position: relative;
+  width: 14px;
+  height: 14px;
+  flex: 0 0 14px;
+}
+.search-icon::before {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 9px;
+  height: 9px;
+  border: 2px solid var(--app-text-4);
+  border-radius: 50%;
+  content: '';
+}
+.search-icon::after {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 6px;
+  height: 2px;
+  background: var(--app-text-4);
+  border-radius: 1px;
+  content: '';
+  transform: rotate(45deg);
+  transform-origin: right center;
+}
+.filter-search-input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  font-size: 13px;
+  color: var(--app-text);
+  background: transparent;
+  border: 0;
+  outline: 0;
+}
+.filter-search-input::placeholder { color: var(--app-text-5); }
+.filter-clear {
+  display: inline-flex;
+  flex: 0 0 24px;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  color: var(--app-text-4);
+  background: transparent;
+  border: 0;
+  border-radius: 50%;
+}
+.filter-clear:hover { color: var(--app-text-2); background: var(--app-chip); }
+.filter-clear svg { width: 14px; height: 14px; }
+.filter-count {
+  justify-self: end;
+  padding: 7px 11px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--app-accent-deep);
+  background: var(--app-accent-soft);
+  border-radius: 999px;
+  white-space: nowrap;
 }
 
 /* ========== 表格 ========== */
@@ -822,5 +1008,16 @@ th.ops, td.ops { text-align: right; white-space: nowrap; }
 @media (max-width: 640px) {
   .overview-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .field-row { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 900px) {
+  .filter-toolbar { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .filter-search, .filter-count { grid-column: 1 / -1; }
+  .filter-count { justify-self: start; }
+}
+
+@media (max-width: 420px) {
+  .filter-toolbar { grid-template-columns: minmax(0, 1fr); }
+  .filter-select, .filter-search, .filter-count { grid-column: 1; }
 }
 </style>

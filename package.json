@@ -1,5 +1,5 @@
 {
-  "name": "react-example",
+  "name": "yunshu-academy",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -25,7 +25,8 @@
     "react": "^19.0.1",
     "react-dom": "^19.0.1",
     "vite": "^8.3.0",
-    "vue": "^3.5.44"
+    "vue": "^3.5.44",
+    "vue-router": "^4.6.4"
   },
   "devDependencies": {
     "@types/express": "^4.17.21",

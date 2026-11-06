@@ -18,18 +18,13 @@
         v-for="item in navItems"
         :key="item.id"
         :class="['nav-item', isItemActive(item.id) ? 'nav-item--active' : '']"
+        :title="item.label"
         @click="$emit('select-view', item.id)"
       >
         <div class="nav-item-left">
           <component :is="item.icon" class="sidebar-icon" />
           <span class="nav-label">{{ item.label }}</span>
         </div>
-        <span
-          v-if="item.badge !== undefined"
-          :class="['nav-badge', item.badgeClass]"
-        >
-          {{ item.badge }}
-        </span>
       </button>
     </nav>
 
@@ -72,8 +67,6 @@ import {
 const props = defineProps({
   currentView:         { type: String,  default: 'home' },
   theme:               { type: String,  default: 'cyan' },
-  unreadMessagesCount: { type: Number,  default: 3 },
-  activeExamsCount:    { type: Number,  default: 1 },
   user: {
     type: Object,
     default: () => ({
@@ -89,22 +82,10 @@ defineEmits(['select-view', 'change-theme', 'logout']);
 const navItems = [
   { id: 'home',         label: '首页',           icon: House },
   { id: 'courses',      label: '课程学习中心',     icon: Reading },
-  {
-    id: 'exams',
-    label: '考试与测评中心',
-    icon: DocumentChecked,
-    badge: props.activeExamsCount > 0 ? props.activeExamsCount : undefined,
-    badgeClass: 'nav-badge--purple'
-  },
+  { id: 'exams',        label: '考试与测评中心',   icon: DocumentChecked },
   { id: 'analytics',    label: '个人学习看板',     icon: DataAnalysis },
   { id: 'attendance',   label: '培训考勤与请假',   icon: Calendar },
-  {
-    id: 'messages',
-    label: '消息与站内信',
-    icon: Bell,
-    badge: props.unreadMessagesCount > 0 ? props.unreadMessagesCount : undefined,
-    badgeClass: 'nav-badge--red'
-  },
+  { id: 'messages',     label: '消息与站内信',     icon: Bell },
   { id: 'certificates', label: '荣誉证书与问答',   icon: Medal },
   { id: 'profile',      label: '个人中心',         icon: User }
 ];
@@ -136,8 +117,8 @@ button {
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
-  background: #fff;
-  border-right: 1px solid #E2E8F0;
+  background: var(--app-surface);
+  border-right: 1px solid var(--app-border);
   user-select: none;
   z-index: 20;
   overflow: hidden;
@@ -149,7 +130,7 @@ button {
   align-items: center;
   gap: 12px;
   padding: 20px;
-  border-bottom: 1px solid #F1F5F9;
+  border-bottom: 1px solid var(--app-surface-3);
   cursor: pointer;
   transition: opacity 0.15s;
 }
@@ -164,7 +145,7 @@ button {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #83C9F4;
+  background: var(--app-accent);
   border-radius: 12px;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
   flex-shrink: 0;
@@ -180,13 +161,13 @@ button {
 .sidebar-brand-icon {
   width: 24px;
   height: 24px;
-  color: #fff;
+  color: var(--app-on-fill);
 }
 
 .sidebar-user-icon {
   width: 20px;
   height: 20px;
-  color: #005576;
+  color: var(--app-accent-deep);
 }
 
 .sidebar-logout-icon {
@@ -197,7 +178,7 @@ button {
 .brand-name {
   font-size: 16px;
   font-weight: 700;
-  color: #1E293B;
+  color: var(--app-text);
   letter-spacing: -0.025em;
   line-height: 1.375;
 }
@@ -205,7 +186,7 @@ button {
 .brand-sub {
   font-size: 10px;
   font-weight: 600;
-  color: #64748B;
+  color: var(--app-text-4);
   letter-spacing: 0.05em;
   text-transform: uppercase;
 }
@@ -228,7 +209,7 @@ button {
   padding: 10px 14px;
   font-size: 14px;
   font-weight: 500;
-  color: #475569;
+  color: var(--app-text-3);
   background: transparent;
   border: none;
   border-radius: 8px;
@@ -237,19 +218,19 @@ button {
 }
 
 .nav-item:hover {
-  background: #F4F9FD;
-  color: #1E293B;
+  background: var(--app-page-bg);
+  color: var(--app-text);
 }
 
 .nav-item--active {
-  background: #83C9F4;
-  color: #005576;
+  background: var(--app-accent);
+  color: var(--app-on-accent-solid);
   font-weight: 600;
 }
 
 .nav-item--active:hover {
-  background: #83C9F4;
-  color: #005576;
+  background: var(--app-accent);
+  color: var(--app-on-accent-solid);
 }
 
 .nav-item-left {
@@ -280,21 +261,21 @@ button {
 }
 
 .nav-badge--purple {
-  background: #9381FF;
-  color: #1E293B;
+  background: var(--app-violet);
+  color: var(--app-ink-solid);
 }
 
 .nav-badge--red {
-  background: #DC2626;
-  color: #fff;
+  background: var(--app-red-600);
+  color: var(--app-on-fill);
 }
 
 /* ========== 底部用户卡片 ========== */
 .sidebar-footer {
   margin-top: auto;
   padding: 12px;
-  background: #FBFDFF;
-  border-top: 1px solid #E2E8F0;
+  background: var(--app-blue-25b);
+  border-top: 1px solid var(--app-border);
 }
 
 .user-card {
@@ -302,15 +283,15 @@ button {
   align-items: center;
   justify-content: space-between;
   padding: 12px;
-  background: #EEF4FB;
-  border: 1px solid #E2EAF4;
+  background: var(--app-blue-85);
+  border: 1px solid var(--app-blue-line-110);
   border-radius: 16px;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
   transition: background 0.15s;
 }
 
 .user-card:hover {
-  background: #E5EFF9;
+  background: var(--app-blue-90);
 }
 
 .user-card-info {
@@ -329,8 +310,8 @@ button {
   justify-content: center;
   overflow: hidden;
   border-radius: 50%;
-  background: #83C9F4;
-  color: #005576;
+  background: var(--app-accent);
+  color: var(--app-on-accent-solid);
   flex-shrink: 0;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
@@ -348,7 +329,7 @@ button {
 .user-card-name {
   font-size: 15px;
   font-weight: 700;
-  color: #111C2D;
+  color: var(--app-ink-850);
   line-height: 1.25;
   white-space: nowrap;
   overflow: hidden;
@@ -358,7 +339,7 @@ button {
 .user-card-title {
   margin-top: 2px;
   font-size: 12px;
-  color: #64748B;
+  color: var(--app-text-4);
   line-height: 1.25;
   white-space: nowrap;
   overflow: hidden;
@@ -371,7 +352,7 @@ button {
   align-items: center;
   justify-content: center;
   padding: 6px;
-  color: #334155;
+  color: var(--app-text-2);
   background: transparent;
   border: none;
   border-radius: 8px;
@@ -381,7 +362,38 @@ button {
 }
 
 .logout-btn:hover {
-  color: #DC2626;
-  background: rgba(255, 255, 255, 0.7);
+  color: var(--app-red-600);
+  background: var(--app-wash-hover);
+}
+
+@media (max-width: 820px) {
+  .sidebar {
+    width: 64px;
+    height: 100%;
+  }
+  .brand-header {
+    justify-content: center;
+    padding: 14px 6px;
+  }
+  .brand-text,
+  .nav-label,
+  .user-card-text { display: none; }
+  .nav-menu {
+    flex-direction: column;
+    gap: 4px;
+    padding: 10px 6px;
+  }
+  .nav-item {
+    justify-content: center;
+    padding: 12px 0;
+  }
+  .nav-item-left { gap: 0; }
+  .sidebar-footer { padding: 6px; }
+  .user-card {
+    flex-direction: column;
+    gap: 6px;
+    padding: 8px 4px;
+  }
+  .logout-btn { margin-left: 0; }
 }
 </style>

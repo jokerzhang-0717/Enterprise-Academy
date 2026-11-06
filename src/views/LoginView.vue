@@ -234,7 +234,7 @@
 
           <div class="fade-in mt-4 rounded-[9px] border border-dashed border-[#D3E4F3] bg-[#F6FBFF] px-3 py-2" style="--d:.52s">
             <p class="mono-font text-[9.5px] leading-[1.7] text-[#5B6B80]">
-              演示账号 · 学员:EMP-2024098 / 管理员:admin(密码任意,完成滑块验证后登录)
+              演示账号 · 学员:EMP-2024098 / 管理员:admin · 统一密码:123456(完成滑块验证后登录)
             </p>
           </div>
         </form>
@@ -289,6 +289,7 @@ import {
   Lock, User, Gauge, KeyRound
 } from 'lucide-vue-next';
 import { useToast } from '../composables/useToast.js';
+import { login as loginApi, register as registerApi } from '../api/index.js';
 
 const emit = defineEmits(['login-success']);
 
@@ -392,7 +393,9 @@ const clearRegisterError = (field) => {
   registerErrors.value = rest;
 };
 
-const handleSubmit = () => {
+const submitting = ref(false);
+
+const handleSubmit = async () => {
   const errors = {};
   if (!employeeId.value) errors.employeeId = '请输入企业工号。';
   if (!password.value) errors.password = '请输入登录密码。';
@@ -400,15 +403,30 @@ const handleSubmit = () => {
 
   loginErrors.value = errors;
   if (Object.keys(errors).length) return;
+  if (submitting.value) return;
 
-  emit('login-success', { employeeId: employeeId.value, rememberDevice: rememberDevice.value });
+  submitting.value = true;
+  try {
+    const result = await loginApi(employeeId.value, password.value);
+    emit('login-success', {
+      token: result.token,
+      user: result.user,
+      employeeId: result.user?.employeeId || employeeId.value,
+      rememberDevice: rememberDevice.value,
+    });
+  } catch (error) {
+    loginErrors.value = { password: error?.message || '登录失败，请稍后重试。' };
+    showToast(error?.message || '登录失败，请稍后重试。', 'error');
+  } finally {
+    submitting.value = false;
+  }
 };
 
 const handleForgot = () => {
   showToast('请联系企业 IT 运维部工单重置密码', 'info');
 };
 
-const handleRegister = () => {
+const handleRegister = async () => {
   const errors = {};
   if (!registerName.value) errors.name = '请输入姓名。';
   if (!registerEmployeeId.value) errors.employeeId = '请输入企业工号。';
@@ -425,7 +443,29 @@ const handleRegister = () => {
 
   registerErrors.value = errors;
   if (Object.keys(errors).length) return;
-  emit('login-success', { name: registerName.value, employeeId: registerEmployeeId.value });
+  if (submitting.value) return;
+
+  submitting.value = true;
+  try {
+    await registerApi({
+      name: registerName.value,
+      employeeNo: registerEmployeeId.value,
+      password: registerPassword.value,
+    });
+    const result = await loginApi(registerEmployeeId.value, registerPassword.value);
+    showToast('注册成功，已自动登录', 'success');
+    emit('login-success', {
+      token: result.token,
+      user: result.user,
+      employeeId: result.user?.employeeId || registerEmployeeId.value,
+      rememberDevice: rememberDevice.value,
+    });
+  } catch (error) {
+    registerErrors.value = { employeeId: error?.message || '注册失败，请稍后重试。' };
+    showToast(error?.message || '注册失败，请稍后重试。', 'error');
+  } finally {
+    submitting.value = false;
+  }
 };
 </script>
 

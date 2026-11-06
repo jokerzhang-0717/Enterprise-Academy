@@ -60,12 +60,26 @@
       <!-- 签到按钮 -->
       <button
         v-if="!isAdmin"
+        type="button"
         :class="['checkin-btn', isCheckedIn ? 'checkin-btn--done' : 'checkin-btn--active']"
-        @click="$emit('toggle-checkin')"
+        @click="$emit('navigate', 'attendance')"
       >
         <!-- 打勾图标 -->
         <span :class="['icon-check', isCheckedIn ? 'icon-check--blue' : 'icon-check--white']">✓</span>
-        <span>{{ isCheckedIn ? '今日培训已签到' : '立即打卡签到' }}</span>
+        <span class="checkin-label">{{ isCheckedIn ? '今日培训已签到' : '立即打卡签到' }}</span>
+      </button>
+
+      <!-- 用户端工具:全屏 -->
+      <button
+        v-if="!isAdmin"
+        class="tool-btn"
+        :title="isFullscreen ? '退出全屏' : '进入全屏'"
+        :aria-label="isFullscreen ? '退出全屏' : '进入全屏'"
+        :aria-pressed="isFullscreen"
+        @click="toggleFullscreen"
+      >
+        <Minimize v-if="isFullscreen" class="tool-icon" />
+        <Maximize v-else class="tool-icon" />
       </button>
 
       <!-- 消息铃铛（管理端隐藏） -->
@@ -73,10 +87,10 @@
         v-if="!isAdmin"
         class="bell-btn"
         title="消息与站内信"
+        aria-label="消息与站内信"
         @click="$emit('navigate', 'messages')"
       >
-        <!-- 铃铛图标（CSS 画的） -->
-        <span class="icon-bell"></span>
+        <MessageSquareText class="message-icon" aria-hidden="true" />
         <!-- 未读红点 -->
         <span v-if="unreadCount > 0" class="unread-dot"></span>
       </button>
@@ -92,9 +106,8 @@
         <Maximize v-else class="tool-icon" />
       </button>
 
-      <!-- 管理端工具:换主题 -->
+      <!-- 换主题:管理端三套,学员端青蓝/曜黑 -->
       <button
-        v-if="isAdmin"
         class="tool-btn"
         title="换主题"
         @click="$emit('cycle-theme')"
@@ -155,7 +168,8 @@
 
 <script setup>
 import { onBeforeUnmount, onMounted, ref } from 'vue';
-import { Maximize, Minimize, Palette } from 'lucide-vue-next';
+import { Maximize, Minimize, Palette, MessageSquareText } from 'lucide-vue-next';
+import { useToast } from '../composables/useToast.js';
 
 const props = defineProps({
   user:          { type: Object,  required: true },
@@ -177,6 +191,7 @@ const emit = defineEmits([
 const searchValue     = ref('');
 const showSearchModal = ref(false);
 const showUserDropdown = ref(false);
+const { show: showToast } = useToast();
 
 const isFullscreen = ref(false);
 const syncFullscreen = () => { isFullscreen.value = !!document.fullscreenElement; };
@@ -186,11 +201,14 @@ const toggleFullscreen = async () => {
     if (document.fullscreenElement) await document.exitFullscreen();
     else await document.documentElement.requestFullscreen();
   } catch {
-    /* 内嵌预览环境可能禁用全屏 API，静默忽略 */
+    showToast('当前浏览器或预览环境无法切换全屏。', 'error');
   }
 };
 
-onMounted(() => document.addEventListener('fullscreenchange', syncFullscreen));
+onMounted(() => {
+  syncFullscreen();
+  document.addEventListener('fullscreenchange', syncFullscreen);
+});
 onBeforeUnmount(() => document.removeEventListener('fullscreenchange', syncFullscreen));
 
 // 选中搜索结果
@@ -271,14 +289,14 @@ input {
   gap: 8px;
   padding: 0 14px;
   background: var(--app-surface);
-  border: 1px solid #A3D5FF;
+  border: 1px solid var(--app-accent-border);
   border-radius: 9999px;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
   transition: border-color 0.2s, box-shadow 0.2s;
 }
 
 .search-box:focus-within {
-  border-color: #83C9F4;
+  border-color: var(--app-accent);
   box-shadow: 0 0 0 4px rgba(131, 201, 244, 0.2);
 }
 
@@ -312,7 +330,7 @@ input {
   left: 1px;
   width: 10px;
   height: 10px;
-  border: 2px solid #005576;
+  border: 2px solid var(--app-accent-deep);
   border-radius: 50%;
 }
 
@@ -323,7 +341,7 @@ input {
   right: 1px;
   width: 6px;
   height: 2px;
-  background: #005576;
+  background: var(--app-accent-deep);
   border-radius: 1px;
   transform: rotate(45deg);
   transform-origin: right center;
@@ -380,7 +398,7 @@ input {
 }
 
 .dropdown-item:hover {
-  background: #F4F9FD;
+  background: var(--app-page-bg);
 }
 
 .item-info {
@@ -397,8 +415,8 @@ input {
   padding: 2px 6px;
   font-size: 10px;
   font-weight: 500;
-  color: #005576;
-  background: #D9F0FF;
+  color: var(--app-accent-deep);
+  background: var(--app-accent-soft);
   border-radius: 4px;
   flex-shrink: 0;
 }
@@ -456,24 +474,28 @@ input {
 
 /* 已签到状态 */
 .checkin-btn--done {
-  color: #005576;
-  background: #D9F0FF;
+  color: var(--app-accent-deep);
+  background: var(--app-accent-soft);
   border-color: rgba(131, 201, 244, 0.5);
 }
 
 .checkin-btn--done:hover {
-  background: #D9F0FF;
+  background: var(--app-accent-soft);
+}
+
+.checkin-btn:disabled {
+  cursor: default;
 }
 
 /* 未签到状态 */
 .checkin-btn--active {
-  color: #005576;
-  background: #83C9F4;
+  color: var(--app-on-accent-solid);
+  background: var(--app-accent);
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
 .checkin-btn--active:hover {
-  background: #6FB9E8;
+  background: var(--app-accent-hover-strong);
 }
 
 /* 打勾图标 */
@@ -484,11 +506,11 @@ input {
 }
 
 .icon-check--blue {
-  color: #005576;
+  color: var(--app-accent-deep);
 }
 
 .icon-check--white {
-  color: #fff;
+  color: var(--app-on-fill);
 }
 
 /* ========== 铃铛按钮 ========== */
@@ -539,47 +561,20 @@ input {
   color: var(--app-brand-on);
 }
 
-/* --- 铃铛图标（CSS 画） --- */
-.icon-bell {
-  position: relative;
-  width: 16px;
-  height: 16px;
-}
-
-/* 铃铛主体（半圆） */
-.icon-bell::before {
-  content: '';
-  position: absolute;
-  top: 1px;
-  left: 2px;
-  width: 12px;
-  height: 12px;
-  border: 1.5px solid currentColor;
-  border-bottom: none;
-  border-radius: 6px 6px 0 0;
-}
-
-/* 铃铛底部横线 + 小圆 */
-.icon-bell::after {
-  content: '';
-  position: absolute;
-  bottom: 1px;
-  left: 3px;
-  width: 10px;
-  height: 1.5px;
-  background: currentColor;
-  border-radius: 1px;
-  box-shadow: 0 3px 0 0 currentColor;
+.message-icon {
+  width: 18px;
+  height: 18px;
+  stroke-width: 1.8;
 }
 
 /* 未读红点 */
 .unread-dot {
   position: absolute;
-  top: 4px;
-  right: 4px;
+  top: 5px;
+  right: 5px;
   width: 8px;
   height: 8px;
-  background: #DC2626;
+  background: var(--app-red-600);
   border-radius: 50%;
 }
 
@@ -613,11 +608,11 @@ input {
   justify-content: center;
   overflow: hidden;
   border-radius: 50%;
-  background: #83C9F4;
-  color: #fff;
+  background: var(--app-accent);
+  color: var(--app-on-fill);
   font-size: 12px;
   font-weight: 700;
-  border: 2px solid #fff;
+  border: 2px solid var(--app-surface);
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
   flex-shrink: 0;
 }
@@ -688,7 +683,7 @@ input {
   font-size: 13px;
   font-weight: 600;
   line-height: 1.3;
-  color: #0F172A;
+  color: var(--app-ink-900);
 }
 
 .dropdown-user-id {
@@ -722,11 +717,11 @@ input {
 
 .dropdown-action:hover {
   background: var(--app-surface-3);
-  color: #0F172A;
+  color: var(--app-ink-900);
 }
 
 .dropdown-action:focus-visible {
-  outline: 2px solid #005576;
+  outline: 2px solid var(--app-accent-deep);
   outline-offset: -2px;
 }
 
@@ -743,20 +738,20 @@ input {
 
 /* 退出登录 */
 .dropdown-action--logout {
-  color: #DC2626;
+  color: var(--app-red-600);
 }
 
 .dropdown-action--logout:hover {
-  background: #FEF2F2;
-  color: #B91C1C;
+  background: var(--app-red-50);
+  color: var(--app-red-700);
 }
 
 .dropdown-action--logout .icon-switch {
-  color: #FCA5A5;
+  color: var(--app-red-300);
 }
 
 .dropdown-action--logout:hover .icon-switch {
-  color: #DC2626;
+  color: var(--app-red-600);
 }
 
 /* 管理端:下拉浮层跟随主题,深色主题下不出现浅底深字;学员端沿用上面的原色 */
@@ -802,5 +797,46 @@ input {
   border: 1px solid var(--app-brand-tint-line);
   border-radius: 9999px;
   vertical-align: 1px;
+}
+
+@media (max-width: 820px) {
+  .app-header {
+    height: 56px;
+    gap: 10px;
+    padding: 0 14px;
+  }
+  .search-zone {
+    min-width: 0;
+    max-width: none;
+  }
+  .header-actions { gap: 8px; }
+  .checkin-btn {
+    width: 36px;
+    height: 36px;
+    justify-content: center;
+    padding: 0;
+  }
+  .checkin-label { display: none; }
+}
+
+@media (max-width: 560px) {
+  .app-header {
+    height: 54px;
+    gap: 8px;
+    padding: 0 10px;
+  }
+  .header-actions { gap: 5px; }
+  .tool-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 9px;
+  }
+  .bell-btn { padding: 6px; }
+  .user-btn { gap: 6px; }
+  .user-info { display: none; }
+  .avatar {
+    width: 32px;
+    height: 32px;
+  }
 }
 </style>

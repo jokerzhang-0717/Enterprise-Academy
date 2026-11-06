@@ -25,7 +25,7 @@
 
         <div class="score-status">
           <span :class="['pass-badge', isPassed ? 'pass-badge--pass' : 'pass-badge--fail']">
-            {{ isPassed ? '★ 考核优秀通过' : '未达到合格基准线' }}
+            {{ pendingReview ? '客观题已机审 · 主观题待评分' : (isPassed ? '★ 考核优秀通过' : '未达到合格基准线') }}
           </span>
           <span class="pass-line">合格基准线: {{ passScore }} 分</span>
         </div>
@@ -38,12 +38,12 @@
           <span class="stats-value">{{ answeredCount }} / {{ totalQuestions }} 题</span>
         </div>
         <div class="stats-card">
-          <span class="stats-label">正确率</span>
-          <span class="stats-value stats-value--green">92%</span>
+          <span class="stats-label">得分率</span>
+          <span class="stats-value stats-value--green">{{ accuracyPercent }}%</span>
         </div>
         <div class="stats-card">
           <span class="stats-label">考位状态</span>
-          <span class="stats-value stats-value--blue">已安全交卷</span>
+          <span class="stats-value stats-value--blue">{{ pendingReview ? '待人工复核' : '已安全交卷' }}</span>
         </div>
       </div>
 
@@ -62,7 +62,7 @@
 
         <!-- 未通过 → 重新作答 -->
         <button
-          v-else
+          v-else-if="!pendingReview"
           class="btn btn-retry"
           @click="$emit('retake')"
         >
@@ -89,18 +89,23 @@ import { computed } from 'vue';
 
 const props = defineProps({
   isOpen:        { type: Boolean, default: false },
-  examTitle:     { type: String,  default: '考试测评' },
-  score:         { type: Number,  default: 95 },
-  passScore:     { type: Number,  default: 80 },
+  examTitle:     { type: String,  default: '' },
+  score:         { type: Number,  default: 0 },
+  passScore:     { type: Number,  default: 60 },
   totalScore:    { type: Number,  default: 100 },
-  answeredCount: { type: Number,  default: 24 },
-  totalQuestions:{ type: Number,  default: 25 }
+  answeredCount: { type: Number,  default: 0 },
+  totalQuestions:{ type: Number,  default: 0 },
+  isPassed:      { type: Boolean, default: false },
+  pendingReview: { type: Boolean, default: false }
 });
 
 const emit = defineEmits(['close', 'view-certificate', 'retake']);
 
 // 是否通过
-const isPassed = computed(() => props.score >= props.passScore);
+const isPassed = computed(() => props.isPassed);
+const accuracyPercent = computed(() =>
+  props.totalScore ? Math.round((props.score / props.totalScore) * 100) : 0
+);
 
 // 关闭弹窗
 function closeModal() {
@@ -145,8 +150,8 @@ button {
 .modal-container {
   width: 100%;
   max-width: 512px;
-  background: #fff;
-  border: 1px solid #E2E8F0;
+  background: var(--app-surface);
+  border: 1px solid var(--app-border);
   border-radius: 16px;
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
   overflow: hidden;
@@ -168,14 +173,14 @@ button {
 
 /* 通过：绿色背景 */
 .result-icon--pass {
-  background: #d1fae5;
-  color: #059669;
+  background: var(--app-emerald-bg);
+  color: var(--app-emerald-strong);
 }
 
 /* 未通过：琥珀色背景 */
 .result-icon--fail {
-  background: #fef3c7;
-  color: #d97706;
+  background: var(--app-amber-bg);
+  color: var(--app-amber-strong);
 }
 
 .icon-check {
@@ -187,7 +192,7 @@ button {
 .result-label {
   font-size: 12px;
   font-weight: 600;
-  color: #005576;
+  color: var(--app-accent-deep);
   letter-spacing: 0.05em;
   text-transform: uppercase;
   margin-bottom: 4px;
@@ -196,7 +201,7 @@ button {
 .result-title {
   font-size: 18px;
   font-weight: 700;
-  color: #1E293B;
+  color: var(--app-text);
   margin-bottom: 8px;
 }
 
@@ -204,8 +209,8 @@ button {
 .score-panel {
   margin: 24px 0;
   padding: 20px;
-  background: #F4F9FD;
-  border: 1px solid #E2E8F0;
+  background: var(--app-page-bg);
+  border: 1px solid var(--app-border);
   border-radius: 12px;
 }
 
@@ -223,16 +228,16 @@ button {
 }
 
 .score-number--pass {
-  color: #059669;
+  color: var(--app-emerald-strong);
 }
 
 .score-number--fail {
-  color: #d97706;
+  color: var(--app-amber-strong);
 }
 
 .score-total {
   font-size: 20px;
-  color: #64748B;
+  color: var(--app-text-4);
 }
 
 /* 合格状态标签 */
@@ -252,19 +257,19 @@ button {
 }
 
 .pass-badge--pass {
-  color: #047857;
-  background: #ecfdf5;
-  border: 1px solid #a7f3d0;
+  color: var(--app-emerald-fg);
+  background: var(--app-emerald-soft);
+  border: 1px solid var(--app-emerald-line);
 }
 
 .pass-badge--fail {
-  color: #b45309;
-  background: #fffbeb;
+  color: var(--app-amber-fg);
+  background: var(--app-amber-50);
 }
 
 .pass-line {
   font-size: 12px;
-  color: #64748B;
+  color: var(--app-text-4);
 }
 
 /* ========== 数据统计 ========== */
@@ -278,29 +283,29 @@ button {
 
 .stats-card {
   padding: 10px;
-  background: #F8FAFC;
-  border: 1px solid #E2E8F0;
+  background: var(--app-surface-2);
+  border: 1px solid var(--app-border);
   border-radius: 8px;
 }
 
 .stats-label {
   display: block;
   font-size: 10px;
-  color: #64748B;
+  color: var(--app-text-4);
 }
 
 .stats-value {
   font-size: 12px;
   font-weight: 700;
-  color: #1E293B;
+  color: var(--app-text);
 }
 
 .stats-value--green {
-  color: #059669;
+  color: var(--app-emerald-strong);
 }
 
 .stats-value--blue {
-  color: #005576;
+  color: var(--app-accent-deep);
 }
 
 /* ========== 操作按钮 ========== */
@@ -326,35 +331,35 @@ button {
 /* 主按钮：查看证书 */
 .btn-primary {
   flex: 1;
-  background: #83C9F4;
-  color: #fff;
+  background: var(--app-accent);
+  color: var(--app-on-fill);
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
 .btn-primary:hover {
-  background: #6FB9E8;
+  background: var(--app-accent-hover-strong);
 }
 
 /* 重试按钮 */
 .btn-retry {
   flex: 1;
-  background: #83C9F4;
-  color: #005576;
+  background: var(--app-accent);
+  color: var(--app-on-accent-solid);
 }
 
 .btn-retry:hover {
-  background: #6FB9E8;
+  background: var(--app-accent-hover-strong);
 }
 
 /* 次要按钮：返回 */
 .btn-secondary {
-  background: #fff;
-  color: #475569;
-  border: 1px solid #E2E8F0;
+  background: var(--app-surface);
+  color: var(--app-text-3);
+  border: 1px solid var(--app-border);
 }
 
 .btn-secondary:hover {
-  background: #F8FAFC;
+  background: var(--app-surface-2);
 }
 
 /* 按钮内小图标 */

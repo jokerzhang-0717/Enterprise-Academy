@@ -7,7 +7,7 @@
         <div class="exm-metric__body">
           <div class="exm-metric__label">待参加考核</div>
           <div class="exm-metric__value">
-            3 <span class="exm-metric__note exm-metric__note--blue">1场正在进行</span>
+            {{ metrics.pendingCount }} <span class="exm-metric__note exm-metric__note--blue">{{ metrics.inProgressCount }}场正在进行</span>
           </div>
           <div class="exm-metric__foot">本季度必考安排</div>
         </div>
@@ -21,9 +21,9 @@
         <div class="exm-metric__body">
           <div class="exm-metric__label">已通过认证科目</div>
           <div class="exm-metric__value">
-            8 <span class="exm-metric__note exm-metric__note--green">获8份电子徽章</span>
+            {{ certificateCount }} <span class="exm-metric__note exm-metric__note--green">获{{ certificateCount }}份电子徽章</span>
           </div>
-          <div class="exm-metric__foot">认证率 100% 达标</div>
+          <div class="exm-metric__foot">认证率 {{ metrics.passRate }}% 达标</div>
         </div>
         <div class="exm-metric__icon">
           <Award class="exm-icon" />
@@ -35,7 +35,7 @@
         <div class="exm-metric__body">
           <div class="exm-metric__label">综合考核平均分</div>
           <div class="exm-metric__value exm-metric__value--purple">
-            88.5 <span class="exm-metric__note">通过率 100%</span>
+            {{ metrics.avgPastScore }} <span class="exm-metric__note">通过率 {{ metrics.passRate }}%</span>
           </div>
           <div class="exm-metric__foot">本季度综合考核</div>
         </div>
@@ -63,7 +63,7 @@
             :class="filterTab === 'all' ? 'is-active' : ''"
             @click="setFilterTab('all')"
           >
-            全部安排 (3)
+            全部安排 ({{ examsInTab('all').length }})
           </button>
           <button
             type="button"
@@ -71,7 +71,7 @@
             :class="filterTab === 'in_progress' ? 'is-active' : ''"
             @click="setFilterTab('in_progress')"
           >
-            进行中 (1)
+            进行中 ({{ examsInTab('in_progress').length }})
           </button>
           <button
             type="button"
@@ -79,7 +79,7 @@
             :class="filterTab === 'not_started' ? 'is-active' : ''"
             @click="setFilterTab('not_started')"
           >
-            未开始 (2)
+            未开始 ({{ examsInTab('not_started').length }})
           </button>
         </div>
       </div>
@@ -96,13 +96,16 @@
           <div class="exm-card__info">
             <div class="exm-card__tags">
               <span v-if="exam.status === 'in_progress'" class="exm-badge exm-badge--live">
-                可随时进入 · 随学随考
+                考试进行中 · 可进入作答
               </span>
               <span v-else-if="exam.status === 'not_started'" class="exm-badge exm-badge--wait">
                 未开始 · 请稍后
               </span>
-              <span v-else class="exm-badge exm-badge--anytime">
-                可随时进入 · 随学随考
+              <span v-else-if="exam.status === 'completed'" class="exm-badge exm-badge--wait">
+                本场考核已完成
+              </span>
+              <span v-else class="exm-badge exm-badge--wait">
+                考试状态待确认
               </span>
             </div>
 
@@ -121,7 +124,7 @@
               v-if="exam.status === 'in_progress'"
               type="button"
               class="exm-btn exm-btn--primary"
-              @click="$emit('navigate', 'exam-taking')"
+              @click="$emit('start-exam', exam)"
             >
               <FileCheck2 class="exm-icon exm-icon--sm" />
               <span>开始考试</span>
@@ -138,121 +141,46 @@
               <span>暂未开放</span>
             </button>
 
-            <!-- 随学随考 -->
+            <!-- 已完成 -->
             <button
-              v-else-if="exam.status === 'anytime'"
+              v-else-if="exam.status === 'completed'"
               type="button"
-              class="exm-btn exm-btn--soft"
-              @click="$emit('navigate', 'exam-taking')"
+              class="exm-btn exm-btn--disabled"
+              disabled
             >
-              <Play class="exm-icon exm-icon--sm exm-icon--fill" />
-              <span>开始考试</span>
+              <Award class="exm-icon exm-icon--sm" />
+              <span>已完成</span>
+            </button>
+
+            <button
+              v-else
+              type="button"
+              class="exm-btn exm-btn--disabled"
+              disabled
+            >
+              <Clock class="exm-icon exm-icon--sm" />
+              <span>暂不可考</span>
             </button>
           </div>
         </article>
       </div>
     </section>
 
-    <!-- 3. Past Exam Records -->
-    <section class="exm-panel">
-      <!-- 面板头部 -->
-      <div class="exm-panel__head">
-        <div>
-          <h3 class="exm-panel__title">往期测评档案与错题深度回顾</h3>
-          <p class="exm-panel__desc">支持调取知识盲区雷达图及错题解析报告</p>
-        </div>
-
-        <div class="exm-panel__stats">
-          <span>总参测: <strong class="exm-stat exm-stat--dark">8 场</strong></span>
-          <span>平均分: <strong class="exm-stat exm-stat--blue">88.5</strong></span>
-          <span>通过率: <strong class="exm-stat exm-stat--green">100%</strong></span>
-        </div>
-      </div>
-
-      <!-- 表格 -->
-      <div class="exm-table-wrap">
-        <table class="exm-table">
-          <thead>
-            <tr>
-              <th>考试科目</th>
-              <th>完成时间</th>
-              <th>得分</th>
-              <th>考核状态</th>
-              <th class="exm-table__right">错题分析</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="row in PAST_EXAMS" :id="`past-exam-${row.id}`" :key="row.id">
-              <td>
-                <div class="exm-table__subject">{{ row.title }}</div>
-              </td>
-              <td class="exm-table__mono">{{ row.completionDate }}</td>
-              <td class="exm-table__score">{{ row.score }}</td>
-              <td>
-                <span class="exm-pass">
-                  <span class="exm-pass__dot" />
-                  {{ row.status === 'passed_perfect' ? '满分通过' : row.status === 'passed_excellent' ? '优秀通过' : '合格通过' }}
-                </span>
-              </td>
-              <td class="exm-table__right">
-                <button
-                  v-if="row.wrongCount > 0"
-                  type="button"
-                  class="exm-link"
-                  @click="wrongAnalysisModal = row.title"
-                >
-                  <FileText class="exm-icon exm-icon--xs" />
-                  <span>错题分析 ({{ row.wrongCount }})</span>
-                </button>
-                <span v-else class="exm-table__empty">无错题记录</span>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </section>
-
-    <!-- 4. Wrong Questions Modal -->
-    <div v-if="wrongAnalysisModal" class="exm-modal" role="dialog" aria-modal="true">
-      <div class="exm-modal__box">
-        <h3 class="exm-modal__title">错题复盘解析报告</h3>
-        <div class="exm-modal__subject">{{ wrongAnalysisModal }}</div>
-
-        <div class="exm-modal__list">
-          <div class="exm-wrong">
-            <div class="exm-wrong__q">第 14 题: 分布式两阶段提交 (2PC) 的阻塞性缺点</div>
-            <div class="exm-wrong__a">
-              你的选项: B (网络分区下自动选主) | 正确答案: C (协调者单点故障导致参与者资源一直锁定锁定)
-            </div>
-          </div>
-
-          <div class="exm-wrong">
-            <div class="exm-wrong__q">第 21 题: Raft 算法中的 Term 周期选举安全性</div>
-            <div class="exm-wrong__a">
-              你的选项: A | 正确答案: D (日志包含最新已提交索引的候选人才能获得投票)
-            </div>
-          </div>
-        </div>
-
-        <button type="button" class="exm-btn exm-btn--close" @click="wrongAnalysisModal = null">
-          已掌握关闭
-        </button>
-      </div>
-    </div>
+    <!-- 3. Past Exam Records (已移除) -->
+    <!-- 4. Wrong Questions Modal (已移除) -->
   </div>
 </template>
 
 <script setup>
-import { ref, computed, nextTick, watch } from 'vue';
+import { ref, computed, nextTick, onMounted, watch } from 'vue';
 import {
   FileCheck2,
   Clock,
   Award,
   FileText,
-  Play,
   Layers
 } from 'lucide-vue-next';
-import { EXAMS_DATA, PAST_EXAMS } from '../mockData.js';
+import { fetchExams, fetchMyCertificates } from '../api/index.js';
 
 const props = defineProps({
   searchTargetId: {
@@ -261,19 +189,35 @@ const props = defineProps({
   },
 });
 
-defineEmits(['navigate', 'open-cert']);
+defineEmits(['start-exam']);
+
+const exams = ref([]);
+const metrics = ref({ pendingCount: 0, inProgressCount: 0, finishedCount: 0, avgPastScore: 0, passRate: 0 });
+const certificateCount = ref(0);
 
 const filterTab = ref('all');
-const wrongAnalysisModal = ref(null);
 
-/* ---------- 筛选（纯函数，无副作用） ---------- */
-const filteredExams = computed(() => {
-  return EXAMS_DATA.filter(exam => {
-    if (filterTab.value === 'in_progress') return exam.status === 'in_progress';
-    if (filterTab.value === 'not_started') return exam.status !== 'in_progress';
-    return true;
-  });
+onMounted(async () => {
+  const [examsData, certificates] = await Promise.all([
+    fetchExams().catch(() => null),
+    fetchMyCertificates().catch(() => []),
+  ]);
+  if (examsData) {
+    exams.value = examsData.assignments || [];
+    metrics.value = examsData.metrics || metrics.value;
+  }
+  certificateCount.value = (certificates || []).length;
 });
+
+/* ---------- 筛选（纯函数，无副作用） ----------
+   可进入作答的状态归入「进行中」，其余归入「未开始」 */
+const examsInTab = (tab) => exams.value.filter(exam => {
+  if (tab === 'in_progress') return exam.status === 'in_progress';
+  if (tab === 'not_started') return exam.status === 'not_started' || exam.status === 'completed';
+  return true;
+});
+
+const filteredExams = computed(() => examsInTab(filterTab.value));
 
 /* ---------- 筛选切换：统一入口，避免直接改 ref 造成隐式闭环 ---------- */
 const setFilterTab = (tab) => {
@@ -319,20 +263,20 @@ watch(
 <style scoped>
 /* ============ Design tokens ============ */
 .exm-page {
-  --c-text: #1e293b;
-  --c-text-sub: #334155;
-  --c-text-soft: #475569;
-  --c-muted: #64748b;
-  --c-faint: #94a3b8;
-  --c-border: #e2e8f0;
-  --c-border-soft: #f1f5f9;
-  --c-bg-soft: #f8fafc;
-  --c-blue: #005576;
-  --c-blue-bg: #d9f0ff;
-  --c-sky: #83c9f4;
-  --c-sky-hover: #6fb9e8;
-  --c-purple: #6555b0;
-  --c-green: #059669;
+  --c-text: var(--app-text);
+  --c-text-sub: var(--app-text-2);
+  --c-text-soft: var(--app-text-3);
+  --c-muted: var(--app-text-4);
+  --c-faint: var(--app-text-5);
+  --c-border: var(--app-border);
+  --c-border-soft: var(--app-surface-3);
+  --c-bg-soft: var(--app-surface-2);
+  --c-blue: var(--app-accent-deep);
+  --c-blue-bg: var(--app-accent-soft);
+  --c-sky: var(--app-accent);
+  --c-sky-hover: var(--app-accent-hover-strong);
+  --c-purple: var(--app-violet-fg);
+  --c-green: var(--app-emerald-strong);
 
   display: flex;
   flex-direction: column;
@@ -371,7 +315,7 @@ watch(
   padding: 16px;
   border: 1px solid var(--c-border);
   border-radius: 12px;
-  background: #fff;
+  background: var(--app-surface);
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
 }
 .exm-metric__label {
@@ -460,7 +404,7 @@ watch(
   padding: 4px;
   border: 1px solid var(--c-border);
   border-radius: 8px;
-  background: #fff;
+  background: var(--app-surface);
   font-size: 12px;
 }
 .exm-tabs__label {
@@ -481,7 +425,7 @@ watch(
 .exm-tab:hover { color: var(--c-text); }
 .exm-tab.is-active {
   background: var(--c-sky);
-  color: var(--c-blue);
+  color: var(--app-on-accent-solid);
 }
 
 /* ============ Exam cards ============ */
@@ -498,7 +442,7 @@ watch(
   padding: 20px;
   border: 1px solid var(--c-border);
   border-radius: 16px;
-  background: #fff;
+  background: var(--app-surface);
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
   transition: border-color 0.25s ease, background-color 0.25s ease;
 }
@@ -539,10 +483,6 @@ watch(
 .exm-badge--wait {
   background: var(--c-border-soft);
   color: var(--c-muted);
-}
-.exm-badge--anytime {
-  background: var(--c-blue-bg);
-  color: var(--c-blue);
 }
 @keyframes exm-pulse {
   0%, 100% { opacity: 1; }
@@ -594,7 +534,7 @@ watch(
 }
 .exm-btn--primary {
   background: var(--c-sky);
-  color: #fff;
+  color: var(--app-on-fill);
   box-shadow: 0 6px 14px rgba(15, 23, 42, 0.12);
 }
 .exm-btn--primary:hover {
@@ -604,7 +544,7 @@ watch(
 .exm-btn--soft {
   padding: 10px 20px;
   background: var(--c-sky);
-  color: #fff;
+  color: var(--app-on-fill);
   font-weight: 600;
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
 }
@@ -622,192 +562,10 @@ watch(
   margin-top: 20px;
   padding: 8px 0;
   background: var(--c-sky);
-  color: var(--c-blue);
+  color: var(--app-on-accent-solid);
   font-weight: 600;
 }
 .exm-btn--close:hover { background: var(--c-sky-hover); }
 
-/* ============ Panel (past records) ============ */
-.exm-panel {
-  padding: 20px;
-  border: 1px solid var(--c-border);
-  border-radius: 16px;
-  background: #fff;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-.exm-panel__head {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid var(--c-border);
-}
-@media (min-width: 640px) {
-  .exm-panel__head {
-    flex-direction: row;
-    align-items: center;
-    justify-content: space-between;
-  }
-}
-.exm-panel__title {
-  margin: 0;
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--c-text);
-}
-.exm-panel__desc {
-  margin: 2px 0 0;
-  font-size: 12px;
-  color: var(--c-muted);
-}
-.exm-panel__stats {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  font-size: 12px;
-  color: var(--c-muted);
-}
-.exm-stat {
-  font-family: 'SFMono-Regular', Consolas, monospace;
-}
-.exm-stat--dark { color: var(--c-text); }
-.exm-stat--blue { color: var(--c-blue); }
-.exm-stat--green { color: var(--c-green); }
-
-/* ============ Table ============ */
-.exm-table-wrap {
-  overflow-x: auto;
-}
-.exm-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 12px;
-  text-align: left;
-}
-.exm-table thead tr {
-  border-bottom: 1px solid var(--c-border);
-}
-.exm-table th {
-  padding: 10px 12px;
-  font-weight: 600;
-  color: var(--c-muted);
-}
-.exm-table tbody tr {
-  border-bottom: 1px solid var(--c-border-soft);
-  transition: background-color 0.2s ease;
-}
-.exm-table tbody tr:last-child { border-bottom: 0; }
-.exm-table tbody tr:hover { background: var(--c-bg-soft); }
-.exm-table td {
-  padding: 12px;
-}
-.exm-table__right { text-align: right; }
-.exm-table__subject {
-  font-weight: 700;
-  color: var(--c-text);
-}
-.exm-table__mono {
-  font-family: 'SFMono-Regular', Consolas, monospace;
-  color: var(--c-muted);
-}
-.exm-table__score {
-  font-family: 'SFMono-Regular', Consolas, monospace;
-  font-size: 16px;
-  font-weight: 700;
-  color: var(--c-blue);
-}
-.exm-table__empty {
-  font-size: 11px;
-  color: var(--c-faint);
-}
-
-.exm-pass {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: #ecfdf5;
-  color: #047857;
-  font-size: 10px;
-  font-weight: 600;
-}
-.exm-pass__dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: #10b981;
-}
-
-.exm-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: var(--c-blue);
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-}
-.exm-link:hover { text-decoration: underline; }
-
-/* ============ Modal ============ */
-.exm-modal {
-  position: fixed;
-  inset: 0;
-  z-index: 50;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 16px;
-  background: rgba(15, 23, 42, 0.6);
-  backdrop-filter: blur(4px);
-}
-.exm-modal__box {
-  width: 100%;
-  max-width: 512px;
-  padding: 24px;
-  border: 1px solid var(--c-border);
-  border-radius: 16px;
-  background: #fff;
-  box-shadow: 0 25px 50px rgba(15, 23, 42, 0.25);
-}
-.exm-modal__title {
-  margin: 0 0 8px;
-  font-size: 16px;
-  font-weight: 700;
-  color: var(--c-text);
-}
-.exm-modal__subject {
-  margin-bottom: 16px;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--c-blue);
-}
-.exm-modal__list {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  font-size: 12px;
-}
-.exm-wrong {
-  padding: 12px;
-  border: 1px solid #fee2e2;
-  border-radius: 12px;
-  background: #fef2f2;
-}
-.exm-wrong__q {
-  margin-bottom: 4px;
-  font-weight: 700;
-  color: #991b1b;
-}
-.exm-wrong__a {
-  font-size: 11px;
-  color: #b91c1c;
-}
+/* ============ Panel (已移除) ============ */
 </style>

@@ -85,18 +85,18 @@ defineEmits(['back']);
   align-self: flex-start;
   gap: 0.5rem;
   padding: 0.5rem 0.75rem;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--app-border);
   border-radius: 0.5rem;
-  background: #fff;
+  background: var(--app-surface);
   font-size: 0.75rem;
   font-weight: 600;
-  color: #475569;
+  color: var(--app-text-3);
   font-family: inherit;
   cursor: pointer;
   transition: background-color 0.2s;
 }
 .track-back:hover {
-  background: #f8fafc;
+  background: var(--app-surface-2);
 }
 
 /* ==================== 03 详情卡片与封面 ==================== */
@@ -105,9 +105,9 @@ defineEmits(['back']);
   flex-direction: column;
   gap: 1.5rem;              /* 24px */
   padding: 1.25rem;         /* 20px */
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--app-border);
   border-radius: 1rem;      /* 16px */
-  background: #fff;
+  background: var(--app-surface);
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
 }
 @media (min-width: 768px) {
@@ -130,20 +130,20 @@ defineEmits(['back']);
   flex-direction: column;
   gap: 0.75rem;
   padding-bottom: 1.25rem;
-  border-bottom: 1px solid #f1f5f9;
+  border-bottom: 1px solid var(--app-surface-3);
 }
 .track-header__meta {
   margin: 0;
   font-size: 0.75rem;
   font-weight: 600;
-  color: #005576;
+  color: var(--app-accent-deep);
 }
 .track-header__title {
   margin: 0;
   font-size: 1.25rem;       /* 20px */
   font-weight: 700;
   line-height: 1.625;
-  color: #1e293b;
+  color: var(--app-text);
 }
 @media (min-width: 768px) {
   .track-header__title { font-size: 1.5rem; }  /* 24px */
@@ -158,13 +158,13 @@ defineEmits(['back']);
   margin: 0 0 0.5rem;
   font-size: 0.875rem;      /* 14px */
   font-weight: 700;
-  color: #1e293b;
+  color: var(--app-text);
 }
 .track-section__text {
   margin: 0;
   font-size: 0.875rem;
   line-height: 1.75rem;     /* leading-7 */
-  color: #475569;
+  color: var(--app-text-3);
 }
 
 /* ==================== 06 研修大纲列表 ==================== */
@@ -179,7 +179,7 @@ defineEmits(['back']);
 .track-outline__item {
   font-size: 0.875rem;
   line-height: 1.75rem;
-  color: #475569;
+  color: var(--app-text-3);
 }
 
 /* 无障碍：减少动效 */

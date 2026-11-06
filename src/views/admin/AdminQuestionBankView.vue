@@ -56,6 +56,16 @@
       <div class="search-box">
         <span class="search-icon"></span>
         <input v-model.trim="keyword" type="text" class="search-input" placeholder="搜索题干关键词..." />
+        <button
+          v-if="keyword"
+          type="button"
+          class="search-clear"
+          aria-label="清除搜索内容"
+          title="清除搜索内容"
+          @click="keyword = ''"
+        >
+          <Close />
+        </button>
       </div>
       <span class="toolbar-result">{{ filteredQuestions.length }} 道题</span>
     </div>
@@ -63,7 +73,7 @@
     <!-- 题目列表 -->
     <div class="question-list">
       <article v-for="(q, idx) in pagedQuestions" :key="q.id" class="question-item" @click="openEdit(q)">
-        <div class="q-index">{{ (page - 1) * 4 + idx + 1 }}</div>
+        <div class="q-index">{{ (page - 1) * PAGE_SIZE + idx + 1 }}</div>
         <div class="q-main">
           <div class="q-top">
             <span class="q-type-chip" :class="`q-type-chip--${q.type}`">{{ q.typeLabel }}</span>
@@ -92,7 +102,7 @@
       <div class="modal">
         <div class="modal-head">
           <h2 class="modal-title">{{ editingId ? '编辑题目' : '新增题目' }}</h2>
-          <button class="modal-close" @click="closeModal"><Close /></button>
+          <button type="button" class="modal-close" @click="closeModal"><Close /></button>
         </div>
         <form class="modal-body" @submit.prevent="saveQ">
           <div class="field-row">
@@ -151,7 +161,7 @@
           <p v-if="formError" class="form-error">{{ formError }}</p>
           <div class="modal-actions">
             <button type="button" class="btn btn--ghost" @click="closeModal">取消</button>
-            <button type="submit" class="btn btn--primary">{{ editingId ? '保存修改' : '添加题目' }}</button>
+            <button type="submit" class="btn btn--primary" :disabled="saving">{{ saving ? '保存中…' : (editingId ? '保存修改' : '添加题目') }}</button>
           </div>
         </form>
       </div>
@@ -162,7 +172,7 @@
       <div class="modal modal--import">
         <div class="modal-head">
           <h2 class="modal-title">批量导入题目</h2>
-          <button class="modal-close" @click="closeImportModal"><Close /></button>
+          <button type="button" class="modal-close" @click="closeImportModal"><Close /></button>
         </div>
         <div class="modal-body import-body">
           <label class="field">
@@ -230,10 +240,10 @@
             <button
               type="button"
               class="btn btn--primary"
-              :disabled="!parsedList.length || !importExamId"
+              :disabled="!parsedList.length || !importExamId || importing"
               @click="confirmImport"
             >
-              确认导入 ({{ parsedList.length }} 题)
+              {{ importing ? '导入中…' : `确认导入 (${parsedList.length} 题)` }}
             </button>
           </div>
         </div>
@@ -258,7 +268,12 @@
 <script setup>
 import { computed, ref, watch } from 'vue';
 import { Plus, EditPen, Delete, Close, Upload } from '@element-plus/icons-vue';
-import { adminStore } from '../../adminStore.js';
+import { adminStore, loadQuestions } from '../../adminStore.js';
+import {
+  createAdminQuestion,
+  deleteAdminQuestion,
+  updateAdminQuestion
+} from '../../api/index.js';
 import { usePager } from '../../composables/usePager.js';
 import { useConfirm } from '../../composables/useConfirm.js';
 import { useToast } from '../../composables/useToast.js';
@@ -299,13 +314,15 @@ const filteredQuestions = computed(() => {
   });
 });
 
-const { page, totalPages, paged: pagedQuestions, resetPage } = usePager(filteredQuestions, 5);
+const PAGE_SIZE = 5;
+const { page, totalPages, paged: pagedQuestions, resetPage } = usePager(filteredQuestions, PAGE_SIZE);
 watch([examFilter, typeFilter, keyword], resetPage);
 
 /* ---------- 弹窗表单 ---------- */
 const modalOpen = ref(false);
 const editingId = ref(null);
 const formError = ref('');
+const saving = ref(false);
 
 const emptyForm = () => ({
   examId: '',
@@ -330,7 +347,7 @@ const openAdd = () => {
 };
 
 const openEdit = (q) => {
-  editingId.value = q.id;
+  editingId.value = q.numericId ?? q.id;
   formError.value = '';
   form.value = {
     examId: q.examId,
@@ -360,7 +377,26 @@ const switchType = () => {
 
 const typeLabelMap = { single: '单选题', multiple: '多选题', judgment: '判断题', application: '问答题' };
 
-const saveQ = () => {
+/* 表单里题型是字符串，写入接口要 1~4；选项按 key 存进 question_option */
+const typeCodeMap = { single: 1, multiple: 2, judgment: 3, application: 4 };
+
+const toSavePayload = (source) => {
+  const objective = source.type !== 'application';
+  return {
+    examId: Number(source.examId),
+    type: typeCodeMap[source.type] ?? 1,
+    score: Number(source.score) || 5,
+    title: source.title.trim(),
+    correctAnswer: objective ? String(source.answer || '').trim().toUpperCase() : '',
+    options: objective
+      ? source.options
+          .filter(opt => (opt.text || '').trim())
+          .map((opt, i) => ({ key: opt.key, content: opt.text.trim(), sortNo: i + 1 }))
+      : []
+  };
+};
+
+const saveQ = async () => {
   if (!form.value.examId) { formError.value = '请选择所属考试。'; return; }
   if (!form.value.title.trim()) { formError.value = '请输入题干。'; return; }
   if (needOptions.value) {
@@ -372,17 +408,21 @@ const saveQ = () => {
     }
   }
 
-  if (editingId.value) {
-    const target = questions.find(q => q.id === editingId.value);
-    Object.assign(target, { ...form.value, typeLabel: typeLabelMap[form.value.type] });
-  } else {
-    questions.unshift({
-      id: `q-${Date.now()}`,
-      ...form.value,
-      typeLabel: typeLabelMap[form.value.type]
-    });
+  saving.value = true;
+  try {
+    const payload = toSavePayload(form.value);
+    if (editingId.value) {
+      await updateAdminQuestion(editingId.value, payload);
+    } else {
+      await createAdminQuestion(payload);
+    }
+    await loadQuestions();
+    closeModal();
+  } catch (err) {
+    formError.value = err?.message || '保存题目失败，请重试。';
+  } finally {
+    saving.value = false;
   }
-  closeModal();
 };
 
 const removeQ = (q) => {
@@ -395,11 +435,16 @@ const removeQ = (q) => {
       { label: '所属考试', value: exam ? exam.title : q.examId },
       { label: '正确答案', value: q.answer }
     ],
-    tip: '删除后该题目将从题库及相关考试中移除，此操作不可恢复。',
+    tip: '删除后该题目及其选项将从题库和相关考试中移除，此操作不可恢复。',
     confirmText: '确认删除',
-    action: () => {
-      const idx = questions.findIndex(item => item.id === q.id);
-      if (idx > -1) questions.splice(idx, 1);
+    action: async () => {
+      try {
+        await deleteAdminQuestion(q.numericId ?? q.id);
+        await loadQuestions();
+        showToast('题目已删除', 'success');
+      } catch (err) {
+        showToast(err?.message || '删除题目失败', 'error');
+      }
     }
   });
 };
@@ -410,6 +455,7 @@ const importExamId = ref('');
 const importRawText = ref('');
 const importFileInputRef = ref(null);
 const parsedList = ref([]);
+const importing = ref(false);
 
 const openImportModal = () => {
   importExamId.value = exams[0]?.id || '';
@@ -582,7 +628,7 @@ const handleImportFile = (e) => {
   reader.readAsText(file);
 };
 
-const confirmImport = () => {
+const confirmImport = async () => {
   if (!importExamId.value) {
     showToast('请先选择所属考试', 'error');
     return;
@@ -592,20 +638,25 @@ const confirmImport = () => {
     return;
   }
 
-  const newQuestions = parsedList.value.map((q, idx) => ({
-    id: `q-${Date.now()}-${idx + 1}`,
-    examId: importExamId.value,
-    type: q.type,
-    typeLabel: q.typeLabel,
-    score: q.score,
-    title: q.title,
-    options: q.options.map(o => ({ ...o })),
-    answer: q.answer
-  }));
+  importing.value = true;
+  let failed = 0;
+  for (const item of parsedList.value) {
+    try {
+      await createAdminQuestion(toSavePayload({ ...item, examId: importExamId.value }));
+    } catch (err) {
+      failed += 1;
+    }
+  }
+  await loadQuestions();
+  importing.value = false;
 
-  adminStore.questions.unshift(...newQuestions);
-  showToast(`已成功导入 ${newQuestions.length} 道新题目！`, 'success');
-  closeImportModal();
+  const done = parsedList.value.length - failed;
+  if (failed) {
+    showToast(`导入完成：成功 ${done} 题，失败 ${failed} 题。`, 'error');
+  } else {
+    showToast(`已成功导入 ${done} 道新题目！`, 'success');
+    closeImportModal();
+  }
 };
 </script>
 
@@ -808,6 +859,23 @@ button { cursor: pointer; }
   border: none;
   outline: none;
 }
+
+.search-clear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 24px;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  color: var(--app-text-4);
+  background: transparent;
+  border: 0;
+  border-radius: 50%;
+  cursor: pointer;
+}
+.search-clear:hover { color: var(--app-text-2); background: var(--app-chip); }
+.search-clear svg { width: 14px; height: 14px; }
 
 .toolbar-result {
   margin-left: auto;

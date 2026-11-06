@@ -135,8 +135,8 @@ button {
 .modal-container {
   width: 100%;
   max-width: 768px;
-  background: #fff;
-  border: 1px solid #E2E8F0;
+  background: var(--app-surface);
+  border: 1px solid var(--app-border);
   border-radius: 16px;
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
   overflow: hidden;
@@ -150,8 +150,8 @@ button {
   align-items: center;
   justify-content: space-between;
   padding: 12px 24px;
-  border-bottom: 1px solid #E2E8F0;
-  background: #F8FAFC;
+  border-bottom: 1px solid var(--app-border);
+  background: var(--app-surface-2);
 }
 
 .status-group {
@@ -164,13 +164,13 @@ button {
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  background: #10b981;
+  background: var(--app-emerald-solid);
 }
 
 .status-text {
   font-size: 12px;
   font-weight: 600;
-  color: #1E293B;
+  color: var(--app-text);
 }
 
 .close-btn {
@@ -178,7 +178,7 @@ button {
   align-items: center;
   justify-content: center;
   padding: 6px;
-  color: #64748B;
+  color: var(--app-text-4);
   background: transparent;
   border: none;
   border-radius: 8px;
@@ -186,8 +186,8 @@ button {
 }
 
 .close-btn:hover {
-  color: #1E293B;
-  background: #E2E8F0;
+  color: var(--app-text);
+  background: var(--app-border);
 }
 
 .close-icon {
@@ -222,7 +222,7 @@ button {
   display: flex;
   justify-content: center;
   padding: 32px;
-  background: linear-gradient(to bottom right, #F8FAFC, #F4F9FD, #EBF3FA);
+  background: linear-gradient(to bottom right, var(--app-surface-2), var(--app-page-bg), var(--app-blue-80));
 }
 
 /* ========== 证书纸张 ========== */
@@ -231,7 +231,7 @@ button {
   width: 100%;
   max-width: 672px;
   padding: 32px;
-  background: #fff;
+  background: var(--app-surface);
   border: 8px double rgba(131, 201, 244, 0.4);
   border-radius: 12px;
   box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1),
@@ -256,14 +256,14 @@ button {
 .certificate-header {
   margin-bottom: 24px;
   padding-bottom: 16px;
-  border-bottom: 1px solid #E2E8F0;
+  border-bottom: 1px solid var(--app-border);
   text-align: center;
 }
 
 .header-title {
   font-size: 12px;
   font-weight: 700;
-  color: #005576;
+  color: var(--app-accent-deep);
   letter-spacing: 0.1em;
   text-transform: uppercase;
 }
@@ -272,7 +272,7 @@ button {
   margin-top: 4px;
   font-size: 14px;
   font-weight: 600;
-  color: #1E293B;
+  color: var(--app-text);
 }
 
 /* ========== 等级徽章 ========== */
@@ -284,8 +284,8 @@ button {
   padding: 4px 12px;
   font-size: 12px;
   font-weight: 700;
-  color: #005576;
-  background: #D9F0FF;
+  color: var(--app-accent-deep);
+  background: var(--app-accent-soft);
   border: 1px solid rgba(131, 201, 244, 0.5);
   border-radius: 9999px;
 }
@@ -295,7 +295,7 @@ button {
   margin-bottom: 16px;
   font-size: 24px;
   font-weight: 800;
-  color: #1E293B;
+  color: var(--app-text);
   letter-spacing: -0.025em;
 }
 
@@ -303,7 +303,7 @@ button {
 .recipient-intro {
   margin-bottom: 8px;
   font-size: 12px;
-  color: #64748B;
+  color: var(--app-text-4);
 }
 
 .recipient-name {
@@ -312,8 +312,8 @@ button {
   padding: 0 32px 4px;
   font-size: 20px;
   font-weight: 700;
-  color: #005576;
-  border-bottom: 2px solid #83C9F4;
+  color: var(--app-accent-deep);
+  border-bottom: 2px solid var(--app-accent);
 }
 
 /* ========== 证书说明 ========== */
@@ -322,7 +322,7 @@ button {
   margin: 0 auto 24px;
   font-size: 12px;
   line-height: 1.625;
-  color: #475569;
+  color: var(--app-text-3);
 }
 
 /* ========== 信息栏 ========== */
@@ -332,8 +332,8 @@ button {
   gap: 12px;
   margin-bottom: 24px;
   padding: 14px;
-  background: #F8FAFC;
-  border: 1px solid #E2E8F0;
+  background: var(--app-surface-2);
+  border: 1px solid var(--app-border);
   border-radius: 8px;
   text-align: left;
   font-size: 12px;
@@ -342,12 +342,12 @@ button {
 .info-label {
   display: block;
   font-size: 10px;
-  color: #64748B;
+  color: var(--app-text-4);
 }
 
 .info-value {
   font-weight: 600;
-  color: #1E293B;
+  color: var(--app-text);
 }
 
 /* ========== 底部 ========== */
@@ -356,7 +356,7 @@ button {
   align-items: flex-end;
   justify-content: space-between;
   padding-top: 16px;
-  border-top: 1px solid #E2E8F0;
+  border-top: 1px solid var(--app-border);
 }
 
 .qr-block {
@@ -369,32 +369,32 @@ button {
 .qr-icon {
   width: 40px;
   height: 40px;
-  border: 1px solid #CBD5E1;
+  border: 1px solid var(--app-border-strong);
   border-radius: 4px;
   padding: 4px;
   background:
-    linear-gradient(#334155, #334155) 4px 4px / 10px 10px no-repeat,
-    linear-gradient(#334155, #334155) 26px 4px / 10px 10px no-repeat,
-    linear-gradient(#334155, #334155) 4px 26px / 10px 10px no-repeat,
-    linear-gradient(#334155, #334155) 20px 16px / 4px 4px no-repeat,
-    linear-gradient(#334155, #334155) 28px 20px / 4px 4px no-repeat,
-    linear-gradient(#334155, #334155) 16px 28px / 4px 4px no-repeat,
-    linear-gradient(#334155, #334155) 24px 28px / 4px 4px no-repeat,
-    linear-gradient(#334155, #334155) 32px 32px / 4px 4px no-repeat,
-    linear-gradient(#334155, #334155) 20px 20px / 4px 4px no-repeat;
-  background-color: #fff;
+    linear-gradient(var(--app-text-2), var(--app-text-2)) 4px 4px / 10px 10px no-repeat,
+    linear-gradient(var(--app-text-2), var(--app-text-2)) 26px 4px / 10px 10px no-repeat,
+    linear-gradient(var(--app-text-2), var(--app-text-2)) 4px 26px / 10px 10px no-repeat,
+    linear-gradient(var(--app-text-2), var(--app-text-2)) 20px 16px / 4px 4px no-repeat,
+    linear-gradient(var(--app-text-2), var(--app-text-2)) 28px 20px / 4px 4px no-repeat,
+    linear-gradient(var(--app-text-2), var(--app-text-2)) 16px 28px / 4px 4px no-repeat,
+    linear-gradient(var(--app-text-2), var(--app-text-2)) 24px 28px / 4px 4px no-repeat,
+    linear-gradient(var(--app-text-2), var(--app-text-2)) 32px 32px / 4px 4px no-repeat,
+    linear-gradient(var(--app-text-2), var(--app-text-2)) 20px 20px / 4px 4px no-repeat;
+  background-color: var(--app-surface);
   flex-shrink: 0;
 }
 
 .qr-text {
   font-size: 10px;
-  color: #64748B;
+  color: var(--app-text-4);
   line-height: 1.5;
 }
 
 .qr-code {
   font-family: "SFMono-Regular", Consolas, Menlo, monospace;
-  color: #005576;
+  color: var(--app-accent-deep);
 }
 
 /* 红色印章 */
@@ -406,8 +406,8 @@ button {
   align-items: center;
   justify-content: center;
   padding: 4px;
-  color: #DC2626;
-  border: 2px dashed #DC2626;
+  color: var(--app-red-600);
+  border: 2px dashed var(--app-red-600);
   border-radius: 50%;
   transform: rotate(-12deg);
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);

@@ -1,40 +1,40 @@
 <template>
   <Teleport to="body">
-    <div class="detail-backdrop" @click.self="$emit('close')">
-      <div class="detail-card" role="dialog" aria-modal="true" :aria-label="title">
-        <div class="detail-head">
-          <div class="detail-head-text">
-            <h3 class="detail-title">{{ title }}</h3>
-            <p v-if="subtitle" class="detail-subtitle">{{ subtitle }}</p>
+    <div class="overlay" @click.self="$emit('close')">
+      <div class="modal" role="dialog" aria-modal="true" :aria-label="title">
+        <div class="modal-head">
+          <div>
+            <h3 class="modal-title">{{ title }}</h3>
+            <p v-if="subtitle" class="modal-subtitle">{{ subtitle }}</p>
           </div>
-          <button class="detail-close" aria-label="关闭" @click="$emit('close')">✕</button>
+          <button class="close-icon" aria-label="关闭" @click="$emit('close')">✕</button>
         </div>
 
-        <div class="detail-body">
-          <div v-if="tags && tags.length" class="detail-tags">
-            <span v-for="(tag, i) in tags" :key="i" class="detail-tag">{{ tag }}</span>
+        <div class="modal-body">
+          <div v-if="tags && tags.length" class="tags">
+            <span v-for="(tag, i) in tags" :key="i" class="tag">{{ tag }}</span>
           </div>
 
-          <div v-if="rows && rows.length" class="detail-grid">
+          <div v-if="rows && rows.length" class="grid">
             <div
               v-for="(row, i) in rows"
               :key="i"
-              class="detail-item"
-              :class="{ 'detail-item--wide': row.wide }"
+              class="item"
+              :class="{ 'item-wide': row.wide }"
             >
-              <span class="detail-label">{{ row.label }}</span>
-              <span class="detail-value">{{ row.value }}</span>
+              <span class="label">{{ row.label }}</span>
+              <span class="value">{{ row.value }}</span>
             </div>
           </div>
 
-          <div v-for="(section, i) in sections" :key="`sec-${i}`" class="detail-section">
-            <span class="detail-label">{{ section.label }}</span>
-            <p class="detail-text">{{ section.text }}</p>
+          <div v-for="(section, i) in sections" :key="`sec-${i}`" class="section">
+            <span class="label">{{ section.label }}</span>
+            <p class="text">{{ section.text }}</p>
           </div>
         </div>
 
-        <div class="detail-actions">
-          <button type="button" class="detail-btn" @click="$emit('close')">关闭</button>
+        <div class="modal-actions">
+          <button type="button" class="close-btn" @click="$emit('close')">关闭</button>
         </div>
       </div>
     </div>
@@ -60,7 +60,8 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown));
 </script>
 
 <style scoped>
-.detail-backdrop {
+/* ===== 遮罩 ===== */
+.overlay {
   position: fixed;
   inset: 0;
   z-index: 2000;
@@ -68,160 +69,171 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown));
   align-items: center;
   justify-content: center;
   padding: 20px;
-  background: rgb(15 30 51 / 50%);
+  background: rgba(15, 30, 51, 0.5);
   backdrop-filter: blur(4px);
-  animation: detail-fade 0.16s ease-out;
+  animation: fade-in 0.16s ease-out;
 }
 
-.detail-card {
+/* ===== 弹窗 ===== */
+.modal {
+  display: flex;
+  flex-direction: column;
   width: 100%;
   max-width: 560px;
   max-height: 86vh;
-  display: flex;
-  flex-direction: column;
-  background: var(--app-surface);
+  background: #ffffff;
   border-radius: 16px;
-  box-shadow: 0 28px 60px rgb(15 30 51 / 28%);
-  animation: detail-in 0.2s ease-out;
+  box-shadow: 0 28px 60px rgba(15, 30, 51, 0.28);
+  animation: modal-in 0.2s ease-out;
 }
 
-.detail-head {
+.modal-head {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
   padding: 18px 20px 14px;
-  border-bottom: 1px solid var(--app-border-soft);
+  border-bottom: 1px solid #e5e7eb;
 }
 
-.detail-head-text { min-width: 0; }
-
-.detail-title {
+.modal-title {
+  margin: 0;
   font-size: 15px;
   font-weight: 700;
-  color: var(--app-heading);
+  color: #1f2937;
 }
 
-.detail-subtitle {
-  margin-top: 4px;
+.modal-subtitle {
+  margin: 4px 0 0;
   font-size: 12px;
   line-height: 1.6;
-  color: var(--app-text-4);
+  color: #9ca3af;
   word-break: break-word;
 }
 
-.detail-close {
-  width: 28px;
-  height: 28px;
+.close-icon {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 13px;
-  color: var(--app-text-4);
-  background: transparent;
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
   border: none;
   border-radius: 7px;
-  flex-shrink: 0;
+  background: transparent;
+  color: #9ca3af;
+  font-size: 13px;
   cursor: pointer;
   transition: background 0.15s, color 0.15s;
 }
-.detail-close:hover { background: var(--app-surface-3); color: var(--app-heading); }
+.close-icon:hover {
+  background: #f1f5f9;
+  color: #1f2937;
+}
 
-.detail-body {
+/* ===== 内容 ===== */
+.modal-body {
   padding: 16px 20px 18px;
   overflow-y: auto;
 }
 
-.detail-tags {
+.tags {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
   margin-bottom: 12px;
 }
 
-.detail-tag {
+.tag {
   display: inline-flex;
   padding: 3px 10px;
+  border: 1px solid #bfdbfe;
+  border-radius: 9999px;
+  background: #eff6ff;
+  color: #2563eb;
   font-size: 11px;
   font-weight: 600;
-  color: var(--app-accent-deep);
-  background: var(--app-accent-soft);
-  border: 1px solid var(--app-accent-border);
-  border-radius: 9999px;
 }
 
-.detail-grid {
+.grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px 18px;
 }
 
-.detail-item {
+.item {
   display: flex;
   flex-direction: column;
   gap: 3px;
   min-width: 0;
 }
-.detail-item--wide { grid-column: 1 / -1; }
+.item-wide {
+  grid-column: 1 / -1;
+}
 
-.detail-label {
+.label {
   font-size: 11px;
   font-weight: 600;
-  color: var(--app-text-5);
+  color: #64748b;
   letter-spacing: 0.02em;
 }
 
-.detail-value {
+.value {
   font-size: 13px;
   line-height: 1.6;
-  color: var(--app-text-2);
+  color: #374151;
   word-break: break-word;
 }
 
-.detail-section {
+.section {
   margin-top: 14px;
   padding-top: 14px;
-  border-top: 1px dashed var(--app-border);
+  border-top: 1px dashed #e5e7eb;
 }
 
-.detail-text {
+.text {
   margin-top: 6px;
   padding: 12px 14px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #f8fafc;
   font-size: 13px;
   line-height: 1.75;
-  color: var(--app-text-2);
-  background: var(--app-surface-2);
-  border: 1px solid var(--app-border-soft);
-  border-radius: 10px;
+  color: #374151;
   white-space: pre-wrap;
   word-break: break-word;
 }
 
-.detail-actions {
+/* ===== 底部操作 ===== */
+.modal-actions {
   display: flex;
   justify-content: flex-end;
   padding: 12px 20px 16px;
-  border-top: 1px solid var(--app-border-soft);
+  border-top: 1px solid #e5e7eb;
 }
 
-.detail-btn {
+.close-btn {
   padding: 7px 16px;
+  border: 1px solid #e5e7eb;
+  border-radius: 9px;
+  background: #f8fafc;
+  color: #64748b;
   font-size: 12px;
   font-weight: 600;
-  color: var(--app-text-3);
-  background: var(--app-surface-2);
-  border: 1px solid var(--app-border);
-  border-radius: 9px;
   cursor: pointer;
   transition: background 0.15s, color 0.15s;
 }
-.detail-btn:hover { background: var(--app-surface-3); color: var(--app-heading); }
+.close-btn:hover {
+  background: #f1f5f9;
+  color: #1f2937;
+}
 
-@keyframes detail-fade {
+/* ===== 动画 ===== */
+@keyframes fade-in {
   from { opacity: 0; }
   to   { opacity: 1; }
 }
-@keyframes detail-in {
+@keyframes modal-in {
   from { opacity: 0; transform: translateY(10px) scale(0.98); }
   to   { opacity: 1; transform: translateY(0) scale(1); }
 }

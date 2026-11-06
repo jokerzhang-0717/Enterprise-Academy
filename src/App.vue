@@ -10,19 +10,15 @@
   <div
     v-else
     class="app-shell"
-    :class="isAdmin ? 'theme-' + theme : 'theme-cyan'"
+    :class="'theme-' + theme"
   >
-    <div class="app-body">
+    <div class="app-body" :class="{ 'app-body--user': !isAdmin }">
 
       <!-- 侧边导航:管理员 / 学员 -->
       <AdminSidebar
         v-if="isAdmin"
         :current-view="currentView"
         :user="currentUser"
-        :draft-notice-count="draftNoticeCount"
-        :active-exam-count="activeExamCount"
-        :pending-leave-count="pendingLeaveCount"
-        :pending-cert-count="pendingCertCount"
         @select-view="handleNavigate"
         @logout="handleLogout"
       />
@@ -31,8 +27,6 @@
         :current-view="currentView"
         :theme="theme"
         :user="currentUser"
-        :unread-messages-count="3"
-        :active-exams-count="1"
         @select-view="handleNavigate"
         @change-theme="theme = $event"
         @logout="handleLogout"
@@ -45,21 +39,23 @@
           :user="currentUser"
           :is-admin="isAdmin"
           :is-checked-in="isCheckedIn"
-          :unread-count="3"
+          :unread-count="unreadMessageCount"
           :search-results="searchResults"
           @navigate="handleNavigate"
           @cycle-theme="cycleTheme"
           @search="globalSearchQuery = $event"
           @select-search-result="handleSelectSearchResult"
           @open-mockup-viewer="handleOpenMockupForCurrentView"
-          @toggle-check-in="isCheckedIn = !isCheckedIn"
         />
 
         <!-- 视图画布 -->
         <main
           ref="mainContent"
           class="app-viewport"
-          :class="{ 'app-viewport--admin': isAdmin && currentView !== 'admin-profile' }"
+          :class="{
+            'app-viewport--admin': isAdmin && currentView !== 'admin-profile',
+            'app-viewport--user': !isAdmin
+          }"
         >
           <Transition name="view" mode="out-in">
             <div
@@ -119,8 +115,9 @@
               <HomeView
                 v-else-if="currentView === 'home'"
                 :search-target-id="searchTargetId"
+                :course-id="selectedCourseId"
                 @navigate="handleNavigate"
-                @open-track="handleOpenTrack"
+                @open-course="handleOpenCourse"
               />
 
               <CoursesView
@@ -145,13 +142,12 @@
 
               <ExamsView
                 v-else-if="currentView === 'exams'"
-                :search-target-id="searchTargetId"
-                @navigate="handleNavigate"
-                @open-certificate-modal="handleOpenCertificate"
+                @start-exam="handleStartExam"
               />
 
               <ExamTakingView
                 v-else-if="currentView === 'exam-taking'"
+                :exam-id="selectedExamId"
                 :user="currentUser"
                 @back="handleNavigate('exams')"
                 @submit-exam="handleSubmitExam"
@@ -221,12 +217,14 @@
     <!-- 3) 考试成绩弹窗 -->
     <ExamResultModal
       :is-open="isExamResultOpen"
-      :score="examScore"
-      :pass-score="80"
-      :total-score="100"
-      :answered-count="24"
-      :total-questions="25"
-      exam-title="2025Q2 全栈开发规范与安全编码认证考试"
+      :score="examResult.score"
+      :pass-score="examResult.passScore"
+      :total-score="examResult.totalScore"
+      :answered-count="examResult.answeredCount"
+      :total-questions="examResult.totalQuestions"
+      :exam-title="examResult.examTitle"
+      :is-passed="examResult.isPassed"
+      :pending-review="examResult.pendingReview"
       @close="handleCloseExamResult"
       @view-certificate="handleViewCertFromExam"
       @retake="handleRetakeExam"
@@ -236,18 +234,13 @@
 </template>
 
 <script setup>
-import { computed, ref, watchEffect } from 'vue';
+import { computed, onMounted, ref, watch, watchEffect } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import {
-  currentUserZhang,
-  currentUserLi,
-  currentUserAdmin,
-  ADMIN_ANNOUNCEMENTS_DATA,
-  ADMIN_LEAVE_REQUESTS,
-  ADMIN_CERTIFICATE_ISSUES,
-  CERTIFICATES_DATA,
   COURSES_DATA,
   EXAMS_DATA,
   PAST_EXAMS,
+  CERTIFICATES_DATA,
   MESSAGES_DATA,
   RECOMMENDED_TRACKS,
 } from './mockData.js';
@@ -286,19 +279,60 @@ import AdminCertificatesView from './views/admin/AdminCertificatesView.vue';
 import AdminAnnouncementsView from './views/admin/AdminAnnouncementsView.vue';
 
 import { useToast } from './composables/useToast.js';
-import { useAdminTableFit } from './composables/useAdminTableFit.js';
+import { useMessages, resetMessages, loadMessages, markMessageRead } from './composables/useMessages.js';
+import { useAttendance, resetAttendance, loadAttendance } from './composables/useAttendance.js';
+import { resetLeaves, loadLeaves } from './composables/useLeaveRequests.js';
+import { adminStore, loadAdminStore, resetAdminStore } from './adminStore.js';
+import { loadLearnerCourses, resetLearnerStore } from './learnerStore.js';
+import { locationForView } from './router/index.js';
+import { logoutApi } from './api/index.js';
+import {
+  clearAuth,
+  getStoredUser,
+  getToken,
+  setStoredUser,
+  setToken,
+  setUnauthorizedHandler,
+} from './api/client.js';
+
+// 登录态
+const storedUser = getStoredUser();
+const route = useRoute();
+const router = useRouter();
+/* 登录态落地页由角色决定 */
+const landingView = (user) => (user && user.role === 'admin' ? 'admin-dashboard' : 'home');
+const currentUser = ref(storedUser || null);
+const currentView = ref(route.name === 'exam-taking-by-id' ? 'exam-taking' : route.name || 'login');
 
 // Navigation State
-const currentView = ref('home');
 const mainContent = ref(null);
-const currentUser = ref(currentUserLi);
 const theme = ref('cyan');
-const isCheckedIn = ref(true);
+const { isCheckedIn } = useAttendance();
 const selectedTrack = ref(null);
-const selectedMessageId = ref('msg-1');
+const selectedMessageId = ref('');
+const messages = useMessages();
+const unreadMessageCount = computed(() => messages.value.filter(message => !message.isRead).length);
 const selectedCourseId = ref('');
+const selectedExamId = ref('');
 const globalSearchQuery = ref('');
 const searchTargetId = ref('');
+
+watch(
+  () => route.fullPath,
+  () => {
+    const routeName = route.name === 'exam-taking-by-id' ? 'exam-taking' : route.name;
+    currentView.value = routeName || 'home';
+    selectedCourseId.value = String(route.params.courseId || '');
+    selectedTrack.value = route.params.trackId
+      ? RECOMMENDED_TRACKS.find((track) => track.id === route.params.trackId) || null
+      : null;
+    selectedMessageId.value = String(route.params.messageId || '');
+    selectedExamId.value = String(route.params.examId || route.query.examId || '');
+    searchTargetId.value = '';
+    mainContent.value?.scrollTo({ top: 0, behavior: 'auto' });
+  },
+  { immediate: true },
+);
 
 // Modals State
 const isMockupViewerOpen = ref(false);
@@ -306,7 +340,16 @@ const mockupInitialKey = ref('home');
 const selectedCert = ref(null);
 
 const isExamResultOpen = ref(false);
-const examScore = ref(95);
+const examResult = ref({
+  score: 0,
+  passScore: 60,
+  totalScore: 100,
+  answeredCount: 0,
+  totalQuestions: 0,
+  examTitle: '',
+  isPassed: false,
+  pendingReview: false,
+});
 
 const searchableRecords = computed(() => [
   ...COURSES_DATA.map(course => ({
@@ -372,33 +415,6 @@ const searchableRecords = computed(() => [
     targetId: `message-${message.id}`,
   })),
   {
-    id: 'home-schedule-1',
-    type: '待办日程',
-    title: '《2025数据安全与合规》全员考核系统关闭',
-    description: '5月17日 18:00 · 考核截止',
-    searchText: '2025数据安全与合规 全员考核 系统关闭 5月17日 考核截止 线上机考 必修',
-    view: 'home',
-    targetId: 'home-schedule-1',
-  },
-  {
-    id: 'home-schedule-2',
-    type: '待办日程',
-    title: '云原生全链路可观测性落地工作坊',
-    description: '5月19日 14:30 · 线上直播研讨',
-    searchText: '云原生 全链路 可观测性 工作坊 5月19日 线上直播研讨 腾讯会议 多媒体教室',
-    view: 'home',
-    targetId: 'home-schedule-2',
-  },
-  {
-    id: 'home-schedule-3',
-    type: '待办日程',
-    title: 'PMP & 敏捷管理内训资质证书年度换发',
-    description: '5月21日 10:00 · 证书复核',
-    searchText: 'PMP 敏捷管理 内训 资质证书 年度换发 5月21日 证书复核 继续教育学时证明',
-    view: 'home',
-    targetId: 'home-schedule-3',
-  },
-  {
     id: 'home-announcement-1',
     type: '企业公告',
     title: '关于发布《2025年第二季度技术序列通用学分核算与晋升认定申报通知》',
@@ -410,9 +426,9 @@ const searchableRecords = computed(() => [
   {
     id: 'home-announcement-2',
     type: '企业公告',
-    title: '2025「智训内训师」金牌讲师团第二期招募启动',
+    title: '2025「云舒内训师」金牌讲师团第二期招募启动',
     description: '讲师招募 · 2025-05-11',
-    searchText: '智训 内训师 金牌讲师团 第二期 招募 课程研发津贴',
+    searchText: '云舒 内训师 金牌讲师团 第二期 招募 课程研发津贴',
     view: 'home',
     targetId: 'home-announcement-2',
   },
@@ -469,17 +485,24 @@ const screenOptions = [
 
 const handleNavigate = (view) => {
   searchTargetId.value = '';
-  currentView.value = view;
-  mainContent.value?.scrollTo({ top: 0, behavior: 'auto' });
+  const courseId = selectedCourseId.value || COURSES_DATA[0]?.id;
+  router.push(locationForView(view, {
+    courseId,
+    trackId: selectedTrack.value?.id,
+    messageId: selectedMessageId.value,
+    examId: selectedExamId.value,
+  }));
 };
 
 const { show: showToast } = useToast();
 const THEME_LABELS = { cyan: '青蓝', black: '曜黑', navy: '石墨' };
 
+/* 石墨只给管理端;学员端在青蓝/曜黑之间切 */
 const cycleTheme = () => {
-  const keys = Object.keys(THEME_LABELS);
-  theme.value = keys[(keys.indexOf(theme.value) + 1) % keys.length];
-  showToast(`已切换主题：${THEME_LABELS[theme.value]}`, 'success');
+  const keys = isAdmin.value ? Object.keys(THEME_LABELS) : ['cyan', 'black'];
+  const next = keys[(keys.indexOf(theme.value) + 1) % keys.length];
+  theme.value = next;
+  showToast(`已切换主题：${THEME_LABELS[next]}`, 'success');
 };
 
 const handleSelectSearchResult = (result) => {
@@ -504,49 +527,75 @@ const handleOpenCourse = (course) => {
 const handleOpenMessage = (messageId) => {
   selectedMessageId.value = messageId;
   handleNavigate('messages-detail');
+  markMessageRead(messageId);
 };
 
-const isAdmin = computed(() => currentUser.value.role === 'admin');
+const isAdmin = computed(() => currentUser.value?.role === 'admin');
 
-useAdminTableFit(mainContent, currentView);
+/* 壳层与共享数据：学员端消息/考勤/请假/课程 + 管理端基础字典 */
+const bootstrapData = async () => {
+  const tasks = [loadMessages(true), loadAttendance(), loadLeaves(true)];
+  if (isAdmin.value) tasks.push(loadAdminStore());
+  else tasks.push(loadLearnerCourses(true));
+  await Promise.allSettled(tasks);
+};
 
 // ToastStack 通过 Teleport 挂在 body 下,取不到 .app-shell 的覆盖变量,
-// 所以把当前主题类同步一份到 body,让浮层跟随管理端主题。
+// 所以把当前主题类同步一份到 body,让浮层跟随主题。
 watchEffect(() => {
   document.body.classList.remove('theme-black', 'theme-navy');
-  if (isAdmin.value && currentView.value !== 'login' && theme.value !== 'cyan') {
+  if (currentView.value !== 'login' && theme.value !== 'cyan') {
     document.body.classList.add('theme-' + theme.value);
   }
 });
 
-const draftNoticeCount = computed(
-  () => ADMIN_ANNOUNCEMENTS_DATA.filter(a => a.status === 'draft').length
-);
-
-const activeExamCount = computed(() => EXAMS_DATA.length);
-
-const pendingLeaveCount = computed(
-  () => ADMIN_LEAVE_REQUESTS.filter(r => r.status === 'pending').length
-);
-
-const pendingCertCount = computed(
-  () => ADMIN_CERTIFICATE_ISSUES.filter(c => c.status === 'pending').length
-);
 const handleLoginSuccess = (payload) => {
-  const employeeId = payload?.employeeId || '';
-  if (employeeId === currentUserAdmin.employeeId) {
-    currentUser.value = currentUserAdmin;
-    currentView.value = 'admin-dashboard';
-  } else {
-    currentUser.value = employeeId === currentUserZhang.employeeId ? currentUserZhang : currentUserLi;
-    currentView.value = 'home';
-  }
+  const user = payload?.user || null;
+  if (!user) return;
+  setToken(payload.token);
+  setStoredUser(user);
+  currentUser.value = user;
+  const requestedPath = route.query.redirect;
+  const destination = typeof requestedPath === 'string'
+    && requestedPath.startsWith('/')
+    && !requestedPath.startsWith('//')
+    ? requestedPath
+    : locationForView(landingView(user));
+  router.replace(destination);
+  bootstrapData();
 };
 
-const handleLogout = () => {
-  currentUser.value = currentUserLi;
-  currentView.value = 'login';
+const handleLogout = async () => {
+  try {
+    await logoutApi();
+  } catch {
+    /* 后端登出是幂等空操作，失败不应阻塞本地清理 */
+  }
+  clearAuth();
+  resetAdminStore();
+  resetLearnerStore();
+  resetMessages();
+  resetAttendance();
+  resetLeaves();
+  currentUser.value = null;
+  theme.value = 'cyan';
+  router.replace({ name: 'login' });
 };
+
+onMounted(async () => {
+  setUnauthorizedHandler(() => {
+    clearAuth();
+    resetAdminStore();
+    resetLearnerStore();
+    resetMessages();
+    resetAttendance();
+    resetLeaves();
+    currentUser.value = null;
+    router.replace({ name: 'login' });
+  });
+
+  if (getToken()) await bootstrapData();
+});
 
 const handleUpdateUser = (updatedUser) => {
   currentUser.value = { ...currentUser.value, ...updatedUser };
@@ -573,14 +622,19 @@ const handleOpenMockupForCurrentView = () => {
   isMockupViewerOpen.value = true;
 };
 
-const handleSubmitExam = (score) => {
-  examScore.value = score;
+const handleStartExam = (exam) => {
+  selectedExamId.value = exam?.examId ?? exam?.id ?? '';
+  handleNavigate('exam-taking');
+};
+
+const handleSubmitExam = (payload) => {
+  examResult.value = { ...examResult.value, ...(payload || {}) };
   isExamResultOpen.value = true;
 };
 
 const handleCloseExamResult = () => {
   isExamResultOpen.value = false;
-  currentView.value = 'exams';
+  handleNavigate('exams');
 };
 
 const handleViewCertFromExam = () => {
@@ -590,7 +644,8 @@ const handleViewCertFromExam = () => {
 
 const handleRetakeExam = () => {
   isExamResultOpen.value = false;
-  currentView.value = 'exam-taking';
+  selectedExamId.value = '';
+  handleNavigate('exams');
 };
 </script>
 
@@ -623,8 +678,8 @@ body,
 body {
   margin: 0;
   font-family: 'PingFang SC', 'Microsoft YaHei', 'Helvetica Neue', sans-serif;
-  background: #f4f9fd;
-  color: #1e293b;
+  background: var(--app-page-bg);
+  color: var(--app-text);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -647,6 +702,9 @@ textarea {
   --app-accent: #83c9f4;
   --app-accent-strong: #2e8bd6;
   --app-accent-deep: #005576;
+  /* 强调色实底上的文字:浅色主题沿用 accent-deep,曜黑下强调色变亮,文字要转成近黑 */
+  --app-on-accent-solid: var(--app-accent-deep);
+  --app-on-accent-muted: var(--app-text-4);
   --app-accent-soft: #d9f0ff;
   --app-accent-line: #b9d7f0;
   --app-accent-border: #a3d5ff;
@@ -687,6 +745,10 @@ textarea {
   --app-surface-2: #f8fafc;
   --app-surface-3: #f1f5f9;
   --app-chip: #e2e8f0;
+  --app-chip-soft: rgba(226, 232, 240, 0.4);
+  /* 压在彩色/图片面上的浅色磨砂块:深色主题要转成低透明度白纱 */
+  --app-wash-strong: rgba(255, 255, 255, 0.8);
+  --app-wash-hover: rgba(255, 255, 255, 0.7);
   --app-border: #e2e8f0;
   --app-border-soft: #eef2f6;
   --app-border-strong: #cbd5e1;
@@ -724,6 +786,95 @@ textarea {
   --app-text-4: #64748b;
   --app-text-5: #94a3b8;
   --app-text-6: #cbd5e1;
+  /* 学员端扩展色板:学员页面原本逐处写死,统一收进 token 后
+     才能跟着主题走。基线值与原字面量完全一致,青蓝态零变化。 */
+  /* 实底填充上的前景(按钮/徽章文字) */
+  --app-on-fill: #ffffff;
+  /* 深色蒙版上的前景(视频控件、图片角标):各主题恒为浅色,不随 on-fill 反转 */
+  --app-on-scrim: #ffffff;
+  /* 中性墨色,由深到浅 */
+  --app-ink-pure: #000000;
+  --app-ink-900: #0f172a;
+  --app-ink-850: #111c2d;
+  --app-ink-800: #172b4d;
+  --app-ink-solid: #1e293b;
+  --app-ink-700: #173b56;
+  --app-ink-night: #0b132b;
+  --app-slate-500: #58758a;
+  --app-slate-400: #7b8798;
+  --app-slate-300: #a0aab8;
+  /* 蓝系浅底 */
+  --app-blue-25: #f4faff;
+  --app-blue-25b: #fbfdff;
+  --app-blue-50: #f0f9ff;
+  --app-blue-70: #e8eef5;
+  --app-blue-75: #eaf4fb;
+  --app-blue-80: #ebf3fa;
+  --app-blue-85: #eef4fb;
+  --app-blue-90: #e5eff9;
+  --app-blue-100: #e0f2fe;
+  --app-blue-line-100: #dbe5ed;
+  --app-blue-line-110: #e2eaf4;
+  --app-blue-line-120: #d3e4f3;
+  --app-blue-line-200: #bae6fd;
+  /* 品牌蓝的中间档 */
+  --app-accent-hover-strong: #6fb9e8;
+  --app-accent-sky-400: #63b8e8;
+  --app-accent-ink: #0879a5;
+  --app-accent-ink-2: #1683a8;
+  /* 紫 */
+  --app-violet: #9381ff;
+  --app-violet-strong: #7866e0;
+  --app-violet-deep: #7c3aed;
+  --app-violet-50: #f5f3ff;
+  --app-violet-line-100: #d8d5f2;
+  /* 绿 */
+  --app-emerald-strong: #059669;
+  --app-emerald-solid: #10b981;
+  --app-emerald-deep: #065f46;
+  --app-emerald-soft: #ecfdf5;
+  --app-green-600: #16a34a;
+  --app-green-300: #86efac;
+  --app-green-50: #f0fdf4;
+  /* 红/玫红 */
+  --app-red-800: #991b1b;
+  --app-red-700: #b91c1c;
+  --app-red-600: #dc2626;
+  --app-red-500: #ef4444;
+  --app-red-400: #f87171;
+  --app-red-300: #fca5a5;
+  --app-red-100: #fee2e2;
+  --app-red-50: #fef2f2;
+  --app-rose-600: #e11d48;
+  --app-rose-500: #f43f5e;
+  --app-rose-100: #fff1f2;
+  /* 琥珀 */
+  --app-amber-strong: #d97706;
+  --app-amber-solid: #fbbf24;
+  --app-amber-deep: #92400e;
+  --app-amber-50: #fffbeb;
+  /* 个人中心横幅:整块横幅(渐变底/墨色/玻璃块)一起换,曜黑下转成深蓝面板 */
+  --app-hero-1: var(--app-accent);
+  --app-hero-2: var(--app-accent-border);
+  --app-hero-3: var(--app-accent-soft);
+  --app-hero-ink: var(--app-accent-deep);
+  --app-hero-ink-75: rgb(0 85 118 / 75%);
+  --app-hero-ink-80: rgb(0 85 118 / 80%);
+  --app-hero-ink-85: rgb(0 85 118 / 85%);
+  --app-hero-glass: rgb(255 255 255 / 45%);
+  --app-hero-glass-strong: rgb(255 255 255 / 50%);
+  --app-hero-glass-line: rgb(255 255 255 / 70%);
+  --app-hero-orb-line: rgb(255 255 255 / 38%);
+  --app-hero-orb-ring-a: rgb(255 255 255 / 12%);
+  --app-hero-orb-ring-b: rgb(255 255 255 / 8%);
+  --app-hero-violet-wash: rgb(147 129 255 / 12%);
+  --app-hero-stat-div: rgb(131 201 244 / 60%);
+  /* 提示小块:浅蓝底 → 曜黑转深 */
+  --app-note-wash: rgb(240 249 255 / 70%);
+  /* 焦点环 */
+  --app-ring-accent: rgb(0 85 118 / 25%);
+  /* 主按钮 hover 底:浅色主题用浅蓝描边色,曜黑要保持在强调色一侧 */
+  --app-btn-primary-hover: var(--app-accent-border);
   /* 页面底 */
   --app-page-bg: #f4f9fd;
 }
@@ -733,6 +884,9 @@ textarea {
   --app-surface-2: #1b1d23;
   --app-surface-3: #23262e;
   --app-chip: #2a2f38;
+  --app-chip-soft: rgba(42, 47, 56, 0.4);
+  --app-wash-strong: rgba(255, 255, 255, 0.08);
+  --app-wash-hover: rgba(255, 255, 255, 0.07);
   --app-border: #2a2c33;
   --app-border-soft: #23252b;
   --app-border-strong: #3a4150;
@@ -776,6 +930,8 @@ textarea {
   --app-accent: #38bdf8;
   --app-accent-strong: #0ea5e9;
   --app-accent-deep: #7dd3fc;
+  --app-on-accent-solid: #041520;
+  --app-on-accent-muted: rgba(4, 21, 32, 0.72);
   --app-accent-soft: #10293a;
   --app-accent-line: #1b435c;
   --app-accent-border: #155e75;
@@ -810,6 +966,81 @@ textarea {
   --app-nav-text-hi: #eef2f6;
   --app-nav-text-active: #38bdf8;
   --app-nav-muted: #626a75;
+  /* 学员端扩展色板的深色对应值 */
+  --app-on-fill: #041520;
+  --app-ink-pure: #e6e8ec;
+  --app-ink-900: #f1f5f9;
+  --app-ink-850: #eef2f6;
+  --app-ink-800: #c3cad4;
+  --app-ink-solid: #0b0d10;
+  --app-ink-700: #9fb2c9;
+  --app-ink-night: #0a0b0d;
+  --app-slate-500: #9aa3b0;
+  --app-slate-400: #a2a9b4;
+  --app-slate-300: #787f8b;
+  --app-blue-25: #1b1d23;
+  --app-blue-25b: #16171c;
+  --app-blue-50: #0d2431;
+  --app-blue-70: #1b1d23;
+  --app-blue-75: #102027;
+  --app-blue-80: #102027;
+  --app-blue-85: #12232c;
+  --app-blue-90: #14262f;
+  --app-blue-100: #10293a;
+  --app-blue-line-100: #2a2f38;
+  --app-blue-line-110: #2a2f38;
+  --app-blue-line-120: #1b435c;
+  --app-blue-line-200: #155e75;
+  --app-accent-hover-strong: #0ea5e9;
+  --app-accent-sky-400: #38bdf8;
+  --app-accent-ink: #7dd3fc;
+  --app-accent-ink-2: #67e8f9;
+  --app-violet: #a78bfa;
+  --app-violet-strong: #8b5cf6;
+  --app-violet-deep: #c4b5fd;
+  --app-violet-50: #1e1b2c;
+  --app-violet-line-100: #383250;
+  --app-emerald-strong: #34d399;
+  --app-emerald-solid: #059669;
+  --app-emerald-deep: #6ee7b7;
+  --app-emerald-soft: #0f2a20;
+  --app-green-600: #4ade80;
+  --app-green-300: #22c55e;
+  --app-green-50: #12291f;
+  --app-red-800: #fecaca;
+  --app-red-700: #fca5a5;
+  --app-red-600: #f87171;
+  --app-red-500: #dc2626;
+  --app-red-400: #b91c1c;
+  --app-red-300: #7f1d1d;
+  --app-red-100: #2b161c;
+  --app-red-50: #2a1418;
+  --app-rose-600: #fb7185;
+  --app-rose-500: #fda4af;
+  --app-rose-100: #2b161c;
+  --app-amber-strong: #fbbf24;
+  --app-amber-solid: #d97706;
+  --app-amber-deep: #fcd34d;
+  --app-amber-50: #2b2314;
+  /* 个人中心横幅:曜黑下改成深蓝面板,文字转亮 */
+  --app-hero-1: #12303f;
+  --app-hero-2: #0f2833;
+  --app-hero-3: #10293a;
+  --app-hero-ink: #7dd3fc;
+  --app-hero-ink-75: rgb(125 211 252 / 75%);
+  --app-hero-ink-80: rgb(125 211 252 / 80%);
+  --app-hero-ink-85: rgb(125 211 252 / 85%);
+  --app-hero-glass: rgba(255, 255, 255, 0.06);
+  --app-hero-glass-strong: rgba(255, 255, 255, 0.09);
+  --app-hero-glass-line: rgba(255, 255, 255, 0.16);
+  --app-hero-orb-line: rgba(125, 211, 252, 0.16);
+  --app-hero-orb-ring-a: rgba(125, 211, 252, 0.05);
+  --app-hero-orb-ring-b: rgba(125, 211, 252, 0.03);
+  --app-hero-violet-wash: rgba(167, 139, 250, 0.16);
+  --app-hero-stat-div: rgba(255, 255, 255, 0.14);
+  --app-note-wash: rgba(13, 36, 49, 0.7);
+  --app-ring-accent: rgba(125, 211, 252, 0.35);
+  --app-btn-primary-hover: #0ea5e9;
 }
 .theme-navy {
   --app-accent: #7b8ea8;
@@ -919,9 +1150,11 @@ textarea {
 
 /* 管理端:允许整页上下滚动,内容按自然高度铺开 */
 #app .app-viewport--admin {
+  display: flex;
+  flex-direction: column;
   overflow-y: auto;
-  padding-top: calc(0.75rem + 10px);
-  /* 底部留白交给吸底分页条自己处理，保证分页条吸底位置与自然位置一致 */
+  padding-top: 10px;
+  /* 分页条自然排布,页面底部留白统一控制 */
   padding-bottom: 0;
   /* 始终预留滚动条位置，页面切换时内容不会左右抖动 */
   scrollbar-gutter: stable;
@@ -946,17 +1179,24 @@ textarea {
   background-clip: content-box;
 }
 
-/* 管理端:视图容器给一个确定高度,页面根节点才能用 min-height:100%
-   撑满视口,保证分页条始终贴在内容底部、不随数据条数上下跳 */
+/* 管理端视图至少占满可用高度,内容超出时由整个画布自然滚动 */
 #app .app-viewport--admin > .view-transition {
-  height: 100%;
+  display: flex;
+  flex: 1 0 auto;
+  flex-direction: column;
+  height: auto;
+  min-height: 100%;
 }
 #app .app-viewport--admin .view-transition > * {
   min-height: 0;
   height: auto;
 }
+#app .app-viewport--admin .admin-fit-page {
+  flex: 1 0 auto;
+  gap: 12px;
+}
 
-/* 列表区域不再内部滚动,跟随整页一起滚动 */
+/* 列表按内容自然展开,纵向滚动交给整个管理端画布 */
 #app .app-viewport--admin .table-wrap,
 #app .app-viewport--admin .notice-list,
 #app .app-viewport--admin .question-list {
@@ -964,11 +1204,11 @@ textarea {
   min-height: 0;
 }
 
-/* 分页页:整页锁在一屏内,列表卡片吃掉剩余高度把分页条顶到屏幕底部,
-   行内边距由 useAdminTableFit 按比例压缩,保证当前页数据一屏看全 */
+/* 分页页至少铺满画布,数据较多时由画布滚动,不再裁切或单独滚动列表 */
 #app .app-viewport--admin > .view-transition > .admin-fit-page {
-  height: 100%;
-  overflow: hidden;
+  height: auto;
+  min-height: 100%;
+  overflow: visible;
 }
 #app .app-viewport--admin .admin-fit-page > :not(.table-wrap):not(.question-list):not(.notice-list) {
   flex: 0 0 auto;
@@ -976,34 +1216,20 @@ textarea {
 #app .app-viewport--admin .admin-fit-page .table-wrap,
 #app .app-viewport--admin .admin-fit-page .question-list,
 #app .app-viewport--admin .admin-fit-page .notice-list {
-  flex: 1 1 auto;
+  flex: 0 0 auto;
   min-height: 0;
-  overflow-y: auto;
 }
-#app .app-viewport--admin .admin-fit-page .data-table thead th,
-#app .app-viewport--admin .admin-fit-page .data-table tbody td {
-  padding-top: var(--row-pad, 12px);
-  padding-bottom: var(--row-pad, 12px);
+#app .app-viewport--admin .admin-fit-page .table-wrap {
+  overflow-y: hidden;
 }
-#app .app-viewport--admin .admin-fit-page .question-item {
-  padding-top: var(--row-pad, 14px);
-  padding-bottom: var(--row-pad, 14px);
-}
-#app .app-viewport--admin .admin-fit-page .notice-card {
-  padding-top: var(--row-pad, 18px);
-  padding-bottom: var(--row-pad, 18px);
+#app .app-viewport--admin .admin-fit-page .table-wrap .data-table.data-table--wide {
+  min-width: 900px;
 }
 
-/* 管理端分页条：紧跟在列表后面，页面不留大片空白；
-   内容超高时吸底，滚动中也能随时翻页 */
+/* 分页条在列表后自然排布,随页面内容滚动 */
 #app .app-viewport--admin .pager {
-  position: sticky;
-  bottom: 0;
-  z-index: 6;
-  margin-top: 0;
-  padding-top: 0;
+  position: static;
   padding-bottom: 1.25rem;
-  background: var(--app-page-bg, #f4f9fd);
 }
 
 /* 管理总览没有分页条，单独补底部留白 */
@@ -1172,6 +1398,8 @@ textarea {
   #app .app-viewport--admin .data-table tbody td {
     padding-left: 10px;
     padding-right: 10px;
+    padding-top: 8px;
+    padding-bottom: 8px;
   }
   /* 表格横向滚动条做细一点，不抢内容 */
   #app .app-viewport--admin .table-wrap {
@@ -1224,7 +1452,7 @@ textarea {
 /* --- 小屏:页头/工具栏/统计条纵向或两列排布,表格横向滚动 --- */
 @media (max-width: 820px) {
   #app .app-viewport--admin {
-    padding: calc(0.75rem + 10px) 0.75rem 0;
+    padding: 10px 0.75rem 0;
   }
   #app .app-viewport--admin .page-head {
     flex-direction: column;
@@ -1278,7 +1506,7 @@ textarea {
   }
   #app .app-viewport--admin .data-table thead th,
   #app .app-viewport--admin .data-table tbody td {
-    padding: 10px 12px;
+    padding: 7px 10px;
   }
   #app .app-viewport--admin .pager {
     gap: 8px;
@@ -1290,9 +1518,6 @@ textarea {
   #app .app-viewport--admin {
     padding-left: 0.625rem;
     padding-right: 0.625rem;
-  }
-  #app .app-viewport--admin .data-table {
-    min-width: 640px;
   }
   #app .app-viewport--admin .pager-controls {
     flex-wrap: wrap;
@@ -1306,11 +1531,104 @@ textarea {
   }
 }
 
-/* --- 矮屏:收紧纵向留白,让 6 行列表也能一屏放下,避免整页出现滚动条 ---
-   仅在窗口高度 ≤800px 时生效,大屏保持原有宽松间距 --- */
+/* --- 用户端:桌面使用完整宽度,窄屏导航改为可横向浏览的菜单栏 --- */
+#app .app-viewport--user {
+  width: 100%;
+  max-width: none;
+  padding: clamp(12px, 2vw, 32px);
+  overflow-x: hidden;
+}
+
+#app .app-viewport--user > .view-transition {
+  display: flex;
+  flex: 1 0 auto;
+  flex-direction: column;
+  min-height: 100%;
+}
+
+/* --- 用户端中等窄屏:侧栏收成与管理端相同的图标栏 --- */
+@media (max-width: 1080px) and (min-width: 821px) {
+  #app .app-body--user .sidebar {
+    width: 76px;
+  }
+  #app .app-body--user .brand-header {
+    justify-content: center;
+    padding: 16px 8px;
+  }
+  #app .app-body--user .brand-text,
+  #app .app-body--user .nav-label,
+  #app .app-body--user .user-card-text {
+    display: none;
+  }
+  #app .app-body--user .nav-menu {
+    padding: 12px 8px;
+  }
+  #app .app-body--user .nav-item {
+    justify-content: center;
+    padding: 11px 0;
+  }
+  #app .app-body--user .nav-item-left {
+    gap: 0;
+  }
+  #app .app-body--user .sidebar-footer {
+    padding: 8px;
+  }
+  #app .app-body--user .user-card {
+    flex-direction: column;
+    gap: 6px;
+    padding: 8px 6px;
+  }
+  #app .app-body--user .logout-btn {
+    margin-left: 0;
+  }
+}
+
+@media (max-width: 820px) {
+  #app .app-body--user .sidebar {
+    width: 64px;
+    height: 100%;
+  }
+  #app .app-body--user .brand-header {
+    justify-content: center;
+    padding: 14px 6px;
+  }
+  #app .app-body--user .brand-text,
+  #app .app-body--user .nav-label,
+  #app .app-body--user .user-card-text {
+    display: none;
+  }
+  #app .app-body--user .nav-menu {
+    flex-direction: column;
+    gap: 4px;
+    padding: 10px 6px;
+  }
+  #app .app-body--user .nav-item {
+    justify-content: center;
+    padding: 12px 0;
+  }
+  #app .app-body--user .nav-item-left { gap: 0; }
+  #app .app-body--user .sidebar-footer { padding: 6px; }
+  #app .app-body--user .user-card {
+    flex-direction: column;
+    gap: 6px;
+    padding: 8px 4px;
+  }
+  #app .app-body--user .logout-btn { margin-left: 0; }
+}
+
+@media (max-width: 560px) {
+  #app .app-viewport--user {
+    padding: 12px;
+  }
+}
+
+/* --- 矮屏:适度收紧纵向间距,减少首屏滚动距离 --- */
 @media (max-height: 800px) {
   #app .app-viewport--admin .view-transition > * {
-    gap: 12px;
+    gap: 10px;
+  }
+  #app .app-viewport--admin .admin-fit-page {
+    gap: 8px;
   }
   #app .app-viewport--admin .page-title {
     font-size: 21px;
@@ -1330,12 +1648,12 @@ textarea {
     font-size: 19px;
   }
   #app .app-viewport--admin .data-table thead th {
-    padding-top: 8px;
-    padding-bottom: 8px;
+    padding-top: 6px;
+    padding-bottom: 6px;
   }
   #app .app-viewport--admin .data-table tbody td {
-    padding-top: 7px;
-    padding-bottom: 7px;
+    padding-top: 6px;
+    padding-bottom: 6px;
   }
   #app .app-viewport--admin .question-item {
     gap: 8px;

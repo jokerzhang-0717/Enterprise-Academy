@@ -38,7 +38,7 @@
           <div class="stat-icon" :style="{ background: card.tint, color: card.color }">
             <component :is="card.icon" />
           </div>
-          <span class="stat-trend" :class="card.trendClass">{{ card.trend }}</span>
+          <span v-if="card.trend" class="stat-trend" :class="card.trendClass">{{ card.trend }}</span>
         </div>
         <div class="stat-value">{{ card.value }}</div>
         <div class="stat-label">{{ card.label }}</div>
@@ -53,7 +53,7 @@
         <div class="panel-head">
           <div>
             <h2 class="panel-title">各部门累计学时分布</h2>
-            <p class="panel-sub">本季度 · 单位:小时</p>
+            <p class="panel-sub">按学员学习记录统计 · 单位:小时</p>
           </div>
         </div>
         <div class="chart-body">
@@ -68,6 +68,7 @@
             <span class="chart-value">{{ dept.hours }}h</span>
             <span class="chart-learners">{{ dept.learners }}人</span>
           </div>
+          <div v-if="deptStats.length === 0" class="chart-empty">暂无部门学员数据</div>
         </div>
       </article>
 
@@ -126,15 +127,8 @@ import {
   UserFilled, Collection, Tickets, Medal, Calendar, Promotion,
   RefreshRight, Warning, Check, EditPen, OfficeBuilding
 } from '@element-plus/icons-vue';
-import {
-  ADMIN_LEARNERS_DATA,
-  ADMIN_DEPT_STATS,
-  ADMIN_ACTIVITIES_DATA,
-  ADMIN_ANNOUNCEMENTS_DATA,
-  COURSES_DATA,
-  EXAMS_DATA,
-  CERTIFICATES_DATA
-} from '../../mockData.js';
+import { adminStore } from '../../adminStore.js';
+import { relativeTime } from '../../api/adapters.js';
 
 const props = defineProps({
   user: { type: Object, default: () => ({ name: '王智远' }) }
@@ -177,55 +171,118 @@ onUnmounted(() => {
   if (clockTimer) clearInterval(clockTimer);
 });
 
-const activeLearners = ADMIN_LEARNERS_DATA.filter(l => l.status === 'active').length;
-const draftNotices = ADMIN_ANNOUNCEMENTS_DATA.filter(a => a.status === 'draft').length;
-const issuedCerts = CERTIFICATES_DATA.length * 100 + 386;
+const dash = computed(() => adminStore.dashboard || {});
+const stats = computed(() => dash.value.stats || {});
+const pending = computed(() => dash.value.pending || {});
+
+const learners = computed(() => adminStore.users);
+const activeLearners = computed(() => learners.value.filter(u => u.status === 'active').length);
+const requiredCourses = computed(() => adminStore.courses.filter(c => c.isRequired).length);
+const attemptTotal = computed(() =>
+  (dash.value.exams || []).reduce((sum, e) => sum + Number(e.attemptCount || 0), 0));
+
+const todayKey = (() => {
+  const d = new Date();
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+})();
+const todayCheckins = computed(() => adminStore.checkins.filter(c => c.checkinDate === todayKey));
+const attendedToday = computed(() => todayCheckins.value.filter(c => c.status !== 'missing').length);
+const todayRate = computed(() => {
+  const total = activeLearners.value;
+  if (!total) return '0.0%';
+  return `${((attendedToday.value / total) * 100).toFixed(1)}%`;
+});
 
 const statCards = computed(() => [
   {
     label: '注册学员', value: activeLearners,
-    foot: `共 ${ADMIN_LEARNERS_DATA.length} 个账号`, trend: '+3.2%', trendClass: 'up',
+    foot: `共 ${learners.value.length} 个账号`, trend: '', trendClass: 'flat',
     icon: UserFilled, color: '--app-accent-deep', tint: '--app-accent-soft'
   },
   {
-    label: '在架课程', value: COURSES_DATA.length,
-    foot: '含 3 门必修红线课', trend: '+1', trendClass: 'up',
+    label: '在架课程', value: stats.value.publishedCourseCount ?? 0,
+    foot: `含 ${requiredCourses.value} 门必修红线课`, trend: '', trendClass: 'flat',
     icon: Collection, color: '--app-violet-fg', tint: '--app-violet-bg'
   },
   {
-    label: '进行中考试', value: EXAMS_DATA.length,
-    foot: '累计参考 1,286 人次', trend: '+1', trendClass: 'up',
+    label: '进行中考试', value: pending.value.activeExamCount ?? 0,
+    foot: `累计参考 ${attemptTotal.value} 人次`, trend: '', trendClass: 'flat',
     icon: Tickets, color: '--app-orange-fg', tint: '--app-orange-bg'
   },
   {
-    label: '累计发证', value: issuedCerts.toLocaleString(),
+    label: '累计发证', value: adminStore.certificates.length,
     foot: '区块链存证已启用', trend: '链上', trendClass: 'flat',
     icon: Medal, color: '--app-amber-fg', tint: '--app-amber-bg'
   },
   {
-    label: '今日签到率', value: '96.4%',
-    foot: '应到 328 · 实到 316', trend: '+0.8%', trendClass: 'up',
+    label: '今日签到率', value: todayRate.value,
+    foot: `应到 ${activeLearners.value} · 实到 ${attendedToday.value}`, trend: '', trendClass: 'flat',
     icon: Calendar, color: '--app-emerald-fg', tint: '--app-emerald-bg'
   },
   {
-    label: '待审公告', value: draftNotices,
-    foot: '含 1 篇停机维护通知', trend: '待发布', trendClass: 'warn',
+    label: '待审公告', value: pending.value.draftNoticeCount ?? 0,
+    foot: `共 ${adminStore.announcements.length} 篇公告`, trend: '待发布', trendClass: 'warn',
     icon: Promotion, color: '--app-rose-fg', tint: '--app-rose-bg'
   }
 ]);
 
-const deptStats = ADMIN_DEPT_STATS;
-const maxHours = Math.max(...deptStats.map(d => d.hours));
-const barWidth = (hours) => `${Math.max((hours / maxHours) * 100, 4)}%`;
+const deptStats = computed(() => adminStore.departments
+  .filter(d => d.learners > 0)
+  .map(d => ({
+    department: d.name, hours: d.hours, learners: d.learners
+  })));
+const maxHours = computed(() => Math.max(1, ...deptStats.value.map(d => d.hours)));
+const barWidth = (hours) => `${Math.max((hours / maxHours.value) * 100, 4)}%`;
 
-const todos = [
-  { id: 't-1', level: 'high', title: '3 条请假申请待审批', meta: '张浩然、刘子墨、陈嘉怡', view: 'admin-leave', action: '去审批' },
-  { id: 't-2', level: 'high', title: '《2025数据安全与合规》考核今日 18:00 截止', meta: '仍有 87 人未作答', view: 'admin-exams', action: '去催办' },
-  { id: 't-3', level: 'mid', title: '2 张证书待发放', meta: '陈嘉怡、王若琳 · 结课认证', view: 'admin-certificates', action: '去发放' },
-  { id: 't-4', level: 'mid', title: '1 篇公告待发布', meta: '《平台 3.8.0 停机维护通知》草稿', view: 'admin-announcements', action: '去发布' }
-];
+const todos = computed(() => {
+  const list = [];
+  const pendingLeaves = adminStore.leaves.filter(l => l.status === 'pending');
+  if (pendingLeaves.length) {
+    list.push({
+      id: 'todo-leave', level: 'high',
+      title: `${pendingLeaves.length} 条请假申请待审批`,
+      meta: pendingLeaves.slice(0, 3).map(l => l.applicant).join('、'),
+      view: 'admin-leave', action: '去审批'
+    });
+  }
+  const running = adminStore.exams.filter(e => e.state === 'running');
+  if (running.length) {
+    list.push({
+      id: 'todo-exam', level: 'high',
+      title: `${running.length} 场考试正在进行`,
+      meta: running.slice(0, 2).map(e => e.title.slice(0, 18)).join('、'),
+      view: 'admin-exams', action: '去查看'
+    });
+  }
+  if (pending.value.pendingCertCount) {
+    const holders = adminStore.certificates.filter(c => c.status === 'pending').map(c => c.holder);
+    list.push({
+      id: 'todo-cert', level: 'mid',
+      title: `${pending.value.pendingCertCount} 张证书待发放`,
+      meta: holders.slice(0, 3).join('、') || '结课认证',
+      view: 'admin-certificates', action: '去发放'
+    });
+  }
+  if (pending.value.draftNoticeCount) {
+    const titles = adminStore.announcements.filter(a => a.status === 'draft').map(a => a.title);
+    list.push({
+      id: 'todo-notice', level: 'mid',
+      title: `${pending.value.draftNoticeCount} 篇公告待发布`,
+      meta: titles[0] || '草稿公告',
+      view: 'admin-announcements', action: '去发布'
+    });
+  }
+  return list;
+});
 
-const activities = ADMIN_ACTIVITIES_DATA;
+const activities = computed(() => (dash.value.recentActivities || []).map(act => ({
+  id: act.id,
+  type: act.logType,
+  text: act.content,
+  operator: act.operatorName,
+  time: relativeTime(act.occurredAt)
+})));
 
 const activityIconMap = {
   course:  Collection,
@@ -493,6 +550,13 @@ button { font-family: inherit; cursor: pointer; }
   display: flex;
   align-items: center;
   gap: 10px;
+}
+
+.chart-empty {
+  padding: 24px 0;
+  color: var(--app-text-5);
+  font-size: 13px;
+  text-align: center;
 }
 
 .chart-label {

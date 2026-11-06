@@ -32,6 +32,32 @@
       </div>
     </div>
 
+    <div class="toolbar exam-filter-bar">
+      <select v-model="categoryFilter" class="exam-filter-select" aria-label="按分类筛选考试">
+        <option value="">全部分类</option>
+        <option v-for="category in categories" :key="category" :value="category">
+          {{ category }}
+        </option>
+      </select>
+      <select v-model="stateFilter" class="exam-filter-select" aria-label="按状态筛选考试">
+        <option value="">全部状态</option>
+        <option v-for="state in examStates" :key="state.value" :value="state.value">
+          {{ state.label }}
+        </option>
+      </select>
+      <label class="exam-search">
+        <span class="search-icon" aria-hidden="true"></span>
+        <input
+          v-model.trim="keyword"
+          type="search"
+          class="exam-search-input"
+          placeholder="搜索考试名称 / 组织方..."
+          aria-label="搜索考试名称或组织方"
+        />
+      </label>
+      <span class="exam-filter-result">{{ filteredExams.length }} 场考试</span>
+    </div>
+
     <!-- 考试表格 -->
     <div class="table-wrap">
       <table class="data-table">
@@ -76,6 +102,9 @@
                   class="text-btn text-btn--warn"
                   @click="revokeExam(exam)"
                 >撤回</button>
+                <button class="text-btn text-btn--primary" @click="openQuickStatus(exam)">
+                  快捷改状态
+                </button>
                 <button class="icon-btn" title="编辑" @click="openEdit(exam)">
                   <EditPen />
                 </button>
@@ -85,8 +114,10 @@
               </div>
             </td>
           </tr>
-          <tr v-if="!exams.length">
-            <td colspan="6" class="empty-cell">暂无考试数据</td>
+          <tr v-if="!filteredExams.length">
+            <td colspan="6" class="empty-cell">
+              {{ exams.length ? '没有匹配的考试' : '暂无考试数据' }}
+            </td>
           </tr>
         </tbody>
       </table>
@@ -94,9 +125,36 @@
 
     <AdminPager
       v-model:page="page"
-      :total="exams.length"
+      :total="filteredExams.length"
       :total-pages="totalPages"
     />
+
+    <div v-if="quickStatusExam" class="modal-backdrop" @click.self="closeQuickStatus">
+      <div class="modal modal--quick-status">
+        <div class="modal-head">
+          <h2 class="modal-title">快捷修改状态</h2>
+          <button type="button" class="modal-close" @click="closeQuickStatus"><Close /></button>
+        </div>
+        <form class="modal-body" @submit.prevent="saveQuickStatus">
+          <p class="quick-status-title">{{ quickStatusExam.title }}</p>
+          <label class="field">
+            <span class="field-label">考试状态</span>
+            <select v-model.number="quickStatus" class="field-input">
+              <option v-for="state in examStatusOptions" :key="state.value" :value="state.value">
+                {{ state.label }}
+              </option>
+            </select>
+          </label>
+          <p v-if="quickStatusError" class="form-error">{{ quickStatusError }}</p>
+          <div class="modal-actions">
+            <button type="button" class="btn btn--ghost" @click="closeQuickStatus">取消</button>
+            <button type="submit" class="btn btn--primary" :disabled="quickStatusSaving">
+              {{ quickStatusSaving ? '保存中…' : '保存状态' }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
 
     <!-- 考试详情 -->
     <AdminDetailModal
@@ -120,9 +178,13 @@
       <div class="modal">
         <div class="modal-head">
           <h2 class="modal-title">{{ editingId ? '编辑考试' : '新建考试' }}</h2>
-          <button class="modal-close" @click="closeModal"><Close /></button>
+          <button type="button" class="modal-close" @click="closeModal"><Close /></button>
         </div>
         <form class="modal-body" @submit.prevent="saveExam">
+          <label class="field">
+            <span class="field-label">考试编号</span>
+            <input v-model.trim="form.code" type="text" class="field-input" placeholder="如 EXAM-2026-001" />
+          </label>
           <label class="field">
             <span class="field-label">考试名称</span>
             <input v-model.trim="form.title" type="text" class="field-input" placeholder="请输入考试名称" />
@@ -130,6 +192,14 @@
           <label class="field">
             <span class="field-label">组织方</span>
             <input v-model.trim="form.category" type="text" class="field-input" placeholder="如 技术合规部" />
+          </label>
+          <label v-if="editingId" class="field">
+            <span class="field-label">考试状态</span>
+            <select v-model.number="form.status" class="field-input">
+              <option v-for="state in examStatusOptions" :key="state.value" :value="state.value">
+                {{ state.label }}
+              </option>
+            </select>
           </label>
 
           <!-- 时间窗便捷录入 -->
@@ -160,7 +230,7 @@
           <p v-if="formError" class="form-error">{{ formError }}</p>
           <div class="modal-actions">
             <button type="button" class="btn btn--ghost" @click="closeModal">取消</button>
-            <button type="submit" class="btn btn--primary">{{ editingId ? '保存修改' : '保存为待发布' }}</button>
+            <button type="submit" class="btn btn--primary" :disabled="saving">{{ saving ? '保存中…' : (editingId ? '保存修改' : '保存为待发布') }}</button>
           </div>
         </form>
       </div>
@@ -182,9 +252,15 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { Plus, EditPen, Delete, Close } from '@element-plus/icons-vue';
-import { adminStore, questionCount } from '../../adminStore.js';
+import { adminStore, loadExams, loadQuestions, questionCount } from '../../adminStore.js';
+import {
+  createAdminExam,
+  deleteAdminExam,
+  updateAdminExam,
+  updateAdminExamStatus,
+} from '../../api/index.js';
 import { usePager } from '../../composables/usePager.js';
 import { useConfirm } from '../../composables/useConfirm.js';
 import { useToast } from '../../composables/useToast.js';
@@ -200,18 +276,50 @@ const exams = adminStore.exams;
 
 const { confirmState, askConfirm, cancelConfirm, acceptConfirm } = useConfirm();
 
-const { page, totalPages, paged: pagedExams } = usePager(exams, 6);
+const categoryFilter = ref('');
+const stateFilter = ref('');
+const keyword = ref('');
+
+const categories = computed(() => [...new Set(exams.map(exam => exam.category).filter(Boolean))].sort());
 
 const runningCount = computed(() => exams.filter(e => e.state === 'running').length);
 const scheduledCount = computed(() => exams.filter(e => e.state === 'scheduled').length);
 const endedCount = computed(() => exams.filter(e => e.state === 'ended').length);
 const draftCount = computed(() => exams.filter(e => e.state === 'draft').length);
 
+const filteredExams = computed(() => {
+  const search = keyword.value.toLowerCase();
+  return exams.filter((exam) => {
+    const matchesCategory = !categoryFilter.value || exam.category === categoryFilter.value;
+    const matchesState = !stateFilter.value || exam.state === stateFilter.value;
+    const matchesKeyword = !search ||
+      `${exam.title} ${exam.category}`.toLowerCase().includes(search);
+    return matchesCategory && matchesState && matchesKeyword;
+  });
+});
+
+const { page, totalPages, paged: pagedExams, resetPage } = usePager(filteredExams, 7);
+watch([categoryFilter, stateFilter, keyword], resetPage);
+
+const examStates = [
+  { value: 'running', label: '进行中' },
+  { value: 'scheduled', label: '待开始' },
+  { value: 'ended', label: '已结束' },
+  { value: 'draft', label: '待发布' },
+];
+
+const examStatusOptions = [
+  { value: 1, state: 'draft', label: '待发布' },
+  { value: 2, state: 'scheduled', label: '待开始' },
+  { value: 3, state: 'running', label: '进行中' },
+  { value: 4, state: 'ended', label: '已结束' },
+];
+
 const stateLabelMap = {
   running: '进行中',
   scheduled: '待开始',
   ended: '已结束',
-  draft: '待发布'
+  draft: '待发布',
 };
 const stateLabel = (state) => stateLabelMap[state] || state;
 
@@ -219,10 +327,49 @@ const stateLabel = (state) => stateLabelMap[state] || state;
 const detailExam = ref(null);
 const openDetail = (exam) => { detailExam.value = exam; };
 
+const quickStatusExam = ref(null);
+const quickStatus = ref(1);
+const quickStatusError = ref('');
+const quickStatusSaving = ref(false);
+
+const openQuickStatus = (exam) => {
+  quickStatusExam.value = exam;
+  quickStatus.value = examStatusOptions.some((state) => state.value === exam.statusCode)
+    ? exam.statusCode
+    : examStatusOptions.find((state) => state.state === exam.state)?.value ?? 2;
+  quickStatusError.value = '';
+};
+
+const closeQuickStatus = () => {
+  if (quickStatusSaving.value) return;
+  quickStatusExam.value = null;
+  quickStatusError.value = '';
+};
+
+const saveQuickStatus = async () => {
+  if (!quickStatusExam.value) return;
+  quickStatusSaving.value = true;
+  quickStatusError.value = '';
+  try {
+    await updateAdminExamStatus(
+      quickStatusExam.value.numericId ?? quickStatusExam.value.id,
+      quickStatus.value,
+    );
+    await loadExams();
+    showToast(`已更新考试「${quickStatusExam.value.title}」状态`, 'success');
+    quickStatusExam.value = null;
+  } catch (error) {
+    quickStatusError.value = error?.message || '状态更新失败，请稍后重试。';
+  } finally {
+    quickStatusSaving.value = false;
+  }
+};
+
 /* ---------- 新建 / 编辑考试表单 ---------- */
 const modalOpen = ref(false);
 const editingId = ref(null);
 const formError = ref('');
+const saving = ref(false);
 
 const defaultDate = () => {
   const d = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000);
@@ -231,11 +378,13 @@ const defaultDate = () => {
 };
 
 const form = ref({
+  code: '',
   title: '',
   category: '',
   examDate: defaultDate(),
   startTime: '14:00',
   endTime: '15:30',
+  status: 1,
   passScore: 80
 });
 
@@ -257,17 +406,24 @@ const openCreate = () => {
   editingId.value = null;
   formError.value = '';
   form.value = {
+    code: '',
     title: '',
     category: '',
     examDate: defaultDate(),
     startTime: '14:00',
     endTime: '15:30',
+    status: 1,
     passScore: 80
   };
   modalOpen.value = true;
 };
 
-/* 时间窗在种子数据里是一段展示文本，跨多天的场次（如 2025-04-10 ~ 04-30）没有钟点，只能各取能解析到的部分 */
+/* 接口返回 ISO 时间则直接取，种子数据只有展示用时间窗时尽力解析 */
+const fromIso = (value) => {
+  const m = /^(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2})/.exec(value || '');
+  return m ? { date: m[1], time: m[2] } : null;
+};
+
 const parseWindow = (text) => {
   const date = /\d{4}-\d{2}-\d{2}/.exec(text || '')?.[0];
   const times = text?.match(/\d{2}:\d{2}/g) || [];
@@ -275,15 +431,23 @@ const parseWindow = (text) => {
 };
 
 const openEdit = (exam) => {
-  const win = parseWindow(exam.timeWindow);
+  const start = fromIso(exam.startAt);
+  const end = fromIso(exam.endAt);
+  const win = start && end
+    ? { examDate: start.date, startTime: start.time, endTime: end.time }
+    : parseWindow(exam.timeWindow);
   editingId.value = exam.id;
   formError.value = '';
   form.value = {
+    code: exam.code || '',
     title: exam.title,
     category: exam.category,
     examDate: win.examDate,
     startTime: win.startTime,
     endTime: win.endTime,
+    status: examStatusOptions.some((state) => state.value === exam.statusCode)
+      ? exam.statusCode
+      : examStatusOptions.find((state) => state.state === exam.state)?.value ?? 2,
     passScore: exam.passScore
   };
   modalOpen.value = true;
@@ -294,7 +458,8 @@ const closeModal = () => {
   formError.value = '';
 };
 
-const saveExam = () => {
+const saveExam = async () => {
+  if (!form.value.code) { formError.value = '请输入考试编号。'; return; }
   if (!form.value.title) { formError.value = '请输入考试名称。'; return; }
   if (!form.value.category) { formError.value = '请输入组织方。'; return; }
   if (!form.value.examDate) { formError.value = '请选择考试日期。'; return; }
@@ -302,42 +467,50 @@ const saveExam = () => {
     formError.value = '结束时间需要晚于开始时间。';
     return;
   }
+  const dup = exams.some(e => e.code === form.value.code && e.id !== editingId.value);
+  if (dup) { formError.value = '考试编号已存在，请换一个。'; return; }
 
-  if (editingId.value) {
-    const exam = exams.find(e => e.id === editingId.value);
-    if (exam) {
-      exam.title = form.value.title;
-      exam.category = form.value.category;
-      exam.timeWindow = timeWindowPreview.value;
-      exam.durationMinutes = durationMinutes.value;
-      exam.passScore = form.value.passScore;
-    }
-    closeModal();
-    return;
-  }
-
-  exams.unshift({
-    id: `exam-${Date.now()}`,
-    code: '',
+  const payload = {
+    code: form.value.code,
     title: form.value.title,
-    category: form.value.category,
-    state: 'draft',
-    timeWindow: timeWindowPreview.value,
+    organizer: form.value.category,
+    startAt: `${form.value.examDate}T${form.value.startTime}:00`,
+    endAt: `${form.value.examDate}T${form.value.endTime}:00`,
     durationMinutes: durationMinutes.value,
-    totalScore: 100,
     passScore: form.value.passScore,
-    questionCount: 0,
-    participants: 0
-  });
-  closeModal();
+    ...(editingId.value ? { status: form.value.status } : {}),
+  };
+
+  saving.value = true;
+  try {
+    if (editingId.value) {
+      await updateAdminExam(editingId.value, payload);
+      showToast(`已更新考试「${payload.title}」`, 'success');
+    } else {
+      await createAdminExam(payload);
+      showToast(`已创建考试「${payload.title}」，当前为待发布`, 'success');
+    }
+    await loadExams();
+    closeModal();
+  } catch (error) {
+    formError.value = error?.message || '保存失败，请稍后重试。';
+  } finally {
+    saving.value = false;
+  }
 };
 
-const publishExam = (exam) => {
+const publishExam = async (exam) => {
   if (!questionCount(exam.id)) {
     showToast('该考试暂无题目，请先到「题库管理」为该考试添加题目后再发布。', 'info');
     return;
   }
-  exam.state = 'scheduled';
+  try {
+    await updateAdminExamStatus(exam.numericId ?? exam.id, 2);
+    await loadExams();
+    showToast(`已发布考试「${exam.title}」`, 'success');
+  } catch (error) {
+    showToast(error?.message || '发布失败', 'error');
+  }
 };
 
 const revokeExam = (exam) => {
@@ -352,7 +525,15 @@ const revokeExam = (exam) => {
     ],
     tip: '撤回后考试将回到「待发布」状态，学员端不再展示该考试。',
     confirmText: '确认撤回',
-    action: () => { exam.state = 'draft'; }
+    action: async () => {
+      try {
+        await updateAdminExamStatus(exam.numericId ?? exam.id, 1);
+        await loadExams();
+        showToast(`已撤回考试「${exam.title}」`, 'success');
+      } catch (error) {
+        showToast(error?.message || '撤回失败', 'error');
+      }
+    }
   });
 };
 
@@ -368,9 +549,14 @@ const removeExam = (exam) => {
     ],
     tip: '删除后考试信息、题目关联与成绩记录将一并移除，此操作不可恢复。',
     confirmText: '确认删除',
-    action: () => {
-      const idx = exams.findIndex(e => e.id === exam.id);
-      if (idx > -1) exams.splice(idx, 1);
+    action: async () => {
+      try {
+        await deleteAdminExam(exam.numericId ?? exam.id);
+        await Promise.all([loadExams(), loadQuestions()]);
+        showToast(`已删除考试「${exam.title}」`, 'success');
+      } catch (error) {
+        showToast(error?.message || '删除失败', 'error');
+      }
     }
   });
 };
@@ -472,6 +658,125 @@ button { cursor: pointer; }
 .overview-label {
   font-size: 12px;
   color: var(--app-text-4);
+}
+
+/* ========== 筛选工具栏 ========== */
+.exam-filter-bar {
+  display: grid;
+  grid-template-columns: minmax(150px, 190px) minmax(130px, 160px) minmax(220px, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  min-height: 64px;
+  padding: 12px 16px;
+  background: var(--app-surface);
+  border: 1px solid var(--app-border);
+  border-radius: 12px;
+}
+
+.exam-filter-select {
+  width: 100%;
+  min-width: 0;
+  height: 40px;
+  padding: 0 34px 0 12px;
+  font-size: 13px;
+  color: var(--app-text-2);
+  background-color: var(--app-surface);
+  border: 1px solid var(--app-border);
+  border-radius: 10px;
+  outline: none;
+  cursor: pointer;
+}
+.exam-filter-select:focus {
+  border-color: var(--app-accent-strong);
+  box-shadow: 0 0 0 3px var(--app-accent-a12);
+}
+
+.exam-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  height: 40px;
+  padding: 0 12px;
+  background: var(--app-surface);
+  border: 1px solid var(--app-border);
+  border-radius: 10px;
+}
+.exam-search:focus-within {
+  border-color: var(--app-accent-strong);
+  box-shadow: 0 0 0 3px var(--app-accent-a12);
+}
+
+.search-icon {
+  position: relative;
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+.search-icon::before {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 9px;
+  height: 9px;
+  border: 2px solid var(--app-text-4);
+  border-radius: 50%;
+  content: '';
+}
+.search-icon::after {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 6px;
+  height: 2px;
+  background: var(--app-text-4);
+  border-radius: 1px;
+  content: '';
+  transform: rotate(45deg);
+  transform-origin: right center;
+}
+
+.exam-search-input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  font-size: 13px;
+  color: var(--app-text);
+  background: transparent;
+  border: 0;
+  outline: 0;
+}
+
+.exam-search-input::placeholder { color: var(--app-text-5); }
+.exam-search-input::-webkit-search-cancel-button { cursor: pointer; }
+
+.exam-filter-result {
+  justify-self: end;
+  padding: 7px 11px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--app-accent-deep);
+  background: var(--app-accent-soft);
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+@media (max-width: 900px) {
+  .exam-filter-bar {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+  .exam-search,
+  .exam-filter-result {
+    grid-column: 1 / -1;
+  }
+  .exam-filter-result { justify-self: start; }
+}
+
+@media (max-width: 420px) {
+  .exam-filter-bar { grid-template-columns: minmax(0, 1fr); }
+  .exam-filter-select,
+  .exam-search,
+  .exam-filter-result { grid-column: 1; }
 }
 
 /* ========== 表格 ========== */

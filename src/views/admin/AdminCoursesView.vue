@@ -22,6 +22,16 @@
           class="search-input"
           placeholder="搜索课程名称 / 讲师 / 标签..."
         />
+        <button
+          v-if="keyword"
+          type="button"
+          class="search-clear"
+          aria-label="清除搜索内容"
+          title="清除搜索内容"
+          @click="keyword = ''"
+        >
+          <Close />
+        </button>
       </div>
       <select v-model="categoryFilter" class="select">
         <option value="">全部分类</option>
@@ -109,7 +119,7 @@
       <div class="modal">
         <div class="modal-head">
           <h2 class="modal-title">{{ editingId ? '编辑课程' : '新增课程' }}</h2>
-          <button class="modal-close" @click="closeModal"><Close /></button>
+          <button type="button" class="modal-close" @click="closeModal"><Close /></button>
         </div>
         <form class="modal-body" @submit.prevent="saveCourse">
 
@@ -157,10 +167,10 @@
               >
                 <input type="file" accept="image/*" class="file-input-hidden" @change="handleCoverUpload" />
                 <img v-if="form.thumbnail" :src="form.thumbnail" alt="课程封面" class="cover-hero-img" />
-                <span v-if="form.thumbnail" class="cover-hero-overlay">更换封面</span>
+                <span v-if="form.thumbnail" class="cover-hero-overlay">{{ uploadingCover ? '上传中…' : '更换封面' }}</span>
                 <span v-else class="cover-hero-empty">
                   <span class="cover-empty-icon">🖼</span>
-                  <span class="cover-empty-title">点击上传封面</span>
+                  <span class="cover-empty-title">{{ uploadingCover ? '封面上传中…' : '点击上传封面' }}</span>
                   <span class="cover-empty-hint">建议 16:9 尺寸 · JPG / PNG · 不超过 5MB</span>
                 </span>
               </label>
@@ -175,7 +185,8 @@
               <span class="section-badge">{{ form.syllabus.length }} 章 · {{ lessonCount }} 节</span>
             </div>
 
-            <div v-if="form.syllabus.length" class="syl-editor">
+            <p v-if="loadingDetail" class="video-empty">正在读取课程目录…</p>
+            <div v-else-if="form.syllabus.length" class="syl-editor">
               <div v-for="(chapter, ci) in form.syllabus" :key="chapter.id" class="syl-chapter">
                 <div class="syl-chapter-head">
                   <span class="syl-chapter-index">第 {{ ci + 1 }} 章</span>
@@ -198,7 +209,7 @@
                     <input v-model.trim="lesson.name" type="text" class="field-input syl-lesson-name" placeholder="小节名称" />
                     <label class="upload-btn upload-btn--video upload-btn--sm">
                       <input type="file" accept="video/*" class="file-input-hidden" @change="handleLessonFile(lesson, $event)" />
-                      <span>↑</span> 上传视频
+                      <span>↑</span> {{ uploadingLesson ? '上传中…' : '上传视频' }}
                     </label>
                     <button type="button" class="del-lesson-btn" title="删除小节" @click="removeLesson(chapter, lesson)">
                       <Delete class="del-lesson-icon" /> 删除
@@ -217,14 +228,15 @@
             </div>
           </div>
 
-          <label class="check-row">
+          <label v-if="!editingId" class="check-row">
             <input v-model="form.published" type="checkbox" class="checkbox" />
             <span>创建后立即上架</span>
           </label>
+          <p v-else class="form-hint">上架与下架请用列表中的开关切换，保存不会改动课程状态。</p>
           <p v-if="formError" class="form-error">{{ formError }}</p>
           <div class="modal-actions">
             <button type="button" class="btn btn--ghost" @click="closeModal">取消</button>
-            <button type="submit" class="btn btn--primary">{{ editingId ? '保存修改' : '创建课程' }}</button>
+            <button type="submit" class="btn btn--primary" :disabled="saving">{{ saving ? '保存中…' : (editingId ? '保存修改' : '创建课程') }}</button>
           </div>
         </form>
       </div>
@@ -246,10 +258,26 @@
 </template>
 
 <script setup>
-import { computed, ref, watch } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { Plus, EditPen, Delete, Close } from '@element-plus/icons-vue';
-import { COURSE_CATEGORIES } from '../../mockData.js';
-import { adminStore } from '../../adminStore.js';
+import { adminStore, loadCourses } from '../../adminStore.js';
+import {
+  createAdminChapter,
+  createAdminCourse,
+  createAdminInstructor,
+  createAdminLesson,
+  deleteAdminChapter,
+  deleteAdminCourse,
+  deleteAdminLesson,
+  fetchAdminCourse,
+  fetchAdminCourseCategories,
+  fetchAdminInstructors,
+  updateAdminChapter,
+  updateAdminCourse,
+  updateAdminCourseStatus,
+  updateAdminLesson,
+  uploadFile,
+} from '../../api/index.js';
 import { usePager } from '../../composables/usePager.js';
 import { useConfirm } from '../../composables/useConfirm.js';
 import { useToast } from '../../composables/useToast.js';
@@ -266,9 +294,34 @@ const keyword = ref('');
 const categoryFilter = ref('');
 const publishFilter = ref('');
 
-const categories = COURSE_CATEGORIES;
+/* 分类与讲师取自接口；/admin/course-categories 的 id 是 code，写入接口要的是数字主键 */
+const categories = ref([]);
+const instructors = ref([]);
+
+onMounted(async () => {
+  const [cats, insts] = await Promise.all([
+    fetchAdminCourseCategories().catch(() => []),
+    fetchAdminInstructors().catch(() => []),
+  ]);
+  categories.value = cats || [];
+  instructors.value = insts || [];
+});
 
 const onlineCount = computed(() => courses.filter(c => c.published).length);
+
+/* 分类 code → course_category.id：从已有课程的 categoryId/categoryCode 对照中取 */
+const categoryIdOf = (code) => {
+  const hit = courses.find(c => (c.categoryCode || c.category) === code && c.categoryId != null);
+  return hit ? hit.categoryId : null;
+};
+
+const resolveInstructorId = async (name) => {
+  const found = instructors.value.find(i => i.name === name);
+  if (found) return found.id;
+  const created = await createAdminInstructor({ name });
+  if (created?.id) instructors.value = [...instructors.value, created];
+  return created?.id ?? null;
+};
 
 const filteredCourses = computed(() => {
   const kw = keyword.value.trim().toLowerCase();
@@ -283,29 +336,42 @@ const filteredCourses = computed(() => {
   });
 });
 
-const { page, totalPages, paged: pagedCourses, resetPage } = usePager(filteredCourses, 6);
+const { page, totalPages, paged: pagedCourses, resetPage } = usePager(filteredCourses, 8);
 watch([keyword, categoryFilter, publishFilter], resetPage);
 
 /* ---------- 弹窗表单 ---------- */
 const modalOpen = ref(false);
 const editingId = ref(null);
 const formError = ref('');
+const saving = ref(false);
+const loadingDetail = ref(false);
+const uploadingCover = ref(false);
+const uploadingLesson = ref(false);
 const form = ref({
   title: '', category: 'tech', categoryLabel: '', instructorName: '', summary: '', published: true,
   thumbnail: '', syllabus: []
 });
+
+/* 弹窗打开时的目录快照：保存时据此找出被删掉的章节与小节 */
+let savedSyllabus = [];
 
 const lessonCount = computed(() =>
   form.value.syllabus.reduce((sum, ch) => sum + (ch.lessons ? ch.lessons.length : 0), 0)
 );
 
 const syncCategoryLabel = () => {
-  form.value.categoryLabel = categories.find(c => c.id === form.value.category)?.label || '';
+  form.value.categoryLabel = categories.value.find(c => c.id === form.value.category)?.label || '';
 };
+
+const toEditorChapters = (chapters = []) => chapters.map(ch => ({
+  ...ch,
+  lessons: (ch.lessons || []).map(ls => ({ ...ls }))
+}));
 
 const openCreate = () => {
   editingId.value = null;
   formError.value = '';
+  savedSyllabus = [];
   form.value = {
     title: '', category: 'tech', categoryLabel: '技术研发', instructorName: '', summary: '', published: true,
     thumbnail: '', syllabus: []
@@ -313,9 +379,10 @@ const openCreate = () => {
   modalOpen.value = true;
 };
 
-const openEdit = (course) => {
+const openEdit = async (course) => {
   editingId.value = course.id;
   formError.value = '';
+  savedSyllabus = [];
   form.value = {
     title: course.title,
     category: course.category,
@@ -324,12 +391,21 @@ const openEdit = (course) => {
     summary: course.summary || '',
     published: course.published,
     thumbnail: course.thumbnail || '',
-    syllabus: (course.syllabus || []).map(ch => ({
-      ...ch,
-      lessons: (ch.lessons || []).map(ls => ({ ...ls }))
-    }))
+    syllabus: []
   };
   modalOpen.value = true;
+  /* 列表接口不返回章节目录，编辑时必须按课程详情取回 */
+  loadingDetail.value = true;
+  try {
+    const detail = await fetchAdminCourse(course.numericId ?? course.id);
+    const chapters = toEditorChapters(detail?.syllabus);
+    form.value.syllabus = chapters;
+    savedSyllabus = toEditorChapters(detail?.syllabus);
+  } catch (error) {
+    formError.value = error?.message || '课程目录加载失败，请稍后重试。';
+  } finally {
+    loadingDetail.value = false;
+  }
 };
 
 const closeModal = () => {
@@ -337,49 +413,113 @@ const closeModal = () => {
   formError.value = '';
 };
 
-const saveCourse = () => {
+/* 章节与小节各自走子资源接口：新增/改名/排序逐条提交，再删除快照里已不存在的行 */
+const syncSyllabus = async (courseId, chapters) => {
+  const keptChapterIds = new Set();
+  for (let ci = 0; ci < chapters.length; ci++) {
+    const chapter = chapters[ci];
+    const title = (chapter.title || '').trim() || `第 ${ci + 1} 章`;
+    let chapterId = chapter.numericId;
+    if (chapterId) {
+      await updateAdminChapter(courseId, chapterId, { title, sortNo: ci + 1 });
+    } else {
+      const created = await createAdminChapter(courseId, { title, sortNo: ci + 1 });
+      chapterId = created?.id ?? null;
+      if (!chapterId) continue;
+      chapter.numericId = chapterId;
+    }
+    keptChapterIds.add(chapterId);
+
+    const lessons = chapter.lessons || [];
+    const keptLessonIds = new Set();
+    for (let li = 0; li < lessons.length; li++) {
+      const lesson = lessons[li];
+      const payload = {
+        title: (lesson.name || '').trim() || '未命名小节',
+        durationSeconds: Number(lesson.durationSeconds || 0),
+        videoUrl: lesson.url || null,
+        sortNo: li + 1
+      };
+      if (lesson.numericId) {
+        await updateAdminLesson(courseId, chapterId, lesson.numericId, payload);
+        keptLessonIds.add(lesson.numericId);
+      } else {
+        const created = await createAdminLesson(courseId, chapterId, payload);
+        if (created?.id) {
+          lesson.numericId = created.id;
+          keptLessonIds.add(created.id);
+        }
+      }
+    }
+
+    const originChapter = savedSyllabus.find(ch => ch.numericId === chapterId);
+    for (const old of originChapter?.lessons || []) {
+      if (old.numericId && !keptLessonIds.has(old.numericId)) {
+        await deleteAdminLesson(courseId, chapterId, old.numericId);
+      }
+    }
+  }
+
+  for (const old of savedSyllabus) {
+    if (old.numericId && !keptChapterIds.has(old.numericId)) {
+      await deleteAdminChapter(courseId, old.numericId);
+    }
+  }
+};
+
+const saveCourse = async () => {
   if (!form.value.title) { formError.value = '请输入课程名称。'; return; }
   if (!form.value.instructorName) { formError.value = '请输入讲师姓名。'; return; }
 
-  const payload = {
-    title: form.value.title,
-    category: form.value.category,
-    categoryLabel: form.value.categoryLabel,
-    instructor: { name: form.value.instructorName, title: '企业认证讲师' },
-    summary: form.value.summary,
-    published: form.value.published,
-    thumbnail: form.value.thumbnail || '',
-    syllabus: form.value.syllabus.map(ch => ({
-      ...ch,
-      lessons: (ch.lessons || []).map(ls => ({
-        ...ls,
-        name: (ls.name || '').trim() || '未命名小节'
-      }))
-    }))
-  };
-
-  if (editingId.value) {
-    const target = courses.find(c => c.id === editingId.value);
-    Object.assign(target, payload);
-  } else {
-    courses.unshift({
-      id: `c-${Date.now()}`,
-      ...payload,
-      students: 0,
-      progress: 0,
-      totalLessons: 12,
-      completedLessons: 0,
-      tags: [payload.categoryLabel],
-      status: payload.published ? 'not_started' : 'offline',
-      badge: payload.published ? '新课程' : '已下架',
-      badgeType: 'primary'
-    });
+  const categoryId = categoryIdOf(form.value.category);
+  if (categoryId == null) {
+    formError.value = '未找到该分类的课程编号，请先在该分类下建课或由后端补全分类接口。';
+    return;
   }
-  closeModal();
+
+  saving.value = true;
+  formError.value = '';
+  try {
+    const instructorId = await resolveInstructorId(form.value.instructorName);
+    const payload = {
+      title: form.value.title,
+      categoryId,
+      instructorId,
+      thumbnailUrl: form.value.thumbnail || null,
+      summary: form.value.summary || null
+    };
+
+    let courseId;
+    if (editingId.value) {
+      const saved = await updateAdminCourse(editingId.value, payload);
+      courseId = saved?.id ?? editingId.value;
+      showToast(`已更新课程「${payload.title}」`, 'success');
+    } else {
+      const saved = await createAdminCourse({ ...payload, status: form.value.published ? 2 : 1 });
+      courseId = saved?.id ?? null;
+      showToast(`已创建课程「${payload.title}」`, 'success');
+    }
+
+    if (courseId) await syncSyllabus(courseId, form.value.syllabus);
+    await loadCourses();
+    closeModal();
+  } catch (error) {
+    formError.value = error?.message || '保存失败，请稍后重试。';
+  } finally {
+    saving.value = false;
+  }
 };
 
-const togglePublish = (course) => {
-  course.published = !course.published;
+const togglePublish = async (course) => {
+  /* 1 草稿 / 2 已上架 / 3 已下架 */
+  const nextCode = course.published ? 3 : 2;
+  try {
+    await updateAdminCourseStatus(course.numericId ?? course.id, nextCode);
+    await loadCourses();
+    showToast(`「${course.title}」已${nextCode === 2 ? '上架' : '下架'}`, 'success');
+  } catch (error) {
+    showToast(error?.message || '状态更新失败', 'error');
+  }
 };
 
 /* ---------- 课程目录(章节 → 小节) ---------- */
@@ -409,45 +549,54 @@ const formatDuration = (seconds) => {
   return sec ? `${min}分${sec}秒` : `${min}分`;
 };
 
-const handleLessonFile = (lesson, e) => {
+const handleLessonFile = async (lesson, e) => {
   const input = e.target;
   const file = input.files && input.files[0];
+  input.value = '';
   if (!file || !lesson) return;
-  const reset = () => { input.value = ''; };
   if (file.size > 30 * 1024 * 1024) {
     showToast('视频超过 30MB，本演示环境仅支持小文件上传。', 'error');
-    reset();
     return;
   }
-  const reader = new FileReader();
-  reader.onload = () => {
-    const stem = file.name.replace(/\.[^.]+$/, '').trim();
-    const url = String(reader.result || '');
-    lesson.url = url;
-    if (!lesson.name || lesson.name === '未命名小节' || isMeaninglessName(lesson.name)) {
-      if (!isMeaninglessName(stem)) {
-        lesson.name = stem;
-      } else if (!lesson.name || lesson.name === '未命名小节') {
-        lesson.name = '未命名小节';
-      }
+  const stem = file.name.replace(/\.[^.]+$/, '').trim();
+  if (!lesson.name || lesson.name === '未命名小节' || isMeaninglessName(lesson.name)) {
+    if (!isMeaninglessName(stem)) {
+      lesson.name = stem;
+    } else if (!lesson.name || lesson.name === '未命名小节') {
+      lesson.name = '未命名小节';
     }
+  }
+
+  uploadingLesson.value = true;
+  try {
+    const result = await uploadFile(file, 'video');
+    lesson.url = result?.url || result?.directUrl || '';
     showToast(`已上传视频：${lesson.name}`, 'success');
-    const probe = document.createElement('video');
-    probe.preload = 'metadata';
-    probe.onloadedmetadata = () => {
-      const text = formatDuration(probe.duration);
-      if (text && !lesson.duration) lesson.duration = text;
-      probe.src = '';
-    };
-    probe.onerror = () => { probe.src = ''; };
-    probe.src = url;
-    reset();
+  } catch (error) {
+    showToast(error?.message || '视频上传失败，请重试或换一个小文件。', 'error');
+    return;
+  } finally {
+    uploadingLesson.value = false;
+  }
+
+  /* 时长用本地文件探测，不必为了读元数据再把视频下载一遍 */
+  const probeUrl = URL.createObjectURL(file);
+  const probe = document.createElement('video');
+  probe.preload = 'metadata';
+  probe.onloadedmetadata = () => {
+    const seconds = Math.round(probe.duration);
+    if (Number.isFinite(seconds) && seconds > 0) {
+      lesson.durationSeconds = seconds;
+      if (!lesson.duration) lesson.duration = formatDuration(seconds);
+    }
+    probe.src = '';
+    URL.revokeObjectURL(probeUrl);
   };
-  reader.onerror = () => {
-    showToast('视频读取失败，请重试或换一个小文件。', 'error');
-    reset();
+  probe.onerror = () => {
+    probe.src = '';
+    URL.revokeObjectURL(probeUrl);
   };
-  reader.readAsDataURL(file);
+  probe.src = probeUrl;
 };
 
 const removeChapter = (chapter) => {
@@ -458,7 +607,7 @@ const removeChapter = (chapter) => {
     rows: [
       { label: '本章小节', value: `${chapter.lessons?.length || 0} 个` }
     ],
-    tip: '删除后本章及其所有小节将一并移除，请确认内容已备份。',
+    tip: '保存后本章及其所有小节将一并移除，请确认内容已备份。',
     confirmText: '确认删除',
     action: () => {
       form.value.syllabus = form.value.syllabus.filter(ch => ch.id !== chapter.id);
@@ -471,18 +620,25 @@ const removeLesson = (chapter, lesson) => {
 };
 
 /* ---------- 封面 ---------- */
-const handleCoverUpload = (e) => {
-  const file = e.target.files && e.target.files[0];
+const handleCoverUpload = async (e) => {
+  const input = e.target;
+  const file = input.files && input.files[0];
+  input.value = '';
   if (!file) return;
   if (file.size > 5 * 1024 * 1024) {
     showToast('封面图片超过 5MB，请压缩后重试。', 'error');
     return;
   }
-  const reader = new FileReader();
-  reader.onload = () => {
-    form.value.thumbnail = String(reader.result || '');
-  };
-  reader.readAsDataURL(file);
+  uploadingCover.value = true;
+  try {
+    const result = await uploadFile(file, 'cover');
+    form.value.thumbnail = result?.url || result?.directUrl || '';
+    showToast('封面已上传，保存后生效', 'success');
+  } catch (error) {
+    showToast(error?.message || '封面上传失败', 'error');
+  } finally {
+    uploadingCover.value = false;
+  }
 };
 
 const removeCourse = (course) => {
@@ -497,9 +653,14 @@ const removeCourse = (course) => {
     ],
     tip: '删除后课程内容、章节与学员学习进度将一并移除，此操作不可恢复。',
     confirmText: '确认删除',
-    action: () => {
-      const idx = courses.findIndex(c => c.id === course.id);
-      if (idx > -1) courses.splice(idx, 1);
+    action: async () => {
+      try {
+        await deleteAdminCourse(course.numericId ?? course.id);
+        await loadCourses();
+        showToast(`已删除课程「${course.title}」`, 'success');
+      } catch (error) {
+        showToast(error?.message || '删除失败', 'error');
+      }
     }
   });
 };
@@ -640,6 +801,23 @@ button { cursor: pointer; }
   border: none;
   outline: none;
 }
+
+.search-clear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 24px;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  color: var(--app-text-4);
+  background: transparent;
+  border: 0;
+  border-radius: 50%;
+  cursor: pointer;
+}
+.search-clear:hover { color: var(--app-text-2); background: var(--app-chip); }
+.search-clear svg { width: 14px; height: 14px; }
 
 .select {
   padding: 9px 12px;
@@ -1030,6 +1208,12 @@ th.ops, td.ops { text-align: right; }
   padding: 0 22px;
   font-size: 12px;
   color: var(--app-rose-fg);
+}
+
+.form-hint {
+  padding: 0 22px;
+  font-size: 12px;
+  color: var(--app-text-4);
 }
 
 .modal-actions {

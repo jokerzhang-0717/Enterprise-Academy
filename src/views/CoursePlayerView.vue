@@ -1,226 +1,170 @@
 <template>
-  <div class="player-page">
-    <!-- 1. Player Top Header -->
-    <header class="player-header">
-      <div class="player-header__left">
-        <button class="icon-btn" type="button" @click="$emit('back')" title="返回课程列表">
-          <ArrowLeft class="icon icon--sm" />
-        </button>
-
-        <div class="player-header__info">
-          <h1 class="player-header__title">
-            {{ courseTitle }}
-          </h1>
-          <div class="player-header__meta">
-            <span class="live-status">
-              <span class="live-status__dot"></span>
-              自动学时打卡生效中
-            </span>
-            <span class="meta-sep">·</span>
-            <span>{{ currentLessonLabel }}</span>
-          </div>
+  <div class="player">
+    <!-- 顶部栏 -->
+    <header class="top-bar">
+      <button class="back-btn" type="button" @click="$emit('back')" title="返回课程列表">
+        <ArrowLeft class="icon" />
+      </button>
+      <div class="top-info">
+        <h1 class="page-title">{{ courseTitle }}</h1>
+        <div class="top-meta">
+          <span class="live"><span class="live-dot"></span>自动学时打卡生效中</span>
+          <span class="sep">·</span>
+          <span>{{ currentLessonLabel }}</span>
         </div>
       </div>
-
-      <div class="player-header__right">
-        <span class="badge">课程学习中</span>
-      </div>
+      <span class="chip">课程学习中</span>
     </header>
 
-    <!-- 2. Main Player Grid -->
-    <div class="player-grid">
-      <!-- Left Column: Video + Details -->
-      <div class="player-col player-col--main">
-        <!-- Video Player Frame -->
-        <div class="video-frame">
-          <!-- Watermark -->
-          <div class="video-frame__watermark">
-            云舒艺境 · 研发工号 094821 张浩然
-          </div>
+    <!-- 主体：视频列 + 目录列 -->
+    <div class="layout">
+      <!-- 视频 + 课程详情 -->
+      <div class="col-main">
+        <div class="screen">
+          <div class="watermark">云舒艺境 · 研发工号 094821 张浩然</div>
 
           <!-- 有片源时直接播管理端为该小节绑定的视频，用原生控件 -->
-          <div class="video-screen">
-            <video
-              v-if="currentLesson && currentLesson.url"
-              :key="currentLesson.url"
-              class="video-screen__video"
-              :src="currentLesson.url"
-              controls
-            />
+          <video
+            v-if="currentLesson && currentLesson.url"
+            :key="currentLesson.url"
+            class="video"
+            :src="currentLesson.url"
+            controls
+          />
 
-            <template v-else>
-              <img class="video-screen__bg" :src="courseCover" alt="Video backdrop" />
+          <template v-else>
+            <img class="cover" :src="courseCover" alt="" />
+            <p class="notice">
+              <span class="notice-dot"></span>
+              {{ currentLesson ? '本节尚未上传视频' : '本课尚未编排小节' }}
+            </p>
+            <button class="play-btn" type="button" @click="isPlaying = !isPlaying">
+              <Pause v-if="isPlaying" class="play-icon" fill="currentColor" />
+              <Play v-else class="play-icon" fill="currentColor" />
+            </button>
+          </template>
 
-              <div class="video-screen__status">
-                <span class="video-screen__status-dot"></span>
-                <span>{{ currentLesson ? '本节尚未上传视频' : '本课尚未编排小节' }}</span>
-              </div>
-
-              <button class="video-screen__play" type="button" @click="isPlaying = !isPlaying">
-                <Pause v-if="isPlaying" class="video-screen__play-icon" />
-                <Play v-else class="video-screen__play-icon video-screen__play-icon--play" />
-              </button>
-            </template>
-          </div>
-
-          <!-- Player Controls Bar -->
-          <div v-if="!hasVideo" class="video-controls">
-            <!-- Scrub line -->
-            <div class="scrub-bar">
-              <div class="scrub-bar__fill"></div>
-              <div class="scrub-bar__thumb"></div>
+          <!-- 演示控制条：仅在没有真实视频时显示 -->
+          <div v-if="!hasVideo" class="controls">
+            <div class="scrub">
+              <div class="scrub-fill"></div>
+              <div class="scrub-thumb"></div>
             </div>
-
-            <div class="video-controls__row">
-              <div class="video-controls__group">
-                <button class="ctrl-btn" type="button" @click="isPlaying = !isPlaying">
+            <div class="controls-row">
+              <div class="controls-group">
+                <button class="control-btn" type="button" @click="isPlaying = !isPlaying">
                   <Pause v-if="isPlaying" class="icon" />
                   <Play v-else class="icon" />
                 </button>
-
-                <button class="ctrl-btn" type="button" title="后退10秒">
-                  <RotateCcw class="icon icon--sm" />
-                </button>
-
-                <button class="ctrl-btn" type="button" title="快进10秒">
-                  <RotateCw class="icon icon--sm" />
-                </button>
-
+                <button class="control-btn" type="button" title="后退10秒"><RotateCcw class="icon icon-small" /></button>
+                <button class="control-btn" type="button" title="快进10秒"><RotateCw class="icon icon-small" /></button>
                 <div class="volume">
                   <Volume2 class="icon" />
-                  <div class="volume__bar">
-                    <div class="volume__fill"></div>
-                  </div>
+                  <div class="volume-bar"><div class="volume-fill"></div></div>
                 </div>
-
-                <span class="video-controls__time">未开始 / {{ currentDuration }}</span>
+                <span class="time">未开始 / {{ currentDuration }}</span>
               </div>
-
-              <div class="video-controls__group">
-                <span class="quality-tag">1080P 高清</span>
-
+              <div class="controls-group">
+                <span class="quality">1080P 高清</span>
                 <select v-model="playbackSpeed" class="speed-select">
                   <option value="1.0x">1.0x</option>
                   <option value="1.25x">1.25x</option>
                   <option value="1.5x">1.5x</option>
                   <option value="2.0x">2.0x</option>
                 </select>
-
-                <button class="ctrl-btn" type="button" title="全屏">
-                  <Maximize2 class="icon icon--sm" />
-                </button>
+                <button class="control-btn" type="button" title="全屏"><Maximize2 class="icon icon-small" /></button>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- Course Details -->
-        <section class="panel">
-          <div class="panel__header">
-            <h2 class="panel__title">课程详情</h2>
-          </div>
-          <div class="panel__body">
-            <h3 class="detail-title">{{ currentLesson ? currentLesson.name : '本课尚未编排小节' }}</h3>
-            <p class="detail-text">{{ courseSummary }}</p>
-          </div>
+        <section class="card">
+          <h2 class="card-title">课程详情</h2>
+          <h3 class="detail-title">{{ currentLesson ? currentLesson.name : '本课尚未编排小节' }}</h3>
+          <p class="detail-text">{{ courseSummary }}</p>
         </section>
       </div>
 
-      <!-- Right Column: Syllabus -->
-      <div class="player-col player-col--side">
-        <div class="panel panel--pad">
-          <div class="syllabus__header">
-            <div class="syllabus__title-wrap">
-              <FileText class="icon icon--blue" />
-              <h3 class="panel__title">课程目录 (Syllabus)</h3>
-            </div>
-            <span class="syllabus__count">共 {{ chapters.length }} 章 · {{ totalLessons }} 节</span>
+      <!-- 课程目录 -->
+      <aside class="col-side">
+        <div class="card">
+          <div class="syllabus-head">
+            <h2 class="card-title"><FileText class="icon icon-blue" /> 课程目录</h2>
+            <span class="syllabus-count">共 {{ chapters.length }} 章 · {{ totalLessons }} 节</span>
           </div>
 
-          <div class="chapter-list">
-            <p v-if="!chapters.length" class="syllabus__empty">
-              这门课还没有章节，请到管理端 · 课程管理里编排目录。
-            </p>
+          <p v-if="!chapters.length" class="empty">
+            这门课还没有章节，请到管理端 · 课程管理里编排目录。
+          </p>
 
+          <div
+            v-for="(chapter, ci) in chapters"
+            :key="chapter.id"
+            class="chapter"
+            :class="{
+              'chapter-active': chapterState(ci) === 'active',
+              'chapter-locked': chapterState(ci) === 'locked'
+            }"
+          >
             <div
-              v-for="(chapter, ci) in chapters"
-              :key="chapter.id"
-              class="chapter"
-              :class="{
-                'chapter--active': chapterState(ci) === 'active',
-                'chapter--locked': chapterState(ci) === 'locked'
-              }"
+              class="chapter-head"
+              :class="{ 'chapter-head-active': chapterState(ci) === 'active' }"
+              @click="toggleChapter(ci)"
             >
-              <div
-                class="chapter__head"
-                :class="{ 'chapter__head--active': chapterState(ci) === 'active' }"
-                @click="toggleChapter(ci)"
-              >
-                <div
-                  class="chapter__name"
-                  :class="{ 'chapter__name--muted': chapterState(ci) === 'locked' }"
-                >
-                  <CheckCircle2 v-if="chapterState(ci) === 'done'" class="icon icon--done" />
-                  <span v-else-if="chapterState(ci) === 'active'" class="chapter__bar"></span>
-                  <Lock v-else class="icon icon--sm" />
-                  <span
-                    class="chapter__title"
-                    :class="{ 'chapter__title--active': chapterState(ci) === 'active' }"
-                  >{{ chapter.title }}</span>
-                </div>
-
-                <span v-if="chapterState(ci) === 'locked'" class="chapter__progress">待解锁</span>
-                <div v-else-if="chapterState(ci) === 'active'" class="chapter__toggle">
-                  <span>{{ doneInChapter(ci) }}/{{ lessonsOf(ci).length }} 学习中</span>
-                  <ChevronUp v-if="expandedChapter === ci" class="icon icon--sm" />
-                  <ChevronDown v-else class="icon icon--sm" />
-                </div>
-                <div v-else class="chapter__toggle">
-                  <span class="chapter__progress chapter__progress--done">
-                    {{ lessonsOf(ci).length }}/{{ lessonsOf(ci).length }}
-                  </span>
-                  <ChevronUp v-if="expandedChapter === ci" class="icon icon--sm" />
-                  <ChevronDown v-else class="icon icon--sm" />
-                </div>
+              <div class="chapter-name">
+                <CheckCircle2 v-if="chapterState(ci) === 'done'" class="icon icon-green" />
+                <span v-else-if="chapterState(ci) === 'active'" class="chapter-bar"></span>
+                <Lock v-else class="icon icon-small" />
+                <span
+                  class="chapter-title"
+                  :class="{ 'chapter-title-active': chapterState(ci) === 'active' }"
+                >{{ chapter.title }}</span>
               </div>
 
-              <div v-if="expandedChapter === ci" class="lesson-list">
-                <p v-if="!lessonsOf(ci).length" class="lesson-empty">本章还没有小节</p>
-                <div
-                  v-for="(lesson, li) in lessonsOf(ci)"
-                  :key="lesson.id"
-                  class="lesson"
-                  :class="{ 'lesson--active': isCurrent(ci, li) }"
-                  @click="openLesson(ci, li)"
-                >
-                  <div>
-                    <div class="lesson__name">
-                      <CheckCircle2
-                        v-if="lessonState(ci, li) === 'done'"
-                        class="icon icon--done icon--sm"
-                      />
-                      <Play
-                        v-else-if="isCurrent(ci, li)"
-                        class="icon icon--sm icon--fill icon--blue"
-                      />
-                      <span v-else class="lesson__ring"></span>
-                      <span :class="isCurrent(ci, li) ? 'lesson__title' : 'lesson__label'">
-                        {{ lessonLabel(lesson.name, ci, li) }}
-                      </span>
-                      <span v-if="isCurrent(ci, li)" class="lesson__tag">播放中</span>
-                    </div>
-                    <div v-if="isCurrent(ci, li)" class="lesson__meta">
-                      时长 {{ lesson.duration || '未填' }}
-                      <template v-if="!lesson.url">· 管理端尚未上传视频</template>
-                    </div>
+              <div class="chapter-stat">
+                <span v-if="chapterState(ci) === 'locked'">待解锁</span>
+                <template v-else>
+                  <span :class="{ 'chapter-stat-done': chapterState(ci) === 'done' }">
+                    {{ chapterState(ci) === 'done'
+                      ? `${lessonsOf(ci).length}/${lessonsOf(ci).length}`
+                      : `${doneInChapter(ci)}/${lessonsOf(ci).length} 学习中` }}
+                  </span>
+                  <ChevronUp v-if="expandedChapter === ci" class="icon icon-small" />
+                  <ChevronDown v-else class="icon icon-small" />
+                </template>
+              </div>
+            </div>
+
+            <div v-if="expandedChapter === ci" class="lesson-list">
+              <p v-if="!lessonsOf(ci).length" class="empty empty-small">本章还没有小节</p>
+              <div
+                v-for="(lesson, li) in lessonsOf(ci)"
+                :key="lesson.id"
+                class="lesson"
+                :class="{ 'lesson-active': isCurrent(ci, li) }"
+                @click="openLesson(ci, li)"
+              >
+                <div>
+                  <div class="lesson-name">
+                    <CheckCircle2 v-if="lessonState(ci, li) === 'done'" class="icon icon-small icon-green" />
+                    <Play v-else-if="isCurrent(ci, li)" class="icon icon-small icon-fill icon-blue" />
+                    <span v-else class="ring"></span>
+                    <span :class="isCurrent(ci, li) ? 'lesson-title' : 'lesson-label'">
+                      {{ lessonLabel(lesson.name, ci, li) }}
+                    </span>
+                    <span v-if="isCurrent(ci, li)" class="playing-tag">播放中</span>
                   </div>
-                  <span v-if="!isCurrent(ci, li)" class="lesson__dur">{{ lesson.duration }}</span>
+                  <div v-if="isCurrent(ci, li)" class="lesson-meta">
+                    时长 {{ lesson.duration || '未填' }}
+                    <template v-if="!lesson.url"> · 管理端尚未上传视频</template>
+                  </div>
                 </div>
+                <span v-if="!isCurrent(ci, li)" class="lesson-dur">{{ lesson.duration }}</span>
               </div>
             </div>
           </div>
         </div>
-      </div>
+      </aside>
     </div>
   </div>
 </template>
@@ -241,7 +185,8 @@ import {
   ChevronUp,
   Lock
 } from 'lucide-vue-next';
-import { adminStore } from '../adminStore.js';
+import { learnerStore } from '../learnerStore.js';
+import { fetchCourse } from '../api/index.js';
 
 const props = defineProps({
   courseId: {
@@ -255,19 +200,29 @@ defineEmits(['back', 'navigate']);
 const isPlaying = ref(false);
 const playbackSpeed = ref('1.25x');
 
-/* 目录与管理端同一份 adminStore.courses，管理端一改这里就跟着变 */
-const course = computed(() => {
-  const list = adminStore.courses;
+/* 基础信息用课程中心的列表缓存，避免来回切页时目录闪烁 */
+const listCourse = computed(() => {
+  const list = learnerStore.courses;
   return list.find(c => c.id === props.courseId)
     || list.find(c => (c.syllabus || []).length)
     || list[0];
 });
 
+/* /courses 列表不带 chapters，目录只能按 id 取详情 */
+const detail = ref(null);
+const course = computed(() => {
+  const base = listCourse.value;
+  if (base && detail.value && detail.value.id === base.id) return { ...base, ...detail.value };
+  return base;
+});
+
 const chapters = computed(() => course.value?.syllabus || []);
 const lessonsOf = (ci) => chapters.value[ci]?.lessons || [];
-const totalLessons = computed(() => chapters.value.reduce((n, ch) => n + (ch.lessons || []).length, 0));
+const totalLessons = computed(() =>
+  chapters.value.reduce((n, ch) => n + (ch.lessons || []).length, 0)
+);
 
-/** 学习位置:进度落在哪一节,决定章/节的 已完成·学习中·待解锁 三态 */
+/* 学习位置：进度落在哪一节，决定章/节的 已完成·学习中·待解锁 三态 */
 const positionOfProgress = () => {
   if (!chapters.value.length) return { ci: 0, li: 0 };
   const pct = Math.min(100, Math.max(0, Number(course.value?.progress) || 0));
@@ -281,7 +236,8 @@ const positionOfProgress = () => {
   return { ci: lastCi, li: Math.max(0, lessonsOf(lastCi).length - 1) };
 };
 
-/** progress = 学到哪一节(三态依据)，playing = 正在播哪一节：回看已完成小节不会把进度倒退回滚 */
+/* progress = 学到哪一节（三态依据），playing = 正在播哪一节：
+   回看已完成小节不会把进度倒退回滚 */
 const progress = ref(positionOfProgress());
 const playing = ref({ ...progress.value });
 const expandedChapter = ref(progress.value.ci);
@@ -298,6 +254,29 @@ watch(chapters, () => {
   playing.value = clampSpot(playing.value);
   if (expandedChapter.value >= chapters.value.length) expandedChapter.value = progress.value.ci;
 });
+
+/* 目录是异步补进来的，到位后按课程进度重算学习位置 */
+const syncPosition = () => {
+  const spot = positionOfProgress();
+  progress.value = spot;
+  playing.value = { ...spot };
+  expandedChapter.value = spot.ci;
+};
+
+watch(
+  () => listCourse.value?.id,
+  async (id) => {
+    detail.value = null;
+    if (!id) return;
+    try {
+      detail.value = await fetchCourse(id);
+    } catch {
+      /* 详情失败时退回列表里的课程信息 */
+    }
+    if (chapters.value.length) syncPosition();
+  },
+  { immediate: true },
+);
 
 const currentLesson = computed(() => lessonsOf(playing.value.ci)[playing.value.li] || null);
 const hasVideo = computed(() => !!currentLesson.value?.url);
@@ -331,7 +310,7 @@ const lessonState = (ci, li) => {
 const doneInChapter = (ci) =>
   ci === progress.value.ci ? progress.value.li : lessonsOf(ci).length;
 
-/* 管理端手填的小节名一般不带编号，这里补;数据里已带 "3.1" 的不再重复 */
+/* 管理端手填的小节名一般不带编号，这里补；数据里已带 "3.1" 的不再重复 */
 const lessonLabel = (name, ci, li) =>
   /^\d+\.\d+/.test(name) ? name : `${ci + 1}.${li + 1} ${name}`;
 
@@ -348,176 +327,135 @@ const openLesson = (ci, li) => {
 </script>
 
 <style scoped>
-/* ============ Design Tokens ============ */
-.player-page {
-  --c-border: #e2e8f0;
-  --c-bg-soft: #f8fafc;
-  --c-blue: #005576;
-  --c-blue-bg: #d9f0ff;
-  --c-sky: #83c9f4;
-  --c-text: #1e293b;
-  --c-text-sub: #334155;
-  --c-text-soft: #475569;
-  --c-muted: #64748b;
-  --c-gray: #94a3b8;
-  --c-purple: #6555b0;
-  --c-green: #10b981;
-  --c-green-text: #059669;
-
+/* ===== 基础 ===== */
+.player {
   display: flex;
   flex-direction: column;
   gap: 16px;
   padding-bottom: 48px;
-  animation: fadeIn 0.2s ease both;
+  color: #1f2937;
+  animation: fade-in 0.2s ease both;
 }
 
-@keyframes fadeIn {
+@keyframes fade-in {
   from { opacity: 0; }
   to   { opacity: 1; }
 }
 
 @keyframes pulse {
   0%, 100% { opacity: 1; }
-  50%      { opacity: 0.45; }
+  50%      { opacity: 0.4; }
 }
 
-/* ============ Icons ============ */
-.icon {
-  width: 18px;
-  height: 18px;
-  flex-shrink: 0;
-}
-.icon--sm {
-  width: 14px;
-  height: 14px;
-}
-.icon--fill {
-  fill: currentColor;
-}
-.icon--blue {
-  color: var(--c-blue);
-}
-.icon--done {
-  color: var(--c-green);
-}
+/* ===== 图标 ===== */
+.icon { width: 18px; height: 18px; flex-shrink: 0; }
+.icon-small { width: 14px; height: 14px; }
+.icon-fill { fill: currentColor; }
+.icon-blue { color: #2563eb; }
+.icon-green { color: #16a34a; }
 
-/* ============ Header ============ */
-.player-header {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  justify-content: space-between;
-  padding: 16px;
-  border: 1px solid var(--c-border);
-  border-radius: 12px;
-  background: #fff;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
-}
-@media (min-width: 768px) {
-  .player-header {
-    flex-direction: row;
-    align-items: center;
-  }
-}
-
-.player-header__left {
+/* ===== 顶部栏 ===== */
+.top-bar {
   display: flex;
   align-items: center;
   gap: 12px;
+  padding: 14px 16px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
 }
 
-.icon-btn {
+.back-btn {
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 8px;
-  border: 1px solid var(--c-border);
+  border: 1px solid #e5e7eb;
   border-radius: 8px;
-  color: var(--c-text-soft);
+  background: none;
+  color: #64748b;
   cursor: pointer;
   transition: background-color 0.2s ease;
 }
-.icon-btn:hover {
-  background: #f4f9fd;
-}
+.back-btn:hover { background: #f1f5f9; }
 
-.player-header__title {
+.top-info { min-width: 0; }
+
+.page-title {
   margin: 0;
   font-size: 16px;
   font-weight: 700;
-  color: var(--c-text);
 }
 
-.player-header__meta {
+.top-meta {
   display: flex;
   align-items: center;
   gap: 8px;
   margin-top: 2px;
   font-size: 12px;
-  color: var(--c-muted);
+  color: #9ca3af;
 }
 
-.live-status {
+.sep { color: #d1d5db; }
+
+.live {
   display: flex;
   align-items: center;
   gap: 4px;
   font-weight: 500;
-  color: var(--c-green-text);
+  color: #15803d;
 }
 
-.live-status__dot {
+.live-dot {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: var(--c-green);
+  background: #16a34a;
   animation: pulse 1.6s ease infinite;
 }
 
-.badge {
-  padding: 4px 8px;
+.chip {
+  margin-left: auto;
+  padding: 4px 10px;
   border-radius: 999px;
-  background: var(--c-blue-bg);
-  color: var(--c-blue);
+  background: #eff6ff;
+  color: #2563eb;
   font-size: 10px;
   font-weight: 600;
+  white-space: nowrap;
 }
 
-/* ============ Grid ============ */
-.player-grid {
+/* ===== 布局 ===== */
+.layout {
   display: grid;
   grid-template-columns: 1fr;
   gap: 20px;
 }
 @media (min-width: 1024px) {
-  .player-grid {
-    grid-template-columns: repeat(12, 1fr);
-  }
-  .player-col--main { grid-column: span 8 / span 8; }
-  .player-col--side { grid-column: span 4 / span 4; }
+  .layout { grid-template-columns: 2fr 1fr; }
 }
 
-.player-col {
+.col-main, .col-side {
   display: flex;
   flex-direction: column;
   gap: 16px;
   min-width: 0;
 }
 
-/* ============ Video Frame ============ */
-.video-frame {
+/* ===== 视频区 ===== */
+.screen {
   position: relative;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
   aspect-ratio: 16 / 9;
   overflow: hidden;
-  border: 1px solid #1e293b;
   border-radius: 16px;
-  background: #0b132b;
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+  background: #0f172a;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
 }
 
-.video-frame__watermark {
+.watermark {
   position: absolute;
   top: 12px;
   right: 16px;
@@ -529,13 +467,15 @@ const openLesson = (ci, li) => {
   pointer-events: none;
 }
 
-.video-screen {
-  position: relative;
-  flex: 1;
-  overflow: hidden;
+.video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  background: #0f172a;
 }
 
-.video-screen__bg {
+.cover {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -544,15 +484,7 @@ const openLesson = (ci, li) => {
   opacity: 0.35;
 }
 
-.video-screen__video {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  background: #0b132b;
-}
-
-.video-screen__status {
+.notice {
   position: absolute;
   top: 16px;
   left: 16px;
@@ -560,23 +492,24 @@ const openLesson = (ci, li) => {
   display: flex;
   align-items: center;
   gap: 6px;
+  margin: 0;
   padding: 4px 12px;
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 999px;
   background: rgba(0, 0, 0, 0.6);
   backdrop-filter: blur(12px);
-  color: #fff;
+  color: #f8fafc;
   font-size: 11px;
 }
 
-.video-screen__status-dot {
+.notice-dot {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: var(--c-green);
+  background: #16a34a;
 }
 
-.video-screen__play {
+.play-btn {
   position: absolute;
   left: 50%;
   top: 50%;
@@ -588,38 +521,34 @@ const openLesson = (ci, li) => {
   height: 64px;
   border: 2px solid rgba(255, 255, 255, 0.4);
   border-radius: 50%;
-  background: rgba(131, 201, 244, 0.8);
-  color: var(--c-blue);
+  background: rgba(37, 99, 235, 0.85);
+  color: #ffffff;
   cursor: pointer;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
   transform: translate(-50%, -50%);
   transition: background-color 0.2s ease, transform 0.2s ease;
 }
-.video-screen__play:hover {
-  background: var(--c-sky);
+.play-btn:hover {
+  background: #2563eb;
   transform: translate(-50%, -50%) scale(1.1);
 }
 
-.video-screen__play-icon {
-  width: 32px;
-  height: 32px;
-  fill: currentColor;
-}
-.video-screen__play-icon--play {
-  margin-left: 4px;
+.play-icon {
+  width: 30px;
+  height: 30px;
 }
 
-/* ---- Controls Bar ---- */
-.video-controls {
+/* ===== 演示控制条 ===== */
+.controls {
   z-index: 10;
   display: flex;
   flex-direction: column;
   gap: 8px;
   padding: 16px;
-  background: linear-gradient(to top, rgba(0, 0, 0, 0.9), rgba(0, 0, 0, 0.6) 50%, transparent);
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.9), rgba(0, 0, 0, 0.55) 55%, transparent);
+  color: #f8fafc;
 }
 
-.scrub-bar {
+.scrub {
   position: relative;
   width: 100%;
   height: 6px;
@@ -628,46 +557,42 @@ const openLesson = (ci, li) => {
   cursor: pointer;
 }
 
-.scrub-bar__fill {
+.scrub-fill {
   width: 66%;
   height: 100%;
   border-radius: 999px;
-  background: var(--c-sky);
+  background: #38bdf8;
 }
 
-.scrub-bar__thumb {
+.scrub-thumb {
   position: absolute;
   left: 66%;
   top: 50%;
   width: 14px;
   height: 14px;
   border-radius: 50%;
-  background: #fff;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+  background: #ffffff;
   transform: translate(-50%, -50%) scale(0);
   transition: transform 0.2s ease;
 }
-.scrub-bar:hover .scrub-bar__thumb {
-  transform: translate(-50%, -50%) scale(1);
-}
+.scrub:hover .scrub-thumb { transform: translate(-50%, -50%) scale(1); }
 
-.video-controls__row {
+.controls-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  color: #fff;
+  gap: 12px;
   font-size: 12px;
 }
 
-.video-controls__group {
+.controls-group {
   display: flex;
   align-items: center;
   gap: 12px;
 }
 
-.ctrl-btn {
+.control-btn {
   display: flex;
-  align-items: center;
   border: 0;
   padding: 0;
   background: none;
@@ -675,9 +600,7 @@ const openLesson = (ci, li) => {
   cursor: pointer;
   transition: color 0.2s ease;
 }
-.ctrl-btn:hover {
-  color: var(--c-sky);
-}
+.control-btn:hover { color: #38bdf8; }
 
 .volume {
   display: flex;
@@ -685,34 +608,32 @@ const openLesson = (ci, li) => {
   gap: 6px;
   transition: color 0.2s ease;
 }
-.volume:hover {
-  color: var(--c-sky);
-}
+.volume:hover { color: #38bdf8; }
 
-.volume__bar {
+.volume-bar {
   width: 56px;
   height: 4px;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.3);
 }
 
-.volume__fill {
+.volume-fill {
   width: 80%;
   height: 100%;
   border-radius: 999px;
-  background: #fff;
+  background: #ffffff;
 }
 
-.video-controls__time {
+.time {
   font-family: 'SFMono-Regular', Consolas, monospace;
   font-size: 11px;
   color: rgba(255, 255, 255, 0.8);
 }
 
-.quality-tag {
+.quality {
   padding: 2px 6px;
   border-radius: 4px;
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.12);
   font-size: 10px;
   color: rgba(255, 255, 255, 0.8);
 }
@@ -721,188 +642,143 @@ const openLesson = (ci, li) => {
   padding: 2px 6px;
   border: 0;
   border-radius: 4px;
-  background: rgba(255, 255, 255, 0.1);
-  color: #fff;
+  background: rgba(255, 255, 255, 0.12);
+  color: #f8fafc;
   font-size: 12px;
   outline: none;
   cursor: pointer;
 }
-.speed-select:hover {
-  background: rgba(255, 255, 255, 0.2);
-}
-.speed-select option {
-  color: #000;
-}
+.speed-select:hover { background: rgba(255, 255, 255, 0.2); }
+.speed-select option { color: #0f172a; }
 
-/* ============ Panel (通用卡片) ============ */
-.panel {
-  overflow: hidden;
-  border: 1px solid var(--c-border);
+/* ===== 卡片 ===== */
+.card {
+  padding: 20px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
   border-radius: 16px;
-  background: #fff;
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
 }
-.panel--pad {
-  padding: 20px;
-}
 
-.panel__header {
-  padding: 16px 20px;
-  border-bottom: 1px solid var(--c-border);
-}
-
-.panel__title {
-  margin: 0;
+.card-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 14px;
   font-size: 14px;
   font-weight: 700;
-  color: var(--c-text);
-}
-
-.panel__body {
-  padding: 20px;
 }
 
 .detail-title {
   margin: 0 0 8px;
   font-size: 16px;
   font-weight: 700;
-  color: var(--c-text);
 }
 
 .detail-text {
   margin: 0;
   font-size: 12px;
-  line-height: 1.625;
-  color: var(--c-muted);
+  line-height: 1.65;
+  color: #9ca3af;
 }
 
-/* ============ Syllabus ============ */
-.syllabus__header {
+/* ===== 课程目录 ===== */
+.syllabus-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 8px;
   margin-bottom: 16px;
 }
+.syllabus-head .card-title { margin: 0; }
 
-.syllabus__title-wrap {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.syllabus__count {
+.syllabus-count {
   font-size: 12px;
-  color: var(--c-gray);
+  color: #9ca3af;
+  white-space: nowrap;
 }
 
-.chapter-list {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  font-size: 12px;
-}
-
-.syllabus__empty {
+.empty {
   padding: 12px;
-  border: 1px dashed var(--c-border);
+  border: 1px dashed #e5e7eb;
   border-radius: 10px;
   font-size: 12px;
-  color: var(--c-muted);
+  color: #9ca3af;
 }
-
-.lesson-empty {
+.empty-small {
+  border: 0;
   padding: 10px 12px 12px;
-  font-size: 12px;
-  color: var(--c-muted);
 }
 
+/* ===== 章 ===== */
 .chapter {
   overflow: hidden;
-  border: 1px solid var(--c-border);
+  border: 1px solid #e5e7eb;
   border-radius: 12px;
 }
+.chapter + .chapter { margin-top: 12px; }
 
-.chapter--active {
-  border: 2px solid var(--c-sky);
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
+.chapter-active {
+  border: 2px solid #38bdf8;
 }
-
-.chapter--locked {
+.chapter-locked {
   opacity: 0.75;
 }
 
-.chapter__head {
+.chapter-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 8px;
   padding: 12px;
-  background: var(--c-bg-soft);
+  background: #f8fafc;
   cursor: pointer;
 }
-
-.chapter__head--active {
-  background: var(--c-blue-bg);
+.chapter-head-active {
+  background: #eff6ff;
 }
 
-.chapter__name {
+.chapter-name {
   display: flex;
   align-items: center;
   gap: 8px;
   min-width: 0;
 }
 
-.chapter__name--muted {
-  color: var(--c-gray);
-}
-
-.chapter__name--purple {
-  color: var(--c-purple);
-}
-
-.chapter__title {
+.chapter-title {
   font-weight: 700;
-  color: var(--c-text);
 }
+.chapter-locked .chapter-title { color: #9ca3af; }
+.chapter-title-active { color: #2563eb; }
 
-.chapter__title--active {
-  color: var(--c-blue);
-}
-
-.chapter__bar {
+.chapter-bar {
   width: 6px;
   height: 14px;
   border-radius: 999px;
-  background: var(--c-sky);
-}
-
-.chapter__progress {
-  font-family: 'SFMono-Regular', Consolas, monospace;
-  font-size: 10px;
-  color: var(--c-gray);
+  background: #38bdf8;
   flex-shrink: 0;
 }
 
-.chapter__progress--done {
-  color: var(--c-green-text);
-}
-
-.chapter__progress--purple {
-  color: var(--c-purple);
-}
-
-.chapter__toggle {
+.chapter-stat {
   display: flex;
   align-items: center;
   gap: 4px;
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--c-blue);
+  font-family: 'SFMono-Regular', Consolas, monospace;
+  font-size: 10px;
+  color: #9ca3af;
   flex-shrink: 0;
 }
+.chapter-active .chapter-stat {
+  color: #2563eb;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 600;
+}
+.chapter-stat-done { color: #15803d; }
 
-/* ---- Lessons ---- */
+/* ===== 小节 ===== */
 .lesson-list {
-  background: #fff;
+  background: #ffffff;
 }
 
 .lesson {
@@ -914,62 +790,48 @@ const openLesson = (ci, li) => {
   cursor: pointer;
   transition: background-color 0.15s ease;
 }
-.lesson + .lesson {
-  border-top: 1px solid var(--c-border);
-}
-.lesson:hover {
-  background: var(--c-bg-soft);
-}
+.lesson + .lesson { border-top: 1px solid #e5e7eb; }
+.lesson:hover { background: #f8fafc; }
 
-.lesson--active {
-  border-left: 4px solid var(--c-sky);
-  background: var(--c-blue-bg);
+.lesson-active {
+  border-left: 4px solid #38bdf8;
+  background: #eff6ff;
 }
-.lesson--active:hover {
-  background: var(--c-blue-bg);
-}
+.lesson-active:hover { background: #eff6ff; }
 
-.lesson__name {
+.lesson-name {
   display: flex;
   align-items: center;
   gap: 8px;
   min-width: 0;
-  margin-bottom: 4px;
-}
-.lesson:not(.lesson--active) .lesson__name {
-  margin-bottom: 0;
 }
 
-.lesson__title {
-  font-weight: 700;
-  color: var(--c-text);
-}
+.lesson-title { font-weight: 700; }
+.lesson-label { color: #64748b; }
 
-.lesson__label {
-  color: var(--c-text-soft);
-}
-
-.lesson__tag {
+.playing-tag {
   padding: 1px 6px;
   border-radius: 4px;
-  background: var(--c-sky);
-  color: var(--c-blue);
+  background: #38bdf8;
+  color: #ffffff;
   font-size: 9px;
 }
 
-.lesson__meta {
-  padding-left: 20px;
+.lesson-meta {
+  margin-top: 4px;
+  padding-left: 22px;
   font-size: 10px;
-  color: var(--c-muted);
+  color: #9ca3af;
 }
 
-.lesson__dur {
+.lesson-dur {
+  font-family: 'SFMono-Regular', Consolas, monospace;
   font-size: 10px;
-  color: var(--c-gray);
+  color: #9ca3af;
   flex-shrink: 0;
 }
 
-.lesson__ring {
+.ring {
   width: 14px;
   height: 14px;
   border: 1px solid #cbd5e1;

@@ -75,10 +75,6 @@ import {
 
 const props = defineProps({
   currentView:    { type: String, default: 'admin-dashboard' },
-  draftNoticeCount: { type: Number, default: 0 },
-  activeExamCount:  { type: Number, default: 0 },
-  pendingLeaveCount: { type: Number, default: 0 },
-  pendingCertCount:  { type: Number, default: 0 },
   user: {
     type: Object,
     default: () => ({
