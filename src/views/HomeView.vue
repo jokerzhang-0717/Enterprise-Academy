@@ -6,11 +6,11 @@
       <div class="welcome-content">
         <div class="welcome-tag">
           <span class="welcome-tag-dot"></span>
-          <span>企业数字化研学季进行中 · Q2加速计划</span>
+          <span>持续学习 · 稳步成长</span>
         </div>
-        <h1 class="welcome-title">欢迎来到云舒艺境，在这里，遇见更好的自己！</h1>
+        <h1 class="welcome-title">欢迎来到云舒艺境，{{ user?.name || '学员' }}</h1>
         <p class="welcome-desc">
-          今天是 2025年5月14日 星期三。永远相信美好的事情即将发生！
+          今天是 {{ todayLabel }}，永远相信美好的事情即将发生！
         </p>
       </div>
     </section>
@@ -86,68 +86,60 @@
             <button class="section-link" @click="$emit('navigate', 'courses')">全部学习档案 &gt;</button>
           </div>
 
-          <div class="course-grid">
-
-            <!-- 课程卡片 1 -->
+          <div v-if="learnerStore.loading && !learnerStore.loaded" class="course-empty">
+            正在加载你的学习记录…
+          </div>
+          <div v-else-if="!personalCourses.length" class="course-empty">
+            <p>你还没有开始学习课程，开始学习后这里会显示你的课程记录。</p>
+            <button type="button" class="course-empty-link" @click="$emit('navigate', 'courses')">
+              去课程中心
+            </button>
+          </div>
+          <div v-else class="course-grid">
             <article
+              v-for="course in personalCourses"
+              :key="course.id"
               class="course-card"
-              role="button" tabindex="0"
-              aria-label="打开云原生微服务体系架构设计与高并发实战课程详情"
-              @click="$emit('navigate', 'course-player')"
+              role="button"
+              tabindex="0"
+              :aria-label="`打开${course.title}课程`"
+              @click="$emit('open-course', course)"
               @keydown.enter="openCourseFromKeyboard"
               @keydown.space.prevent="openCourseFromKeyboard"
             >
               <div class="course-cover">
                 <img
-                  src="https://images.unsplash.com/photo-1517694712202-14dd9538aa97?auto=format&fit=crop&w=600&q=80"
-                  alt="课程封面"
+                  v-if="course.thumbnail"
+                  :src="course.thumbnail"
+                  :alt="`${course.title}课程封面`"
                   class="course-cover-img"
                 />
+                <BookOpenText v-else class="course-cover-placeholder" aria-hidden="true" />
                 <div class="course-cover-shade"></div>
-                <div class="course-badge badge-dark">岗位核心必修</div>
+                <div class="course-badge" :class="course.status === 'completed' ? 'badge-purple' : 'badge-dark'">
+                  {{ course.statusLabel || (course.status === 'completed' ? '已完成' : '学习中') }}
+                </div>
               </div>
               <div class="course-body">
                 <div class="course-teacher">
-                  <span class="course-avatar avatar-blue">陈</span>
+                  <span class="course-avatar avatar-blue">
+                    {{ course.instructor.name?.charAt(0) || '课' }}
+                  </span>
                   <div class="course-teacher-info">
                     <p class="course-teacher-label">授课讲师</p>
-                    <p class="course-teacher-name">陈立维 · 首席架构师</p>
+                    <p class="course-teacher-name">
+                      {{ course.instructor.name || '暂未设置' }}
+                      <template v-if="course.instructor.title"> · {{ course.instructor.title }}</template>
+                    </p>
                   </div>
                 </div>
-                <h3 class="course-name">云原生微服务体系架构设计与高并发实战</h3>
+                <h3 class="course-name">{{ course.title }}</h3>
+                <p class="course-progress">
+                  {{ course.status === 'completed' ? '已完成学习' : `学习进度 ${course.progress || 0}%` }}
+                  <span v-if="course.lastStudied"> · {{ course.lastStudied }}</span>
+                </p>
               </div>
             </article>
-
-            <!-- 课程卡片 2 -->
-            <article
-              class="course-card"
-              role="button" tabindex="0"
-              aria-label="打开大语言模型与企业级智能体研发实战课程详情"
-              @click="$emit('navigate', 'course-player')"
-              @keydown.enter="openCourseFromKeyboard"
-              @keydown.space.prevent="openCourseFromKeyboard"
-            >
-              <div class="course-cover">
-                <img
-                  src="https://images.unsplash.com/photo-1531482615713-2afd69097998?auto=format&fit=crop&w=600&q=80"
-                  alt="课程封面"
-                  class="course-cover-img"
-                />
-                <div class="course-cover-shade"></div>
-                <div class="course-badge badge-purple">前沿专项</div>
-              </div>
-              <div class="course-body">
-                <div class="course-teacher">
-                  <span class="course-avatar avatar-purple">周</span>
-                  <div class="course-teacher-info">
-                    <p class="course-teacher-label">授课讲师</p>
-                    <p class="course-teacher-name">周慧博士 · AI实验室</p>
-                  </div>
-                </div>
-                <h3 class="course-name">大语言模型与企业级智能体 (Agent) 研发实战</h3>
-              </div>
-            </article>
-
           </div>
         </section>
 
@@ -264,25 +256,28 @@
 
           <div class="announcement-list">
 
-            <div class="announcement-item" @click="$emit('navigate', 'messages')">
+            <div
+              v-for="(item, index) in homeAnnouncements"
+              :key="item.id"
+              class="announcement-item"
+              :class="{ 'announcement-item-last': index === homeAnnouncements.length - 1 }"
+              @click="$emit('open-message', item.id)"
+            >
               <div class="announcement-meta">
-                <span class="announcement-tag tag-blue-bg">全员通告</span>
-                <span class="announcement-date">2025-05-13</span>
+                <span
+                  class="announcement-tag"
+                  :class="item.isTop ? 'tag-amber-bg' : 'tag-blue-bg'"
+                >{{ item.typeLabel }}</span>
+                <span class="announcement-date">{{ announcementDate(item) }}</span>
               </div>
               <div class="announcement-title">
-                关于发布《2025年第二季度技术序列通用学分核算与晋升认定申报通知》...
+                <span v-if="!item.isRead" class="announcement-unread" aria-label="未读"></span>{{ item.title }}
               </div>
             </div>
 
-            <div class="announcement-item announcement-item-last" @click="$emit('navigate', 'messages')">
-              <div class="announcement-meta">
-                <span class="announcement-tag tag-amber-bg">讲师招募</span>
-                <span class="announcement-date">2025-05-11</span>
-              </div>
-              <div class="announcement-title">
-                2025「云舒内训师」金牌讲师团第二期招募启动，入选者将获得专属课程研发津贴...
-              </div>
-            </div>
+            <p v-if="!homeAnnouncements.length" class="announcement-empty">
+              暂无已发布的培训公告
+            </p>
 
           </div>
         </section>
@@ -343,12 +338,13 @@
 </template>
 
 <script setup>
-import { computed, nextTick, ref, watch } from 'vue';
-import { EXAMS_DATA, CERTIFICATES_DATA } from '../mockData.js';
+import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import { learnerStore } from '../learnerStore.js';
+import { fetchExams, fetchMyCertificates } from '../api/index.js';
 import { useMessages } from '../composables/useMessages.js';
 import { useAttendance } from '../composables/useAttendance.js';
 import { useLeaveRequests } from '../composables/useLeaveRequests.js';
+import { useToast } from '../composables/useToast.js';
 import {
   Play,
   FileCheck2,
@@ -375,14 +371,27 @@ const props = defineProps({
     type: String,
     default: '',
   },
+  user: {
+    type: Object,
+    default: null,
+  },
 });
 
-defineEmits(['navigate', 'open-course']);
+defineEmits(['navigate', 'open-course', 'open-message']);
 
 /* ---------- 快捷入口：副标题与目标页同一份数据 ---------- */
 const messages = useMessages();
 const leaveRecords = useLeaveRequests();
 const { isCheckedIn, checkedInAt } = useAttendance();
+const { show: showToast } = useToast();
+const examAssignments = ref(null);
+const certificateCount = ref(null);
+const todayLabel = new Intl.DateTimeFormat('zh-CN', {
+  year: 'numeric',
+  month: 'long',
+  day: 'numeric',
+  weekday: 'long',
+}).format(new Date());
 const selectedGuide = ref(null);
 const guideModalCloseButton = ref(null);
 const guideTrigger = ref(null);
@@ -438,15 +447,19 @@ const openGuideFromKeyboard = (event, id) => {
   if (event.target === event.currentTarget) openGuide(id, event);
 };
 
-/* 上次学的 → 在修的 → 首个有目录的 → 第一门；卡片点击直接带着这门课进播放页，两边不会错位 */
-const currentCourse = computed(() => {
-  const list = learnerStore.courses;
-  const progressOf = (c) => Number(c.progress) || 0;
-  return list.find(c => c.id === props.courseId)
-    || list.find(c => progressOf(c) > 0 && (c.syllabus || []).length)
-    || list.find(c => (c.syllabus || []).length)
-    || list[0];
-});
+const personalCourses = computed(() => learnerStore.courses
+  .filter((course) => course.status === 'studying'
+    || course.status === 'completed'
+    || Number(course.progress) > 0
+    || Boolean(course.lastStudiedAt))
+  .slice()
+  .sort((a, b) => String(b.lastStudiedAt || '').localeCompare(String(a.lastStudiedAt || '')))
+  .slice(0, 2));
+
+const currentCourse = computed(() =>
+  personalCourses.value.find((course) => course.id === props.courseId)
+    || personalCourses.value[0]
+);
 
 const hasStarted = computed(() => (Number(currentCourse.value?.progress) || 0) > 0);
 const courseTitle = computed(() => hasStarted.value ? '继续上次学习' : '开始学习');
@@ -459,11 +472,13 @@ const courseSub = computed(() => {
   return hasStarted.value ? `${label} · ${course.progress}%` : `${label} · 未开始`;
 });
 
-const runningExamCount = computed(() => EXAMS_DATA.filter(e => e.status === 'in_progress').length);
-const examSub = computed(() =>
-  runningExamCount.value
-    ? `${runningExamCount.value} 场进行中考核`
-    : `${EXAMS_DATA.length} 场考核待完成`);
+const examSub = computed(() => {
+  if (!examAssignments.value) return '考核数据加载中…';
+  const runningCount = examAssignments.value.filter((exam) => exam.status === 'in_progress').length;
+  const pendingCount = examAssignments.value.filter((exam) => exam.status !== 'completed').length;
+  if (runningCount) return `${runningCount} 场进行中考核`;
+  return pendingCount ? `${pendingCount} 场考核待完成` : '暂无待完成考核';
+});
 
 const pendingLeaveCount = computed(() => leaveRecords.value.filter(r => r.status === 'pending').length);
 const attendanceSub = computed(() => {
@@ -473,11 +488,55 @@ const attendanceSub = computed(() => {
   return pendingLeaveCount.value ? `未签到 · ${pendingLeaveCount.value} 条审批中` : '未签到 · 无待审批请假';
 });
 
-const certificateSub = computed(() => `已获 ${CERTIFICATES_DATA.length} 项专业认证`);
+const certificateSub = computed(() =>
+  certificateCount.value === null ? '证书数据加载中…' : `已获 ${certificateCount.value} 项专业认证`);
+
+onMounted(async () => {
+  const [examsResult, certificatesResult] = await Promise.allSettled([
+    fetchExams(),
+    fetchMyCertificates(),
+  ]);
+  if (examsResult.status === 'fulfilled') {
+    examAssignments.value = examsResult.value.assignments || [];
+  } else {
+    showToast(examsResult.reason?.message || '考核数据加载失败。', 'error');
+  }
+  if (certificatesResult.status === 'fulfilled') {
+    certificateCount.value = certificatesResult.value.length;
+  } else {
+    showToast(certificatesResult.reason?.message || '证书数据加载失败。', 'error');
+  }
+});
 
 const unreadCount = computed(() => messages.value.filter(m => !m.isRead).length);
 const messageSub = computed(() =>
   unreadCount.value ? `${unreadCount.value} 条未读消息` : '暂无未读消息');
+
+/* ---------- 企业培训公告：与消息中心的公告数据同源 ---------- */
+const announcementDate = (item) => {
+  const value = item?.publishAt || item?.createdAt;
+  if (!value) return '';
+  const text = String(value);
+  if (/^\d{4}-\d{2}-\d{2}/.test(text)) return text.slice(0, 10);
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return text;
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+};
+
+const announcementTime = (item) => {
+  const value = item?.publishAt || item?.createdAt;
+  const time = value ? new Date(value).getTime() : 0;
+  return Number.isNaN(time) ? 0 : time;
+};
+
+const homeAnnouncements = computed(() =>
+  [...messages.value]
+    .sort((a, b) => {
+      if (Boolean(a.isTop) !== Boolean(b.isTop)) return a.isTop ? -1 : 1;
+      return announcementTime(b) - announcementTime(a);
+    })
+    .slice(0, 2));
 
 /* ---------- 键盘无障碍操作 ---------- */
 const openCourseFromKeyboard = (event) => {
@@ -780,6 +839,31 @@ watch(
   grid-template-columns: minmax(0, 1fr);
   gap: 1rem;
 }
+.course-empty {
+  display: flex;
+  min-height: 10rem;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 1.5rem;
+  border: 1px dashed var(--app-border);
+  border-radius: 0.75rem;
+  background: var(--app-surface);
+  color: var(--app-text-4);
+  font-size: 0.875rem;
+  text-align: center;
+}
+.course-empty p { margin: 0; }
+.course-empty-link {
+  padding: 0.45rem 0.85rem;
+  border: 0;
+  border-radius: 0.5rem;
+  background: var(--app-accent);
+  color: var(--app-on-accent-solid);
+  cursor: pointer;
+  font: inherit;
+}
 @media (min-width: 768px) {
   .course-grid { grid-template-columns: 1fr 1fr; }
 }
@@ -819,6 +903,14 @@ watch(
   object-fit: cover;
   opacity: 0.9;
   transition: transform 0.5s;
+}
+.course-cover-placeholder {
+  position: absolute;
+  inset: 0;
+  width: 3rem;
+  height: 3rem;
+  margin: auto;
+  color: var(--app-accent-soft);
 }
 .course-card:hover .course-cover-img {
   transform: scale(1.05);
@@ -896,6 +988,11 @@ watch(
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+.course-progress {
+  margin: 0.5rem 0 0;
+  color: var(--app-text-4);
+  font-size: 0.6875rem;
 }
 
 /* ==================== 08 新员工入职手册 ==================== */
@@ -1368,12 +1465,31 @@ watch(
   margin-bottom: 0.25rem;
 }
 .announcement-title {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
   font-size: 0.75rem;
   font-weight: 600;
   color: var(--app-text);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* 未读公告红点，与消息中心已读状态同步 */
+.announcement-unread {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--app-rose-500, #ef4444);
+}
+
+.announcement-empty {
+  padding: 1.25rem 0.5rem;
+  text-align: center;
+  font-size: 0.75rem;
+  color: var(--app-text-5);
 }
 
 /* ==================== 11 标签配色变体 ==================== */

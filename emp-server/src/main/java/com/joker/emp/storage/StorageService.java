@@ -140,6 +140,19 @@ public class StorageService {
     }
   }
 
+  public InputStream open(String objectName, long offset, long length) {
+    try {
+      return client.getObject(GetObjectArgs.builder()
+          .bucket(properties.getBucket())
+          .object(objectName)
+          .offset(offset)
+          .length(length)
+          .build());
+    } catch (Exception ex) {
+      throw BizException.notFound("文件不存在：" + objectName);
+    }
+  }
+
   public StatObjectResponse stat(String objectName) {
     try {
       return client.statObject(StatObjectArgs.builder()

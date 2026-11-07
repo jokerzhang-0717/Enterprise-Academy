@@ -117,6 +117,9 @@ public class ExamService {
     exam.setParticipantCountCached(0);
     exam.setCreatedBy(com.joker.emp.security.AuthContext.userId());
     examMapper.insert(exam);
+    if (request.questionIds() != null) {
+      updateQuestionSet(exam, request.questionIds());
+    }
     logService.record("exam", "新增考试 " + exam.getTitle(), "exam", exam.getId());
     return detail(exam.getId());
   }
@@ -124,17 +127,47 @@ public class ExamService {
   @Transactional
   public Map<String, Object> update(Long id, ExamSaveRequest request) {
     Exam exam = requireExam(id);
-    if (request.status() != null) {
-      validateStatus(id, request.status());
+    if (request.questionIds() != null) {
+      questionService.replaceExamQuestions(id, request.questionIds());
     }
     apply(exam, request);
     if (request.status() != null) exam.setStatus(request.status());
     if (request.durationMinutes() != null) exam.setDurationMinutes(request.durationMinutes());
     if (request.totalScore() != null) exam.setTotalScore(request.totalScore());
     if (request.passScore() != null) exam.setPassScore(request.passScore());
+    if (request.questionIds() != null) {
+      exam.setTotalScore(totalQuestionScore(id));
+      exam.setQuestionCountCached((int) questionService.countByExam(id));
+      if (exam.getPassScore() != null && exam.getPassScore().compareTo(exam.getTotalScore()) > 0) {
+        throw new BizException("及格分不能超过试卷总分");
+      }
+    }
+    if (request.status() != null) {
+      validateStatus(id, request.status());
+    }
     examMapper.updateById(exam);
+    if (request.status() != null && isPublished(request.status())) {
+      assignToActiveLearners(id);
+      refreshParticipantCount(id);
+    }
     logService.record("exam", "更新考试 " + exam.getTitle(), "exam", id);
     return detail(id);
+  }
+
+  private void updateQuestionSet(Exam exam, List<Long> questionIds) {
+    questionService.replaceExamQuestions(exam.getId(), questionIds);
+    exam.setTotalScore(totalQuestionScore(exam.getId()));
+    if (exam.getPassScore() != null && exam.getPassScore().compareTo(exam.getTotalScore()) > 0) {
+      throw new BizException("及格分不能超过试卷总分");
+    }
+    exam.setQuestionCountCached((int) questionService.countByExam(exam.getId()));
+    examMapper.updateById(exam);
+  }
+
+  private BigDecimal totalQuestionScore(Long examId) {
+    return questionService.questionsOf(examId).stream()
+        .map(question -> question.getScore() == null ? BigDecimal.ZERO : question.getScore())
+        .reduce(BigDecimal.ZERO, BigDecimal::add);
   }
 
   @Transactional
@@ -153,7 +186,40 @@ public class ExamService {
     update.setStatus(status);
     update.setQuestionCountCached((int) questionService.countByExam(id));
     examMapper.updateById(update);
+    if (isPublished(status)) {
+      assignToActiveLearners(id);
+      refreshParticipantCount(id);
+    }
     logService.record("exam", statusText(status) + "考试 " + exam.getTitle(), "exam", id);
+  }
+
+  private boolean isPublished(Integer status) {
+    return status != null && (status == 2 || status == 3);
+  }
+
+  private void assignToActiveLearners(Long examId) {
+    List<SysUser> learners = userMapper.selectList(Wrappers.<SysUser>lambdaQuery()
+        .eq(SysUser::getRole, 1)
+        .eq(SysUser::getAccountStatus, 1));
+    if (learners.isEmpty()) {
+      return;
+    }
+
+    List<Long> assignedUserIds = assignmentMapper.selectList(
+        Wrappers.<ExamAssignment>lambdaQuery().eq(ExamAssignment::getExamId, examId))
+        .stream().map(ExamAssignment::getUserId).toList();
+    java.util.Set<Long> assigned = new java.util.HashSet<>(assignedUserIds);
+    for (SysUser learner : learners) {
+      if (assigned.add(learner.getId())) {
+        ExamAssignment assignment = new ExamAssignment();
+        assignment.setExamId(examId);
+        assignment.setUserId(learner.getId());
+        assignment.setStatus(1);
+        assignment.setAttemptsAllowed(1);
+        assignment.setAttemptsUsed(0);
+        assignmentMapper.insert(assignment);
+      }
+    }
   }
 
   private void validateStatus(Long id, Integer status) {
@@ -781,7 +847,7 @@ public class ExamService {
       Integer status, String location, LocalDateTime startAt, LocalDateTime endAt,
       Integer durationMinutes, BigDecimal totalScore, BigDecimal passScore,
       Boolean isDoubleCamera, Long relatedCourseId, String relatedCourseText,
-      Integer remainingChance) {
+      Integer remainingChance, List<Long> questionIds) {
   }
 
   public record AssignRequest(List<Long> userIds, Integer attemptsAllowed,

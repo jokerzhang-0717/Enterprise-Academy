@@ -209,7 +209,7 @@
                     <input v-model.trim="lesson.name" type="text" class="field-input syl-lesson-name" placeholder="小节名称" />
                     <label class="upload-btn upload-btn--video upload-btn--sm">
                       <input type="file" accept="video/*" class="file-input-hidden" @change="handleLessonFile(lesson, $event)" />
-                      <span>↑</span> {{ uploadingLesson ? '上传中…' : '上传视频' }}
+                      <span>↑</span> {{ isLessonUploading(lesson) ? '上传中…' : '上传视频' }}
                     </label>
                     <button type="button" class="del-lesson-btn" title="删除小节" @click="removeLesson(chapter, lesson)">
                       <Delete class="del-lesson-icon" /> 删除
@@ -346,7 +346,9 @@ const formError = ref('');
 const saving = ref(false);
 const loadingDetail = ref(false);
 const uploadingCover = ref(false);
-const uploadingLesson = ref(false);
+/* 按小节对象记录上传状态，避免上传一个视频时所有小节都显示「上传中」 */
+const uploadingLessons = ref(new Set());
+const isLessonUploading = (lesson) => uploadingLessons.value.has(lesson);
 const form = ref({
   title: '', category: 'tech', categoryLabel: '', instructorName: '', summary: '', published: true,
   thumbnail: '', syllabus: []
@@ -567,7 +569,7 @@ const handleLessonFile = async (lesson, e) => {
     }
   }
 
-  uploadingLesson.value = true;
+  uploadingLessons.value.add(lesson);
   try {
     const result = await uploadFile(file, 'video');
     lesson.url = result?.url || result?.directUrl || '';
@@ -576,7 +578,7 @@ const handleLessonFile = async (lesson, e) => {
     showToast(error?.message || '视频上传失败，请重试或换一个小文件。', 'error');
     return;
   } finally {
-    uploadingLesson.value = false;
+    uploadingLessons.value.delete(lesson);
   }
 
   /* 时长用本地文件探测，不必为了读元数据再把视频下载一遍 */

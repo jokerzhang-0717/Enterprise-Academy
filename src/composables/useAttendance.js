@@ -14,8 +14,11 @@ const attendanceLoading = ref(false);
 
 const formatTime = (time) => {
   if (!time) return '';
-  // 如果是字符串，直接返回
-  if (typeof time === 'string') return time;
+  if (typeof time === 'string') {
+    const match = /^(\d{1,2}):(\d{2})(?::(\d{2}))?/.exec(time);
+    if (!match) return time;
+    return `${match[1].padStart(2, '0')}:${match[2]}:${(match[3] || '00').padStart(2, '0')}`;
+  }
   // 如果是对象（LocalTime），格式化为 HH:mm:ss
   if (typeof time === 'object' && time !== null) {
     const hours = String(time.hours || 0).padStart(2, '0');

@@ -1,20 +1,22 @@
 import { ref } from 'vue';
 import {
-  deleteNotification,
-  fetchNotifications,
-  markAllNotificationsRead,
-  markNotificationRead,
+  fetchAnnouncement,
+  fetchAnnouncementMessages,
+  markAllAnnouncementsRead,
 } from '../api/index.js';
 
+/**
+ * 学员端消息中心 = 管理端「公告管理」中已发布的公告。
+ * 草稿、撤回的公告不会出现在这里；已读状态由后端 announcement_read 维护。
+ */
 const messages = ref([]);
 let loaded = false;
 let loadingPromise = null;
 
-/** 拉取当前用户的站内信 / 通知 */
 export const loadMessages = async (force = false) => {
   if (loaded && !force) return messages.value;
   if (loadingPromise) return loadingPromise;
-  loadingPromise = fetchNotifications({ page: 1, size: 100 })
+  loadingPromise = fetchAnnouncementMessages({ page: 1, size: 100 })
     .then((page) => {
       messages.value = page.records || [];
       loaded = true;
@@ -35,26 +37,27 @@ export const resetMessages = () => {
 export const markMessageRead = async (id, isRead = true) => {
   const target = messages.value.find((item) => item.id === id);
   if (!target || target.isRead === isRead) return;
-  await markNotificationRead(id, isRead);
-  target.isRead = isRead;
+  if (isRead) {
+    // 公告详情接口会记录当前用户的已读状态
+    await fetchAnnouncement(target.numericId ?? target.id);
+    target.isRead = true;
+  } else {
+    target.isRead = false;
+  }
 };
 
 export const markAllMessagesRead = async () => {
   if (!messages.value.some((item) => !item.isRead)) return 0;
   const count = messages.value.filter((item) => !item.isRead).length;
-  await markAllNotificationsRead();
+  await markAllAnnouncementsRead();
   messages.value.forEach((item) => {
     item.isRead = true;
   });
   return count;
 };
 
+/** 公告为全员广播，学员端删除仅从当前页面移除，刷新后仍会保留。 */
 export const removeMessages = async (ids) => {
-  const numericIds = ids
-    .map((id) => messages.value.find((item) => item.id === id))
-    .filter(Boolean)
-    .map((item) => item.numericId ?? item.id);
-  await Promise.all(numericIds.map((id) => deleteNotification(id)));
   messages.value = messages.value.filter((item) => !ids.includes(item.id));
 };
 

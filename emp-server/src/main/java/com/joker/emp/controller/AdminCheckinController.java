@@ -5,6 +5,7 @@ import com.joker.emp.common.PageResult;
 import com.joker.emp.security.AdminOnly;
 import com.joker.emp.service.CheckinService;
 import com.joker.emp.service.CheckinService.CheckinSaveRequest;
+import com.joker.emp.service.CheckinService.CheckinUpdateRequest;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
@@ -54,7 +55,7 @@ public class AdminCheckinController {
 
   @PutMapping("/{id}")
   public ApiResponse<Map<String, Object>> update(@PathVariable Long id,
-      @RequestBody CheckinSaveRequest request) {
+      @RequestBody CheckinUpdateRequest request) {
     return ApiResponse.ok(checkinService.update(id, request));
   }
 

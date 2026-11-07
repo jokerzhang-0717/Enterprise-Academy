@@ -8,7 +8,7 @@
       <div class="modal-header">
         <div class="status-group">
           <span class="status-dot"></span>
-          <span class="status-text">企业级官方资质认证 · 证书防伪验证通过</span>
+          <span class="status-text">已发放证书</span>
         </div>
         <button class="close-btn" @click="closeModal">
           <span class="close-icon"></span>
@@ -25,11 +25,11 @@
           <!-- 页眉 -->
           <div class="certificate-header">
             <div class="header-title">ENTERPRISE TECHNICAL CERTIFICATION</div>
-            <div class="header-org">云舒艺境 · 企业数字化人才培养委员会</div>
+            <div v-if="certificate.issueOrg" class="header-org">{{ certificate.issueOrg }}</div>
           </div>
 
           <!-- 等级徽章 -->
-          <div class="level-badge">
+          <div v-if="certificate.level" class="level-badge">
             <span>🛡</span>
             <span>{{ certificate.level }}</span>
           </div>
@@ -39,7 +39,7 @@
 
           <!-- 获奖人 -->
           <p class="recipient-intro">特此证明</p>
-          <div class="recipient-name">{{ recipientName }}</div>
+          <div v-if="recipientName" class="recipient-name">{{ recipientName }}</div>
 
           <!-- 证书说明 -->
           <p class="certificate-desc">{{ certificate.description }}</p>
@@ -48,33 +48,25 @@
           <div class="info-grid">
             <div class="info-item">
               <span class="info-label">颁发机构</span>
-              <span class="info-value">{{ certificate.issueOrg }}</span>
+              <span class="info-value">{{ certificate.issueOrg || '—' }}</span>
             </div>
             <div class="info-item">
               <span class="info-label">签发时间</span>
-              <span class="info-value">{{ certificate.issueDate }}</span>
+              <span class="info-value">{{ certificate.issueDate || '—' }}</span>
             </div>
             <div class="info-item">
               <span class="info-label">资质有效期</span>
-              <span class="info-value">{{ certificate.validity }}</span>
+              <span class="info-value">{{ certificate.validity || '—' }}</span>
             </div>
           </div>
 
           <!-- 底部 -->
           <div class="certificate-footer">
-            <div class="qr-block">
-              <div class="qr-icon"></div>
+            <div v-if="certificate.blockchainHash || certificate.serialNumber" class="qr-block">
               <div class="qr-text">
-                <div>扫码校验链上存证</div>
-                <div class="qr-code">Block: #09281-ZK</div>
+                <div>{{ certificate.blockchainHash ? '区块链存证摘要' : '证书编号' }}</div>
+                <div class="qr-code">{{ certificate.blockchainHash || certificate.serialNumber }}</div>
               </div>
-            </div>
-
-            <!-- 红色印章 -->
-            <div class="seal">
-              <div class="seal-org">企业技术委员会</div>
-              <div class="seal-main">★ 认证验讫 ★</div>
-              <div class="seal-sub">LMS VERIFIED</div>
             </div>
           </div>
 
@@ -88,7 +80,7 @@
 <script setup>
 const props = defineProps({
   certificate: { type: Object, default: null },
-  recipientName: { type: String, default: '张浩然' }
+  recipientName: { type: String, default: '' }
 });
 
 const emit = defineEmits(['close']);
@@ -353,8 +345,7 @@ button {
 /* ========== 底部 ========== */
 .certificate-footer {
   display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
+  align-items: center;
   padding-top: 16px;
   border-top: 1px solid var(--app-border);
 }
@@ -366,70 +357,15 @@ button {
   text-align: left;
 }
 
-.qr-icon {
-  width: 40px;
-  height: 40px;
-  border: 1px solid var(--app-border-strong);
-  border-radius: 4px;
-  padding: 4px;
-  background:
-    linear-gradient(var(--app-text-2), var(--app-text-2)) 4px 4px / 10px 10px no-repeat,
-    linear-gradient(var(--app-text-2), var(--app-text-2)) 26px 4px / 10px 10px no-repeat,
-    linear-gradient(var(--app-text-2), var(--app-text-2)) 4px 26px / 10px 10px no-repeat,
-    linear-gradient(var(--app-text-2), var(--app-text-2)) 20px 16px / 4px 4px no-repeat,
-    linear-gradient(var(--app-text-2), var(--app-text-2)) 28px 20px / 4px 4px no-repeat,
-    linear-gradient(var(--app-text-2), var(--app-text-2)) 16px 28px / 4px 4px no-repeat,
-    linear-gradient(var(--app-text-2), var(--app-text-2)) 24px 28px / 4px 4px no-repeat,
-    linear-gradient(var(--app-text-2), var(--app-text-2)) 32px 32px / 4px 4px no-repeat,
-    linear-gradient(var(--app-text-2), var(--app-text-2)) 20px 20px / 4px 4px no-repeat;
-  background-color: var(--app-surface);
-  flex-shrink: 0;
-}
-
 .qr-text {
   font-size: 10px;
   color: var(--app-text-4);
   line-height: 1.5;
+  overflow-wrap: anywhere;
 }
 
 .qr-code {
   font-family: "SFMono-Regular", Consolas, Menlo, monospace;
   color: var(--app-accent-deep);
-}
-
-/* 红色印章 */
-.seal {
-  width: 80px;
-  height: 80px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 4px;
-  color: var(--app-red-600);
-  border: 2px dashed var(--app-red-600);
-  border-radius: 50%;
-  transform: rotate(-12deg);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-  opacity: 0.85;
-  user-select: none;
-  text-align: center;
-}
-
-.seal-org {
-  font-size: 8px;
-  font-weight: 700;
-  letter-spacing: -0.05em;
-}
-
-.seal-main {
-  margin: 2px 0;
-  font-size: 11px;
-  font-weight: 700;
-}
-
-.seal-sub {
-  font-size: 7px;
-  font-weight: 700;
 }
 </style>

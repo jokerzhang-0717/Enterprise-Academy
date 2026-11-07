@@ -16,9 +16,10 @@ public interface CheckinRecordMapper extends BaseMapper<CheckinRecord> {
   @Select("""
       <script>
       SELECT cr.id, cr.user_id AS userId, u.name AS userName, u.employee_no AS employeeNo,
+             u.avatar_url AS avatarUrl,
              d.name AS department, cr.course_id AS courseId, c.title AS courseTitle,
              cr.checkin_date AS checkinDate, cr.check_in_time AS checkInTime,
-             cr.check_out_time AS checkOutTime, cr.method, cr.status, cr.location
+             cr.check_out_time AS checkOutTime, cr.method, cr.status
       FROM checkin_record cr
       JOIN sys_user u ON u.id = cr.user_id
       LEFT JOIN department d ON d.id = u.department_id
@@ -42,7 +43,7 @@ public interface CheckinRecordMapper extends BaseMapper<CheckinRecord> {
   @Select("""
       <script>
       SELECT cr.id, cr.checkin_date AS checkinDate, cr.check_in_time AS checkInTime,
-             cr.check_out_time AS checkOutTime, cr.method, cr.status, cr.location,
+             cr.check_out_time AS checkOutTime, cr.method, cr.status,
              cr.course_id AS courseId, c.title AS courseTitle
       FROM checkin_record cr
       LEFT JOIN course c ON c.id = cr.course_id

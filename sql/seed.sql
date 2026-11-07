@@ -329,55 +329,42 @@ INSERT INTO exam (id, ext_id, code, title, organizer, exam_type, status, locatio
 --   exam-2/3   = ADMIN_QUESTION_BANK 里 q-6~q-12（q-1~q-5 与试卷内容重复，已去重）
 --   correct_answer：单选/判断存 'A'，多选按字母序存 'ABD'；主观题为 NULL
 -- -----------------------------------------------------------------------------
-INSERT INTO exam_question (id, ext_id, exam_id, question_no, type, score, title, code_filename, code_runtime, code_content, correct_answer, reference_answer, analysis) VALUES
-(1,  NULL, 1, 1,  1, 5.0, '在分布式系统中，服务发现机制的主要作用是什么？', NULL, NULL, NULL, 'A', NULL, NULL),
-(2,  NULL, 1, 2,  1, 5.0, '使用数据库索引时，最需要关注的性能影响是什么？', NULL, NULL, NULL, 'A', NULL, NULL),
-(3,  NULL, 1, 3,  1, 5.0, '在 REST API 设计中，哪个 HTTP 方法通常用于读取资源？', NULL, NULL, NULL, 'A', NULL, NULL),
-(4,  NULL, 1, 4,  1, 5.0, '缓存穿透问题通常可以通过哪种方式缓解？', NULL, NULL, NULL, 'A', NULL, NULL),
-(5,  NULL, 1, 5,  1, 5.0, '消息队列中消费者确认机制的主要目的是什么？', NULL, NULL, NULL, 'A', NULL, NULL),
-(6,  NULL, 1, 6,  1, 5.0, '微服务之间进行身份认证时，哪种做法更合适？', NULL, NULL, NULL, 'A', NULL, NULL),
-(7,  NULL, 1, 7,  1, 5.0, '容器编排平台中，健康检查主要用于什么？', NULL, NULL, NULL, 'A', NULL, NULL),
-(8,  NULL, 1, 8,  1, 5.0, '在关系型数据库事务中，ACID 中的原子性表示什么？', NULL, NULL, NULL, 'A', NULL, NULL),
-(9,  NULL, 1, 9,  1, 5.0, '代码审查中，最适合优先关注哪类问题？', NULL, NULL, NULL, 'A', NULL, NULL),
-(10, NULL, 1, 10, 1, 5.0, '日志中加入请求关联 ID 的主要价值是什么？', NULL, NULL, NULL, 'A', NULL, NULL),
-(11, NULL, 1, 11, 1, 5.0, '负载均衡器的核心职责是什么？', NULL, NULL, NULL, 'A', NULL, NULL),
+INSERT INTO exam_question (id, ext_id, exam_id, question_no, type, score, title, correct_answer, reference_answer, analysis) VALUES
+(1,  NULL, 1, 1,  1, 5.0, '在分布式系统中，服务发现机制的主要作用是什么？', 'A', NULL, NULL),
+(2,  NULL, 1, 2,  1, 5.0, '使用数据库索引时，最需要关注的性能影响是什么？', 'A', NULL, NULL),
+(3,  NULL, 1, 3,  1, 5.0, '在 REST API 设计中，哪个 HTTP 方法通常用于读取资源？', 'A', NULL, NULL),
+(4,  NULL, 1, 4,  1, 5.0, '缓存穿透问题通常可以通过哪种方式缓解？', 'A', NULL, NULL),
+(5,  NULL, 1, 5,  1, 5.0, '消息队列中消费者确认机制的主要目的是什么？', 'A', NULL, NULL),
+(6,  NULL, 1, 6,  1, 5.0, '微服务之间进行身份认证时，哪种做法更合适？', 'A', NULL, NULL),
+(7,  NULL, 1, 7,  1, 5.0, '容器编排平台中，健康检查主要用于什么？', 'A', NULL, NULL),
+(8,  NULL, 1, 8,  1, 5.0, '在关系型数据库事务中，ACID 中的原子性表示什么？', 'A', NULL, NULL),
+(9,  NULL, 1, 9,  1, 5.0, '代码审查中，最适合优先关注哪类问题？', 'A', NULL, NULL),
+(10, NULL, 1, 10, 1, 5.0, '日志中加入请求关联 ID 的主要价值是什么？', 'A', NULL, NULL),
+(11, NULL, 1, 11, 1, 5.0, '负载均衡器的核心职责是什么？', 'A', NULL, NULL),
 (12, 'q12', 1, 12, 1, 5.0, '关于 Spring Boot 3 与 JDK 21 运行环境下 Virtual Threads (虚拟线程) 的并发模型与底层载体线程 (Carrier Thread) 调度机制描述，下列哪项是完全正确的？',
- 'application.yml & ThreadPoolConfig.java', 'Java 21 LTS · Virtual Thread Runtime',
- '# application.yml 核心运行时声明
-spring:
-  threads:
-    virtual:
-      enabled: true
-
-// 监控切片与底层堆栈调用观察点
-Thread vThread = Thread.ofVirtual().name("enterprise-worker-", 0).start(() -> {
-    // 触发网络阻塞调用点: Database I/O & Microservice RPC
-    var response = remoteRestClient.executeBlockingQuery();
-    logger.info("Handled on carrier: {}", Thread.currentThread());
-});',
  'B', NULL, '符合 Project Loom 与 Spring 3 标准架构'),
-(13, NULL, 1, 13, 1, 5.0, '使用幂等接口设计可以避免哪类问题？', NULL, NULL, NULL, 'A', NULL, NULL),
-(14, NULL, 1, 14, 1, 5.0, '持续集成流程中，自动化测试通常在哪个阶段运行？', NULL, NULL, NULL, 'A', NULL, NULL),
-(15, NULL, 1, 15, 1, 5.0, '敏感配置项在生产环境中应如何管理？', NULL, NULL, NULL, 'A', NULL, NULL),
-(16, NULL, 1, 16, 2, 4.0, '以下哪些措施有助于提升微服务系统的韧性？（多选）', NULL, NULL, NULL, 'ABD', NULL, NULL),
-(17, NULL, 1, 17, 2, 4.0, '关于数据库索引与查询优化，以下哪些说法正确？（多选）', NULL, NULL, NULL, 'ABD', NULL, NULL),
-(18, NULL, 1, 18, 2, 4.0, '生产环境中管理应用密钥时，哪些做法更安全？（多选）', NULL, NULL, NULL, 'ABD', NULL, NULL),
-(19, NULL, 1, 19, 2, 4.0, '为了提升异步消息处理的可靠性，哪些措施值得采用？（多选）', NULL, NULL, NULL, 'ABD', NULL, NULL),
-(20, NULL, 1, 20, 2, 4.0, '以下哪些指标有助于评估在线服务运行状况？（多选）', NULL, NULL, NULL, 'ABD', NULL, NULL),
-(21, NULL, 1, 21, 3, 5.0, '虚拟线程在支持卸载的阻塞式 I/O 等待期间，可以释放 Carrier Thread 供其他虚拟线程使用。', NULL, NULL, NULL, 'A', NULL, NULL),
-(22, NULL, 1, 22, 3, 5.0, '在生产环境中把所有秘密配置直接写入代码仓库，可以避免配置管理风险。', NULL, NULL, NULL, 'B', NULL, NULL),
-(23, NULL, 1, 23, 3, 5.0, '为服务间调用设置超时，可以避免请求在依赖服务异常时无限期等待。', NULL, NULL, NULL, 'A', NULL, NULL),
-(24, NULL, 1, 24, 4, 5.0, '某订单服务在调用库存服务时偶发超时，随后出现重复扣减库存。请说明你会如何排查，并提出至少两项改进措施。', NULL, NULL, NULL, NULL,
+(13, NULL, 1, 13, 1, 5.0, '使用幂等接口设计可以避免哪类问题？', 'A', NULL, NULL),
+(14, NULL, 1, 14, 1, 5.0, '持续集成流程中，自动化测试通常在哪个阶段运行？', 'A', NULL, NULL),
+(15, NULL, 1, 15, 1, 5.0, '敏感配置项在生产环境中应如何管理？', 'A', NULL, NULL),
+(16, NULL, 1, 16, 2, 4.0, '以下哪些措施有助于提升微服务系统的韧性？（多选）', 'ABD', NULL, NULL),
+(17, NULL, 1, 17, 2, 4.0, '关于数据库索引与查询优化，以下哪些说法正确？（多选）', 'ABD', NULL, NULL),
+(18, NULL, 1, 18, 2, 4.0, '生产环境中管理应用密钥时，哪些做法更安全？（多选）', 'ABD', NULL, NULL),
+(19, NULL, 1, 19, 2, 4.0, '为了提升异步消息处理的可靠性，哪些措施值得采用？（多选）', 'ABD', NULL, NULL),
+(20, NULL, 1, 20, 2, 4.0, '以下哪些指标有助于评估在线服务运行状况？（多选）', 'ABD', NULL, NULL),
+(21, NULL, 1, 21, 3, 5.0, '虚拟线程在支持卸载的阻塞式 I/O 等待期间，可以释放 Carrier Thread 供其他虚拟线程使用。', 'A', NULL, NULL),
+(22, NULL, 1, 22, 3, 5.0, '在生产环境中把所有秘密配置直接写入代码仓库，可以避免配置管理风险。', 'B', NULL, NULL),
+(23, NULL, 1, 23, 3, 5.0, '为服务间调用设置超时，可以避免请求在依赖服务异常时无限期等待。', 'A', NULL, NULL),
+(24, NULL, 1, 24, 4, 5.0, '某订单服务在调用库存服务时偶发超时，随后出现重复扣减库存。请说明你会如何排查，并提出至少两项改进措施。', NULL,
  '排查：全链路追踪定位超时节点、核对库存服务 P99 与线程池水位、检查重试与幂等键缺失。改进：调用侧设置超时+熔断重试退避；库存扣减改为幂等令牌或数据库唯一约束 + 条件更新。', NULL),
-(25, NULL, 1, 25, 4, 5.0, '设计一个高可用的文件上传服务，请简述上传链路、失败重试、文件校验及监控告警的关键方案。', NULL, NULL, NULL, NULL,
+(25, NULL, 1, 25, 4, 5.0, '设计一个高可用的文件上传服务，请简述上传链路、失败重试、文件校验及监控告警的关键方案。', NULL,
  '链路：客户端直连对象存储预签名 URL，服务端只签发凭证与回调校验；失败重试：分片上传 + 断点续传 + 幂等 uploadId；校验：类型/大小白名单、病毒扫描、哈希一致性；监控：上传成功率、分片失败率、存储水位与回调延迟告警。', NULL),
-(26, 'q-6', 2, 1, 1, 5.0,  '使用数据库索引时,最需要关注的性能影响是什么?', NULL, NULL, NULL, 'A', NULL, NULL),
-(27, 'q-7', 2, 2, 1, 5.0,  '缓存穿透问题通常可以通过哪种方式缓解?', NULL, NULL, NULL, 'A', NULL, NULL),
-(28, 'q-8', 2, 3, 3, 5.0,  '在生产环境中把所有秘密配置直接写入代码仓库,可以避免配置管理风险。', NULL, NULL, NULL, 'B', NULL, NULL),
-(29, 'q-9', 2, 4, 4, 10.0, '设计一个高可用的文件上传服务,请简述上传链路、失败重试、文件校验及监控告警的关键方案。', NULL, NULL, NULL, NULL, '同 exam-1 第 25 题评分要点。', NULL),
-(30, 'q-10', 3, 1, 1, 5.0, '在 REST API 设计中,哪个 HTTP 方法通常用于读取资源?', NULL, NULL, NULL, 'A', NULL, NULL),
-(31, 'q-11', 3, 2, 2, 8.0, '生产环境中管理应用密钥时,哪些做法更安全?(多选)', NULL, NULL, NULL, 'ABD', NULL, NULL),
-(32, 'q-12', 3, 3, 3, 5.0, '为服务间调用设置超时,可以避免请求在依赖服务异常时无限期等待。', NULL, NULL, NULL, 'A', NULL, NULL);
+(26, 'q-6', 2, 1, 1, 5.0,  '使用数据库索引时,最需要关注的性能影响是什么?', 'A', NULL, NULL),
+(27, 'q-7', 2, 2, 1, 5.0,  '缓存穿透问题通常可以通过哪种方式缓解?', 'A', NULL, NULL),
+(28, 'q-8', 2, 3, 3, 5.0,  '在生产环境中把所有秘密配置直接写入代码仓库,可以避免配置管理风险。', 'B', NULL, NULL),
+(29, 'q-9', 2, 4, 4, 10.0, '设计一个高可用的文件上传服务,请简述上传链路、失败重试、文件校验及监控告警的关键方案。', NULL, '同 exam-1 第 25 题评分要点。', NULL),
+(30, 'q-10', 3, 1, 1, 5.0, '在 REST API 设计中,哪个 HTTP 方法通常用于读取资源?', 'A', NULL, NULL),
+(31, 'q-11', 3, 2, 2, 8.0, '生产环境中管理应用密钥时,哪些做法更安全?(多选)', 'ABD', NULL, NULL),
+(32, 'q-12', 3, 3, 3, 5.0, '为服务间调用设置超时,可以避免请求在依赖服务异常时无限期等待。', 'A', NULL, NULL);
 
 INSERT INTO question_option (question_id, option_key, content, explanation, sort_no) VALUES
 (1,'A','自动发现可用服务实例并提供访问入口',NULL,1),(1,'B','统一存储所有业务数据',NULL,2),(1,'C','替代服务间的网络通信',NULL,3),(1,'D','自动生成业务代码',NULL,4),

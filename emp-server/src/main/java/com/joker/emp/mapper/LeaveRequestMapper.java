@@ -21,6 +21,7 @@ public interface LeaveRequestMapper extends BaseMapper<LeaveRequest> {
              lr.submitted_at AS submittedAt, lr.approver_id AS approverId,
              lr.approved_at AS approvedAt, lr.approve_remark AS approveRemark,
              lr.user_id AS userId, u.name AS userName, u.employee_no AS employeeNo,
+             u.avatar_url AS avatarUrl,
              d.name AS department
       FROM leave_request lr
       JOIN sys_user u ON u.id = lr.user_id

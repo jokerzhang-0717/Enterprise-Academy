@@ -266,7 +266,7 @@ const filteredDepartments = computed(() => {
   });
 });
 
-const { page, totalPages, paged: pagedDepartments, resetPage } = usePager(filteredDepartments, 9);
+const { page, totalPages, paged: pagedDepartments, resetPage } = usePager(filteredDepartments, 8);
 watch([keyword, statusFilter], resetPage);
 
 const activeCount = computed(() => departments.filter(d => d.status === 'active').length);

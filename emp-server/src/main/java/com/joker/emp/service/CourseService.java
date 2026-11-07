@@ -12,7 +12,6 @@ import com.joker.emp.entity.CourseLesson;
 import com.joker.emp.entity.Enrollment;
 import com.joker.emp.entity.Instructor;
 import com.joker.emp.entity.LessonProgress;
-import com.joker.emp.entity.StudySession;
 import com.joker.emp.entity.Tag;
 import com.joker.emp.mapper.CourseCategoryMapper;
 import com.joker.emp.mapper.CourseChapterMapper;
@@ -22,7 +21,6 @@ import com.joker.emp.mapper.CourseTagMapper;
 import com.joker.emp.mapper.EnrollmentMapper;
 import com.joker.emp.mapper.InstructorMapper;
 import com.joker.emp.mapper.LessonProgressMapper;
-import com.joker.emp.mapper.StudySessionMapper;
 import com.joker.emp.mapper.TagMapper;
 import com.joker.emp.security.AuthContext;
 import java.math.BigDecimal;
@@ -50,14 +48,13 @@ public class CourseService {
   private final InstructorMapper instructorMapper;
   private final EnrollmentMapper enrollmentMapper;
   private final LessonProgressMapper lessonProgressMapper;
-  private final StudySessionMapper studySessionMapper;
   private final OperationLogService logService;
 
   public CourseService(CourseMapper courseMapper, CourseCategoryMapper categoryMapper,
       CourseChapterMapper chapterMapper, CourseLessonMapper lessonMapper,
       CourseTagMapper courseTagMapper, TagMapper tagMapper, InstructorMapper instructorMapper,
       EnrollmentMapper enrollmentMapper, LessonProgressMapper lessonProgressMapper,
-      StudySessionMapper studySessionMapper, OperationLogService logService) {
+      OperationLogService logService) {
     this.courseMapper = courseMapper;
     this.categoryMapper = categoryMapper;
     this.chapterMapper = chapterMapper;
@@ -67,7 +64,6 @@ public class CourseService {
     this.instructorMapper = instructorMapper;
     this.enrollmentMapper = enrollmentMapper;
     this.lessonProgressMapper = lessonProgressMapper;
-    this.studySessionMapper = studySessionMapper;
     this.logService = logService;
   }
 
@@ -464,8 +460,6 @@ public class CourseService {
         .eq(LessonProgress::getUserId, userId)
         .eq(LessonProgress::getLessonId, lessonId)
         .last("LIMIT 1"));
-    boolean firstCompletion = progress == null
-        || !Boolean.TRUE.equals(progress.getIsCompleted());
     if (progress == null) {
       progress = new LessonProgress();
       progress.setUserId(userId);
@@ -486,10 +480,6 @@ public class CourseService {
         progress.setCompletedAt(LocalDateTime.now());
       }
       lessonProgressMapper.updateById(progress);
-    }
-
-    if (firstCompletion) {
-      addStudySession(userId, courseId, lessonId, watchedSeconds);
     }
 
     long total = lessonMapper.countByCourse(courseId);
@@ -683,29 +673,6 @@ public class CourseService {
     course.setId(courseId);
     course.setTotalLessonCount((int) lessonMapper.countByCourse(courseId));
     courseMapper.updateById(course);
-  }
-
-  private void addStudySession(Long userId, Long courseId, Long lessonId, Integer watchedSeconds) {
-    StudySession session = new StudySession();
-    session.setUserId(userId);
-    session.setCourseId(courseId);
-    session.setLessonId(lessonId);
-    session.setStartedAt(LocalDateTime.now());
-    int seconds = watchedSeconds == null ? 0 : watchedSeconds;
-    BigDecimal minutes = BigDecimal.valueOf(seconds / 60.0).setScale(1, java.math.RoundingMode.HALF_UP);
-    session.setDurationMinutes(minutes.compareTo(BigDecimal.ZERO) > 0 ? minutes : BigDecimal.ONE);
-    session.setSource(1);
-    studySessionMapper.insert(session);
-    Enrollment enrollment = enrollmentMapper.selectOne(Wrappers.<Enrollment>lambdaQuery()
-        .eq(Enrollment::getUserId, userId)
-        .eq(Enrollment::getCourseId, courseId)
-        .last("LIMIT 1"));
-    if (enrollment != null) {
-      enrollment.setStudyHours((enrollment.getStudyHours() == null ? BigDecimal.ZERO
-          : enrollment.getStudyHours()).add(session.getDurationMinutes()
-          .divide(BigDecimal.valueOf(60), 2, java.math.RoundingMode.HALF_UP)));
-      enrollmentMapper.updateById(enrollment);
-    }
   }
 
   private Map<Long, Enrollment> enrollmentsOf(Long userId, List<Long> courseIds) {

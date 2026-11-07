@@ -98,6 +98,30 @@ public class AnnouncementService {
     return announcementMapper.countUnread(AuthContext.userId());
   }
 
+  /** 将当前用户所有已发布公告标记为已读。 */
+  @Transactional
+  public int markAllRead() {
+    Long userId = AuthContext.userId();
+    List<Announcement> published = announcementMapper.selectList(
+        Wrappers.<Announcement>lambdaQuery().eq(Announcement::getStatus, 2));
+    int count = 0;
+    for (Announcement announcement : published) {
+      long read = readMapper.selectCount(Wrappers.<AnnouncementRead>lambdaQuery()
+          .eq(AnnouncementRead::getAnnouncementId, announcement.getId())
+          .eq(AnnouncementRead::getUserId, userId));
+      if (read > 0) {
+        continue;
+      }
+      AnnouncementRead record = new AnnouncementRead();
+      record.setAnnouncementId(announcement.getId());
+      record.setUserId(userId);
+      record.setReadAt(LocalDateTime.now());
+      readMapper.insert(record);
+      count++;
+    }
+    return count;
+  }
+
   @Transactional
   public Map<String, Object> create(AnnouncementSaveRequest request) {
     validate(request);

@@ -88,7 +88,15 @@
           >
             <td>
               <div class="cell-user">
-                <span class="cell-avatar">{{ item.applicant.charAt(0) }}</span>
+                <span class="cell-avatar">
+                  <img
+                    v-if="item.avatarUrl"
+                    :src="item.avatarUrl"
+                    :alt="`${item.applicant}头像`"
+                    @error="$event.target.style.display = 'none'"
+                  />
+                  {{ item.applicant.charAt(0) }}
+                </span>
                 <div>
                   <div class="cell-name">{{ item.applicant }}</div>
                   <div class="cell-meta">{{ item.department }} · {{ item.employeeId }}</div>
@@ -464,6 +472,7 @@ th.ops, td.ops { text-align: right; white-space: nowrap; }
 }
 
 .cell-avatar {
+  position: relative;
   width: 32px;
   height: 32px;
   display: flex;
@@ -475,6 +484,16 @@ th.ops, td.ops { text-align: right; white-space: nowrap; }
   background: var(--app-accent-soft);
   border-radius: 50%;
   flex-shrink: 0;
+  overflow: hidden;
+}
+
+.cell-avatar img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  object-fit: cover;
 }
 
 .cell-name {

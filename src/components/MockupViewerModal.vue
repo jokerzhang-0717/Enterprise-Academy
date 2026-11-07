@@ -79,7 +79,7 @@
 
 <script setup>
 import { ref, computed, watch } from 'vue';
-import { SCREEN_MOCKUPS } from '../mockData.js';
+import { SCREEN_MOCKUPS } from '../screenMockups.js';
 
 const props = defineProps({
   isOpen:    { type: Boolean, default: false },

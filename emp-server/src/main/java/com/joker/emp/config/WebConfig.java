@@ -14,9 +14,11 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 public class WebConfig implements WebMvcConfigurer {
 
   private final AuthInterceptor authInterceptor;
+  private final RedisApiResponseCache redisApiResponseCache;
 
-  public WebConfig(AuthInterceptor authInterceptor) {
+  public WebConfig(AuthInterceptor authInterceptor, RedisApiResponseCache redisApiResponseCache) {
     this.authInterceptor = authInterceptor;
+    this.redisApiResponseCache = redisApiResponseCache;
   }
 
   @Bean
@@ -27,6 +29,15 @@ public class WebConfig implements WebMvcConfigurer {
   @Override
   public void addInterceptors(InterceptorRegistry registry) {
     registry.addInterceptor(authInterceptor)
+        .addPathPatterns("/**")
+        .excludePathPatterns(
+            "/auth/login",
+            "/auth/register",
+            "/files/view/**",
+            "/certificates/verify/**",
+            "/error"
+        );
+    registry.addInterceptor(redisApiResponseCache)
         .addPathPatterns("/**")
         .excludePathPatterns(
             "/auth/login",

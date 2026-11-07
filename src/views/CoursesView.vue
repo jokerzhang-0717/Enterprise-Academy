@@ -71,6 +71,7 @@
         :id="`course-card-${course.id}`"
         :key="course.id"
         class="crs-card"
+        :class="{ 'crs-card--search-target': searchTargetId === `course-card-${course.id}` }"
       >
         <!-- Thumbnail -->
         <div class="crs-card__thumb">
@@ -228,6 +229,8 @@ watch(
   () => props.searchTargetId,
   targetId => {
     if (!targetId) return;
+    keyword.value = '';
+    activeCategory.value = 'all';
     nextTick(() => document.getElementById(targetId)?.scrollIntoView({ behavior: 'smooth', block: 'center' }));
   },
   { immediate: true },
@@ -527,6 +530,10 @@ watch(
 .crs-card:hover {
   border-color: var(--c-sky);
   box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08);
+}
+.crs-card--search-target {
+  border-color: var(--c-sky);
+  box-shadow: 0 0 0 3px var(--app-accent-soft), 0 8px 20px rgba(15, 23, 42, 0.08);
 }
 
 /* ---- Thumbnail ---- */

@@ -73,6 +73,7 @@
           <tr>
             <th>持证人</th>
             <th>证书名称</th>
+            <th>分类</th>
             <th>证书编号</th>
             <th>颁发机构</th>
             <th>发放日期</th>
@@ -85,7 +86,15 @@
           <tr v-for="cert in pagedCertificates" :key="cert.id" @click="openDetail(cert)">
             <td>
               <div class="cell-user">
-                <span class="cell-avatar">{{ cert.holder.charAt(0) }}</span>
+                <span class="cell-avatar">
+                  <img
+                    v-if="cert.avatarUrl"
+                    :src="cert.avatarUrl"
+                    :alt="`${cert.holder}头像`"
+                    @error="$event.target.style.display = 'none'"
+                  />
+                  {{ cert.holder.charAt(0) }}
+                </span>
                 <div>
                   <div class="cell-name">{{ cert.holder }}</div>
                   <div class="cell-meta">{{ cert.employeeId }}</div>
@@ -93,6 +102,7 @@
               </div>
             </td>
             <td class="cert-title-cell">{{ cert.title }}</td>
+            <td>{{ categoryLabel(cert.category) }}</td>
             <td class="mono">{{ cert.serialNumber }}</td>
             <td class="cell-muted">{{ cert.issueOrg }}</td>
             <td class="cell-muted">{{ cert.issueDate }}</td>
@@ -124,7 +134,7 @@
             </td>
           </tr>
           <tr v-if="!filteredCertificates.length">
-            <td colspan="8" class="empty-cell">
+            <td colspan="9" class="empty-cell">
               {{ certificates.length ? '没有匹配的证书' : '暂无证书记录' }}
             </td>
           </tr>
@@ -146,6 +156,7 @@
       :tags="[statusLabel(detailCert.status)]"
       :rows="[
         { label: '证书名称', value: detailCert.title, wide: true },
+        { label: '分类', value: categoryLabel(detailCert.category) },
         { label: '证书编号', value: detailCert.serialNumber, wide: true },
         { label: '颁发机构', value: detailCert.issueOrg },
         { label: '颁发日期', value: detailCert.issueDate },
@@ -176,6 +187,24 @@
             <span class="field-label">证书名称</span>
             <input v-model.trim="form.title" type="text" class="field-input" placeholder="如 Kubernetes 云原生容器编排认证" />
           </label>
+          <label class="field">
+            <span class="field-label">证书分类</span>
+            <input
+              v-model.trim="form.category"
+              type="text"
+              class="field-input"
+              list="certificate-category-options"
+              placeholder="输入分类名称，或选择已有分类"
+              required
+            />
+            <datalist id="certificate-category-options">
+              <option
+                v-for="category in availableCategories"
+                :key="category"
+                :value="category"
+              />
+            </datalist>
+          </label>
           <div class="field-row">
             <label class="field">
               <span class="field-label">颁发机构</span>
@@ -186,6 +215,14 @@
               <input v-model.trim="form.validity" type="text" class="field-input" placeholder="如 长期有效 / 24 个月" />
             </label>
           </div>
+          <label class="field">
+            <span class="field-label">证书说明</span>
+            <textarea v-model.trim="form.description" class="field-input field-textarea" rows="3" placeholder="填写证书对应的考核或能力说明" />
+          </label>
+          <label class="field">
+            <span class="field-label">证书权益</span>
+            <textarea v-model.trim="form.privilegeText" class="field-input field-textarea" rows="2" placeholder="填写实际授予的权益；没有则留空" />
+          </label>
           <p v-if="editingId" class="form-hint">证书编号保持不变:{{ form.serialNumber }}</p>
           <p v-else class="form-hint">证书防伪编号由服务端在发放时自动生成</p>
           <p v-if="formError" class="form-error">{{ formError }}</p>
@@ -235,6 +272,13 @@ import ConfirmDialog from '../../components/ConfirmDialog.vue';
 const { show: showToast } = useToast();
 
 const certificates = computed(() => adminStore.certificates);
+const categoryLabels = {
+  ai: 'AI 技术类',
+  architecture: '架构实战类',
+  compliance: '合规风控类',
+  devops: '运维与容灾',
+};
+const categoryLabel = (category) => categoryLabels[category] || category || '未分类';
 
 const { confirmState, askConfirm, cancelConfirm, acceptConfirm } = useConfirm();
 const learners = computed(() => adminStore.users);
@@ -244,22 +288,38 @@ const templates = ref([]);
 onMounted(async () => {
   templates.value = await fetchAdminCertificateTemplates().catch(() => []) || [];
 });
+const availableCategories = computed(() => [...new Set([
+  ...templates.value.map((template) => template.category),
+  ...certificates.value.map((certificate) => certificate.category),
+].filter(Boolean).map(categoryLabel))].sort((a, b) => a.localeCompare(b, 'zh-CN')));
 
-const resolveTemplate = async (title, issueOrg) => {
+const resolveTemplate = async ({ title, category, issueOrg, description, privilegeText }, overwriteOptionalFields) => {
+  const templateFields = {
+    title,
+    category,
+    issueOrg: issueOrg || '企业大学教培中心',
+    description: description || '',
+    privilegeText: privilegeText || '',
+  };
   const hit = templates.value.find(t => t.title === title);
   if (!hit) {
     const created = await createAdminCertificateTemplate({
-      title,
-      issueOrg: issueOrg || '企业大学教培中心',
-      levelLabel: '企业认证'
+      ...templateFields,
+      levelLabel: '企业认证',
     });
     if (created?.id) templates.value = [...templates.value, created];
     return created || null;
   }
-  if ((hit.issueOrg || '') !== (issueOrg || '')) {
-    const saved = await updateAdminCertificateTemplate(hit.id, { ...hit, issueOrg });
-    templates.value = templates.value.map(t => t.id === hit.id ? { ...t, issueOrg } : t);
-    return saved || { ...hit, issueOrg };
+  const changes = Object.fromEntries(
+    Object.entries(templateFields).filter(([key, value]) =>
+      (key !== 'description' && key !== 'privilegeText' || overwriteOptionalFields || value !== '')
+      && (hit[key] || '') !== value),
+  );
+  if (Object.keys(changes).length) {
+    const saved = await updateAdminCertificateTemplate(hit.id, { ...hit, ...changes });
+    const updated = saved || { ...hit, ...changes };
+    templates.value = templates.value.map(t => t.id === hit.id ? updated : t);
+    return updated;
   }
   return hit;
 };
@@ -275,7 +335,7 @@ const filteredCertificates = computed(() => {
     const matchesStatus = !statusFilter.value || cert.status === statusFilter.value;
     const matchesIssuer = !issuerFilter.value || cert.issueOrg === issuerFilter.value;
     const matchesKeyword = !search ||
-      `${cert.holder} ${cert.employeeId} ${cert.title} ${cert.serialNumber} ${cert.issueOrg}`.toLowerCase().includes(search);
+      `${cert.holder} ${cert.employeeId} ${cert.title} ${categoryLabel(cert.category)} ${cert.serialNumber} ${cert.issueOrg}`.toLowerCase().includes(search);
     return matchesStatus && matchesIssuer && matchesKeyword;
   });
 });
@@ -304,14 +364,16 @@ const editingId = ref(null);
 const formError = ref('');
 const saving = ref(false);
 const form = ref({
-  holder: '', title: '', issueOrg: '', validity: '长期有效', serialNumber: ''
+  holder: '', title: '', category: '', issueOrg: '', validity: '长期有效', serialNumber: '',
+  description: '', privilegeText: '',
 });
 
 const openIssue = () => {
   editingId.value = null;
   formError.value = '';
   form.value = {
-    holder: '', title: '', issueOrg: '企业大学教培中心', validity: '长期有效', serialNumber: ''
+    holder: '', title: '', category: '', issueOrg: '企业大学教培中心', validity: '长期有效', serialNumber: '',
+    description: '', privilegeText: '',
   };
   modalOpen.value = true;
 };
@@ -322,9 +384,12 @@ const openEdit = (cert) => {
   form.value = {
     holder: cert.holder,
     title: cert.title,
+    category: categoryLabel(cert.category),
     issueOrg: cert.issueOrg,
     validity: cert.validity,
-    serialNumber: cert.serialNumber
+    serialNumber: cert.serialNumber,
+    description: cert.description || '',
+    privilegeText: cert.privilege || '',
   };
   modalOpen.value = true;
 };
@@ -338,6 +403,7 @@ const closeModal = () => {
 const saveIssue = async () => {
   if (!form.value.holder) { formError.value = '请选择持证学员。'; return; }
   if (!form.value.title) { formError.value = '请输入证书名称。'; return; }
+  if (!form.value.category) { formError.value = '请选择证书分类。'; return; }
 
   const learner = learners.value.find(l => l.name === form.value.holder);
   if (!learner) { formError.value = '未找到该学员，请重新选择持证人。'; return; }
@@ -345,7 +411,7 @@ const saveIssue = async () => {
   saving.value = true;
   const isEdit = !!editingId.value;
   try {
-    const template = await resolveTemplate(form.value.title, form.value.issueOrg);
+    const template = await resolveTemplate(form.value, isEdit);
     if (!template?.id) { throw new Error('证书模板准备失败，请重试。'); }
 
     const payload = {
@@ -649,6 +715,7 @@ th.ops, td.ops { text-align: right; white-space: nowrap; }
 }
 
 .cell-avatar {
+  position: relative;
   width: 32px;
   height: 32px;
   display: flex;
@@ -660,6 +727,16 @@ th.ops, td.ops { text-align: right; white-space: nowrap; }
   background: var(--app-brand-tint);
   border-radius: 50%;
   flex-shrink: 0;
+  overflow: hidden;
+}
+
+.cell-avatar img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  object-fit: cover;
 }
 
 .cell-name {
@@ -821,6 +898,12 @@ th.ops, td.ops { text-align: right; white-space: nowrap; }
 .field-input:focus {
   border-color: var(--app-accent-strong);
   box-shadow: 0 0 0 3px var(--app-accent-a12);
+}
+.field-textarea {
+  min-height: 72px;
+  font: inherit;
+  line-height: 1.5;
+  resize: vertical;
 }
 
 .form-hint {

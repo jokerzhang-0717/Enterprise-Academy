@@ -111,7 +111,9 @@ export { landingPath };
 export const locationForView = (view, { courseId, trackId, messageId, examId } = {}) => {
   switch (view) {
     case 'course-player':
-      return { name: 'course-player', params: { courseId: courseId || 'c1' } };
+      return courseId
+        ? { name: 'course-player', params: { courseId } }
+        : { name: 'courses' };
     case 'track-detail':
       return trackId
         ? { name: 'track-detail', params: { trackId } }

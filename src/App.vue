@@ -110,14 +110,17 @@
                 v-else-if="currentView === 'admin-profile'"
                 :user="currentUser"
                 @update-user="handleUpdateUser"
+                @password-changed="handlePasswordChanged"
               />
 
               <HomeView
                 v-else-if="currentView === 'home'"
                 :search-target-id="searchTargetId"
                 :course-id="selectedCourseId"
+                :user="currentUser"
                 @navigate="handleNavigate"
                 @open-course="handleOpenCourse"
+                @open-message="handleOpenMessage"
               />
 
               <CoursesView
@@ -130,6 +133,7 @@
               <CoursePlayerView
                 v-else-if="currentView === 'course-player'"
                 :course-id="selectedCourseId"
+                :user="currentUser"
                 @back="handleNavigate('courses')"
                 @navigate="handleNavigate"
               />
@@ -142,6 +146,7 @@
 
               <ExamsView
                 v-else-if="currentView === 'exams'"
+                :search-target-id="searchTargetId"
                 @start-exam="handleStartExam"
               />
 
@@ -164,6 +169,7 @@
                 v-else-if="currentView === 'profile'"
                 :user="currentUser"
                 @update-user="handleUpdateUser"
+                @password-changed="handlePasswordChanged"
               />
 
               <AttendanceView
@@ -210,7 +216,7 @@
     <!-- 2) 证书查看器 -->
     <CertificateModal
       :certificate="selectedCert"
-      :recipient-name="currentUser.name"
+      :recipient-name="currentUser?.name || ''"
       @close="selectedCert = null"
     />
 
@@ -236,14 +242,7 @@
 <script setup>
 import { computed, onMounted, ref, watch, watchEffect } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import {
-  COURSES_DATA,
-  EXAMS_DATA,
-  PAST_EXAMS,
-  CERTIFICATES_DATA,
-  MESSAGES_DATA,
-  RECOMMENDED_TRACKS,
-} from './mockData.js';
+import { SCREEN_MOCKUPS } from './screenMockups.js';
 
 // Shared Components
 import Sidebar from './components/Sidebar.vue';
@@ -283,9 +282,14 @@ import { useMessages, resetMessages, loadMessages, markMessageRead } from './com
 import { useAttendance, resetAttendance, loadAttendance } from './composables/useAttendance.js';
 import { resetLeaves, loadLeaves } from './composables/useLeaveRequests.js';
 import { adminStore, loadAdminStore, resetAdminStore } from './adminStore.js';
-import { loadLearnerCourses, resetLearnerStore } from './learnerStore.js';
+import { learnerStore, loadLearnerCourses, resetLearnerStore } from './learnerStore.js';
 import { locationForView } from './router/index.js';
-import { logoutApi } from './api/index.js';
+import {
+  fetchAllTracks,
+  fetchExams,
+  fetchMyCertificates,
+  logoutApi,
+} from './api/index.js';
 import {
   clearAuth,
   getStoredUser,
@@ -299,6 +303,7 @@ import {
 const storedUser = getStoredUser();
 const route = useRoute();
 const router = useRouter();
+const { show: showToast } = useToast();
 /* 登录态落地页由角色决定 */
 const landingView = (user) => (user && user.role === 'admin' ? 'admin-dashboard' : 'home');
 const currentUser = ref(storedUser || null);
@@ -316,19 +321,40 @@ const selectedCourseId = ref('');
 const selectedExamId = ref('');
 const globalSearchQuery = ref('');
 const searchTargetId = ref('');
+const searchTracks = ref([]);
+const searchAssignments = ref([]);
+const searchPastExams = ref([]);
+const searchCertificates = ref([]);
+let trackLoadVersion = 0;
 
 watch(
   () => route.fullPath,
-  () => {
+  async () => {
     const routeName = route.name === 'exam-taking-by-id' ? 'exam-taking' : route.name;
     currentView.value = routeName || 'home';
     selectedCourseId.value = String(route.params.courseId || '');
-    selectedTrack.value = route.params.trackId
-      ? RECOMMENDED_TRACKS.find((track) => track.id === route.params.trackId) || null
-      : null;
+    const trackId = String(route.params.trackId || '');
+    selectedTrack.value = null;
+    const requestVersion = ++trackLoadVersion;
+    if (trackId) {
+      try {
+        let track = searchTracks.value.find((item) => item.id === trackId);
+        if (!track) {
+          track = (await fetchAllTracks()).find((item) => item.id === trackId);
+        }
+        if (requestVersion === trackLoadVersion) {
+          selectedTrack.value = track || null;
+          if (!track) showToast('未找到该研修通道。', 'error');
+        }
+      } catch (error) {
+        if (requestVersion === trackLoadVersion) {
+          showToast(error?.message || '研修通道加载失败。', 'error');
+        }
+      }
+    }
     selectedMessageId.value = String(route.params.messageId || '');
     selectedExamId.value = String(route.params.examId || route.query.examId || '');
-    searchTargetId.value = '';
+    searchTargetId.value = String(route.query.searchTargetId || '');
     mainContent.value?.scrollTo({ top: 0, behavior: 'auto' });
   },
   { immediate: true },
@@ -351,115 +377,146 @@ const examResult = ref({
   pendingReview: false,
 });
 
-const searchableRecords = computed(() => [
-  ...COURSES_DATA.map(course => ({
+const searchableRecords = computed(() => {
+  const admin = isAdmin.value;
+  const courses = admin ? adminStore.courses : learnerStore.courses;
+  const records = courses.map((course) => ({
     id: course.id,
     type: '课程',
     title: course.title,
-    description: `${course.instructor.name} · ${course.summary}`,
+    description: `${course.instructor?.name || ''} · ${course.summary || ''}`,
     searchText: [
       course.title,
       course.summary,
       course.categoryLabel,
+      course.category,
       course.level,
-      course.instructor.name,
-      course.instructor.title,
-      ...course.tags,
-    ].join(' '),
-    view: 'courses',
-    targetId: `course-card-${course.id}`,
-  })),
-  ...RECOMMENDED_TRACKS.map(track => ({
-    id: track.id,
-    type: '研修通道',
-    title: track.title,
-    description: track.summary,
-    searchText: [track.title, track.summary, track.description, track.audience, ...track.outline].join(' '),
-    view: 'track-detail',
-    targetId: track.id,
-  })),
-  ...EXAMS_DATA.map(exam => ({
-    id: exam.id,
-    type: '考试',
-    title: exam.title,
-    description: `${exam.category} · ${exam.timeWindow}`,
-    searchText: JSON.stringify(exam),
-    view: 'exams',
-    targetId: `exam-${exam.id}`,
-  })),
-  ...PAST_EXAMS.map(exam => ({
-    id: exam.id,
-    type: '历史考试',
-    title: exam.title,
-    description: `${exam.type} · ${exam.completionDate}`,
-    searchText: JSON.stringify(exam),
-    view: 'exams',
-    targetId: `past-exam-${exam.id}`,
-  })),
-  ...CERTIFICATES_DATA.map(certificate => ({
-    id: certificate.id,
-    type: '证书',
-    title: certificate.title,
-    description: `${certificate.level} · ${certificate.issueOrg}`,
-    searchText: JSON.stringify(certificate),
-    view: 'certificates',
-    targetId: `certificate-${certificate.id}`,
-  })),
-  ...MESSAGES_DATA.map(message => ({
-    id: message.id,
-    type: '通知',
-    title: message.title,
-    description: `${message.sender} · ${message.preview}`,
-    searchText: JSON.stringify(message),
-    view: 'messages',
-    targetId: `message-${message.id}`,
-  })),
-  {
-    id: 'home-announcement-1',
-    type: '企业公告',
-    title: '关于发布《2025年第二季度技术序列通用学分核算与晋升认定申报通知》',
-    description: '全员通告 · 2025-05-13',
-    searchText: '2025 第二季度 技术序列 通用学分 核算 晋升认定 申报 通知 全员通告',
-    view: 'home',
-    targetId: 'home-announcement-1',
-  },
-  {
-    id: 'home-announcement-2',
-    type: '企业公告',
-    title: '2025「云舒内训师」金牌讲师团第二期招募启动',
-    description: '讲师招募 · 2025-05-11',
-    searchText: '云舒 内训师 金牌讲师团 第二期 招募 课程研发津贴',
-    view: 'home',
-    targetId: 'home-announcement-2',
-  },
-  {
-    id: 'analytics-page',
-    type: '学习看板',
-    title: '个人学习看板',
-    description: '学习时长趋势、能力发展与晋升通道',
-    searchText: '个人学习看板 研学效能 学习时长 课时趋势 能力发展 六维雷达 学习任务 晋升通道 研学活动 里程碑',
-    view: 'analytics',
-    targetId: '',
-  },
-  {
-    id: 'attendance-page',
-    type: '培训考勤',
-    title: '培训考勤与请假中心',
-    description: '培训签到、签退与请假申请',
-    searchText: '培训考勤 签到 签退 请假申请 培训假 研讨活动 考勤记录',
-    view: 'attendance',
-    targetId: '',
-  },
-  {
-    id: 'course-player-page',
-    type: '课程学习',
-    title: 'Spring Boot 3 企业级微服务实战与高并发架构',
-    description: '课程视频与章节目录',
-    searchText: 'Spring Boot 企业级微服务 Redis 集群 分布式锁 缓存击穿 Lua 实操 课程目录',
-    view: 'course-player',
-    targetId: '',
-  },
-]);
+      course.instructor?.name,
+      course.instructor?.title,
+      ...(course.tags || []),
+    ].filter(Boolean).join(' '),
+    view: admin ? 'admin-courses' : 'courses',
+    targetId: admin ? '' : `course-card-${course.id}`,
+  }));
+
+  if (admin) {
+    records.push(
+      ...adminStore.exams.map((exam) => ({
+        id: exam.id,
+        type: '考试',
+        title: exam.title,
+        description: exam.category || exam.statusLabel || '',
+        searchText: [exam.title, exam.category, exam.statusLabel].filter(Boolean).join(' '),
+        view: 'admin-exams',
+        targetId: '',
+      })),
+      ...adminStore.certificates.map((certificate) => ({
+        id: certificate.id,
+        type: '证书',
+        title: certificate.title,
+        description: `${certificate.holder || ''} · ${certificate.issueOrg || ''}`,
+        searchText: [certificate.title, certificate.holder, certificate.issueOrg].filter(Boolean).join(' '),
+        view: 'admin-certificates',
+        targetId: '',
+      })),
+      ...adminStore.announcements.map((announcement) => ({
+        id: announcement.id,
+        type: '公告',
+        title: announcement.title,
+        description: announcement.statusLabel || '',
+        searchText: [announcement.title, announcement.content, announcement.statusLabel].filter(Boolean).join(' '),
+        view: 'admin-announcements',
+        targetId: '',
+      })),
+    );
+  } else {
+    records.push(
+      ...searchTracks.value.map((track) => ({
+        id: track.id,
+        type: '研修通道',
+        title: track.title,
+        description: track.summary || track.description || '',
+        searchText: [
+          track.title,
+          track.summary,
+          track.description,
+          track.audience,
+          ...(track.outline || []),
+        ].filter(Boolean).join(' '),
+        view: 'track-detail',
+        targetId: '',
+      })),
+      ...searchAssignments.value.map((exam) => ({
+        id: exam.id,
+        type: '考试',
+        title: exam.title,
+        description: `${exam.category || ''} · ${exam.timeWindow || ''}`,
+        searchText: [exam.title, exam.category, exam.timeWindow, exam.relatedCourse].filter(Boolean).join(' '),
+        view: 'exams',
+        targetId: `exam-${exam.id}`,
+      })),
+      ...searchPastExams.value.map((exam) => ({
+        id: exam.id,
+        type: '历史考试',
+        title: exam.title,
+        description: `${exam.type || ''} · ${exam.completionDate || ''}`,
+        searchText: [exam.title, exam.type, exam.completionDate].filter(Boolean).join(' '),
+        view: 'exams',
+        targetId: `past-exam-${exam.id}`,
+      })),
+      ...searchCertificates.value.map((certificate) => ({
+        id: certificate.id,
+        type: '证书',
+        title: certificate.title,
+        description: `${certificate.level || ''} · ${certificate.issueOrg || ''}`,
+        searchText: [certificate.title, certificate.level, certificate.issueOrg, certificate.serialNumber]
+          .filter(Boolean).join(' '),
+        view: 'certificates',
+        targetId: `certificate-${certificate.id}`,
+      })),
+    );
+  }
+
+  records.push(
+    ...messages.value.map((message) => ({
+      id: message.id,
+      type: '公告',
+      title: message.title,
+      description: `${message.sender || ''} · ${message.preview || ''}`,
+      searchText: [message.title, message.preview, message.sender].filter(Boolean).join(' '),
+      view: admin ? 'admin-announcements' : 'messages',
+      targetId: admin ? '' : `message-${message.id}`,
+    })),
+    {
+      id: 'analytics-page',
+      type: '学习看板',
+      title: '个人学习看板',
+      description: '学习时长趋势与学习记录',
+      searchText: '个人学习看板 学习时长 学习记录 能力发展',
+      view: 'analytics',
+      targetId: '',
+    },
+    {
+      id: 'attendance-page',
+      type: '培训考勤',
+      title: '培训考勤与请假中心',
+      description: '培训签到、签退与请假申请',
+      searchText: '培训考勤 签到 签退 请假申请 培训假 考勤记录',
+      view: 'attendance',
+      targetId: '',
+    },
+    {
+      id: 'course-player-page',
+      type: '课程学习',
+      title: '课程播放器',
+      description: '课程视频与章节目录',
+      searchText: '课程视频 播放器 学习 课程目录',
+      view: 'courses',
+      targetId: '',
+    },
+  );
+  return records;
+});
 
 const searchResults = computed(() => {
   const query = globalSearchQuery.value.trim().toLocaleLowerCase();
@@ -469,32 +526,24 @@ const searchResults = computed(() => {
     .slice(0, 10);
 });
 
-const screenOptions = [
-  { id: 'home', label: '1. 首页工作台 (早报/考勤)' },
-  { id: 'courses', label: '2. 课程中心' },
-  { id: 'course-player', label: '3. 视频学习与Lua实操' },
-  { id: 'exams', label: '4. 考评中心 (测评矩阵)' },
-  { id: 'exam-taking', label: '5. 在线闭卷作答大屏' },
-  { id: 'analytics', label: '6. 个人研学看板 (效能全景)' },
-  { id: 'attendance', label: '7. 考勤打卡与请假中心' },
-  { id: 'certificates', label: '8. 荣誉证书与问答' },
-  { id: 'messages', label: '9. 站内信与考评通告' },
-  { id: 'messages-detail', label: '9.1 消息详情' },
-  { id: 'login', label: '10. 企业登录门户' },
-];
-
-const handleNavigate = (view) => {
+const handleNavigate = (view, { searchTargetId: targetId = '' } = {}) => {
   searchTargetId.value = '';
-  const courseId = selectedCourseId.value || COURSES_DATA[0]?.id;
-  router.push(locationForView(view, {
+  const courseId = selectedCourseId.value || learnerStore.courses[0]?.id;
+  if (view === 'course-player' && !courseId) {
+    return router.push(locationForView('courses'));
+  }
+  const location = locationForView(view, {
     courseId,
     trackId: selectedTrack.value?.id,
     messageId: selectedMessageId.value,
     examId: selectedExamId.value,
-  }));
+  });
+  if (targetId) {
+    location.query = { ...location.query, searchTargetId: targetId };
+  }
+  return router.push(location);
 };
 
-const { show: showToast } = useToast();
 const THEME_LABELS = { cyan: '青蓝', black: '曜黑', navy: '石墨' };
 
 /* 石墨只给管理端;学员端在青蓝/曜黑之间切 */
@@ -507,16 +556,10 @@ const cycleTheme = () => {
 
 const handleSelectSearchResult = (result) => {
   selectedTrack.value = result.type === '研修通道'
-    ? RECOMMENDED_TRACKS.find(track => track.id === result.id)
+    ? searchTracks.value.find((track) => track.id === result.id) || null
     : null;
-  handleNavigate(result.view);
-  searchTargetId.value = result.targetId;
+  handleNavigate(result.view, { searchTargetId: result.targetId });
   globalSearchQuery.value = '';
-};
-
-const handleOpenTrack = (track) => {
-  selectedTrack.value = track;
-  handleNavigate('track-detail');
 };
 
 const handleOpenCourse = (course) => {
@@ -532,11 +575,40 @@ const handleOpenMessage = (messageId) => {
 
 const isAdmin = computed(() => currentUser.value?.role === 'admin');
 
+const loadSearchData = async () => {
+  if (isAdmin.value) return;
+  const results = await Promise.allSettled([
+    fetchAllTracks(),
+    fetchExams(),
+    fetchMyCertificates(),
+  ]);
+  if (results[0].status === 'fulfilled') {
+    searchTracks.value = results[0].value;
+  }
+  if (results[1].status === 'fulfilled') {
+    searchAssignments.value = results[1].value.assignments || [];
+    searchPastExams.value = results[1].value.past || [];
+  }
+  if (results[2].status === 'fulfilled') {
+    searchCertificates.value = results[2].value;
+  }
+  if (results.some((result) => result.status === 'rejected')) {
+    showToast('部分搜索数据加载失败，相关内容暂不可搜索。', 'error');
+  }
+};
+
+const resetSearchData = () => {
+  searchTracks.value = [];
+  searchAssignments.value = [];
+  searchPastExams.value = [];
+  searchCertificates.value = [];
+};
+
 /* 壳层与共享数据：学员端消息/考勤/请假/课程 + 管理端基础字典 */
 const bootstrapData = async () => {
   const tasks = [loadMessages(true), loadAttendance(), loadLeaves(true)];
   if (isAdmin.value) tasks.push(loadAdminStore());
-  else tasks.push(loadLearnerCourses(true));
+  else tasks.push(loadLearnerCourses(true), loadSearchData());
   await Promise.allSettled(tasks);
 };
 
@@ -565,32 +637,36 @@ const handleLoginSuccess = (payload) => {
   bootstrapData();
 };
 
-const handleLogout = async () => {
-  try {
-    await logoutApi();
-  } catch {
-    /* 后端登出是幂等空操作，失败不应阻塞本地清理 */
-  }
+const clearLocalSession = () => {
   clearAuth();
   resetAdminStore();
   resetLearnerStore();
   resetMessages();
   resetAttendance();
   resetLeaves();
+  resetSearchData();
   currentUser.value = null;
+  currentView.value = 'login';
   theme.value = 'cyan';
+};
+
+const handleLogout = () => {
+  const logoutRequest = logoutApi();
+  clearLocalSession();
   router.replace({ name: 'login' });
+  logoutRequest.catch(() => {
+    /* Local sign-out must not depend on the best-effort server request. */
+  });
+};
+
+const handlePasswordChanged = () => {
+  handleLogout();
+  showToast('密码已修改，请使用新密码重新登录。', 'success');
 };
 
 onMounted(async () => {
   setUnauthorizedHandler(() => {
-    clearAuth();
-    resetAdminStore();
-    resetLearnerStore();
-    resetMessages();
-    resetAttendance();
-    resetLeaves();
-    currentUser.value = null;
+    clearLocalSession();
     router.replace({ name: 'login' });
   });
 
@@ -599,10 +675,15 @@ onMounted(async () => {
 
 const handleUpdateUser = (updatedUser) => {
   currentUser.value = { ...currentUser.value, ...updatedUser };
+  setStoredUser(currentUser.value);
 };
 
 const handleOpenCertificate = (certId) => {
-  const found = CERTIFICATES_DATA.find(c => c.id === certId) || CERTIFICATES_DATA[0];
+  const found = searchCertificates.value.find((certificate) => certificate.id === String(certId));
+  if (!found) {
+    showToast('没有找到这张已发放的证书。', 'error');
+    return;
+  }
   selectedCert.value = found;
 };
 
@@ -639,7 +720,7 @@ const handleCloseExamResult = () => {
 
 const handleViewCertFromExam = () => {
   isExamResultOpen.value = false;
-  handleOpenCertificate('cert-1');
+  handleNavigate('certificates');
 };
 
 const handleRetakeExam = () => {

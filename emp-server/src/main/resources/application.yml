@@ -18,6 +18,12 @@ spring:
       maximum-pool-size: 12
       minimum-idle: 2
       connection-timeout: 10000
+  data:
+    redis:
+      host: ${REDIS_HOST:127.0.0.1}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      database: ${REDIS_DATABASE:0}
   servlet:
     multipart:
       # 课程视频走分片直传，普通课件/头像走服务端转发，这里放开单文件上限
@@ -41,6 +47,8 @@ mybatis-plus:
       id-type: auto
 
 emp:
+  cache:
+    api-response-ttl: ${API_RESPONSE_CACHE_TTL:1s}
   jwt:
     # 生产环境务必用 EMP_JWT_SECRET 覆盖；HS256 要求至少 32 字节
     secret: ${EMP_JWT_SECRET:emp-academy-dev-secret-key-change-me-in-production-2025}

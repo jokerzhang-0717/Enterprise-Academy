@@ -305,6 +305,56 @@ paths:
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '404': { $ref: '#/components/responses/NotFound' }
+  /courses/{id}/lessons/{lessonId}/study-sessions:
+    post:
+      tags: [学员端-课程]
+      summary: 开始课时学习计时
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+        - $ref: '#/components/parameters/LessonIdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StudySessionRequest'
+            example:
+              sessionId: 7f6f2e5e-1b98-49a3-a31b-4e8208e8f91a
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /study-sessions/{sessionId}/heartbeat:
+    post:
+      tags: [学员端-课程]
+      summary: 上报学习计时心跳
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /study-sessions/{sessionId}/stop:
+    post:
+      tags: [学员端-课程]
+      summary: 停止课时学习计时并结算学时
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
   /course-categories:
     get:
       tags: [学员端-课程]
@@ -591,7 +641,6 @@ paths:
             schema:
               $ref: '#/components/schemas/CheckinAction'
             example:
-              location: 企业总部·移动端定位
               method: 3
       responses:
         '200': { $ref: '#/components/responses/Ok' }
@@ -655,6 +704,14 @@ paths:
     get:
       tags: [学员端-公告与通知]
       summary: 未读公告数
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /announcements/read-all:
+    put:
+      tags: [学员端-公告与通知]
+      summary: 全部公告标记已读
+      description: 将当前用户所有已发布公告标记为已读，返回本次新增的已读数量。
       responses:
         '200': { $ref: '#/components/responses/Ok' }
         '401': { $ref: '#/components/responses/Unauthorized' }
@@ -1062,7 +1119,7 @@ paths:
             schema:
               $ref: '#/components/schemas/ResetPasswordRequest'
             example:
-              newPassword: '123456'
+              newPassword: '12345678'
       responses:
         '200': { $ref: '#/components/responses/OkVoid' }
         '400': { $ref: '#/components/responses/BadRequest' }
@@ -1835,9 +1892,6 @@ paths:
               type: 1
               score: 5
               title: 微服务中用于服务发现与配置管理的组件是？
-              codeFilename: null
-              codeRuntime: null
-              codeContent: null
               correctAnswer: A
               referenceAnswer: null
               analysis: Consul / Nacos 均提供注册中心能力。
@@ -1998,7 +2052,6 @@ paths:
               checkOutTime: '18:05:00'
               method: 1
               status: 1
-              location: 企业总部
       responses:
         '200': { $ref: '#/components/responses/Ok' }
         '400': { $ref: '#/components/responses/BadRequest' }
@@ -2613,6 +2666,15 @@ components:
         name:
           type: string
           example: 李明
+        gender:
+          type: string
+          nullable: true
+          description: 性别：男 / 女，空串表示清除
+          example: 男
+        age:
+          type: integer
+          nullable: true
+          example: 28
         phone:
           type: string
           nullable: true
@@ -2650,6 +2712,16 @@ components:
           type: boolean
           description: 是否完成本课时
           example: true
+
+    StudySessionRequest:
+      type: object
+      required: [sessionId]
+      properties:
+        sessionId:
+          type: string
+          format: uuid
+          description: 客户端生成的学习会话标识
+          example: 7f6f2e5e-1b98-49a3-a31b-4e8208e8f91a
 
     AnswerSaveRequest:
       type: object
@@ -2725,10 +2797,6 @@ components:
     CheckinAction:
       type: object
       properties:
-        location:
-          type: string
-          nullable: true
-          example: 企业总部·移动端定位
         method:
           type: integer
           nullable: true
@@ -3273,18 +3341,6 @@ components:
         title:
           type: string
           example: 微服务中用于服务发现与配置管理的组件是？
-        codeFilename:
-          type: string
-          nullable: true
-          example: null
-        codeRuntime:
-          type: string
-          nullable: true
-          example: null
-        codeContent:
-          type: string
-          nullable: true
-          example: null
         correctAnswer:
           type: string
           nullable: true
@@ -3371,10 +3427,6 @@ components:
           nullable: true
           description: 1 正常 / 2 迟到 / 3 缺勤 / 4 早退；不传按是否有签到时间推断
           example: 1
-        location:
-          type: string
-          nullable: true
-          example: 企业总部
 
     CertIssueSaveRequest:
       type: object

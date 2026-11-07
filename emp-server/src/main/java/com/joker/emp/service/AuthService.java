@@ -116,8 +116,8 @@ public class AuthService {
     if (!matches(user, oldPassword)) {
       throw new BizException("原密码不正确");
     }
-    if (newPassword == null || newPassword.length() < 6) {
-      throw new BizException("新密码至少需要 6 位");
+    if (newPassword == null || newPassword.length() < 8) {
+      throw new BizException("新密码至少需要 8 位");
     }
     SysUser update = new SysUser();
     update.setId(user.getId());
@@ -152,6 +152,8 @@ public class AuthService {
     result.put("grade", user.getGrade());
     result.put("specialty", user.getSpecialty());
     result.put("avatarUrl", user.getAvatarUrl());
+    result.put("gender", user.getGender());
+    result.put("age", user.getAge());
     result.put("phone", user.getPhone());
     result.put("email", user.getEmail());
     result.put("role", user.getRole());

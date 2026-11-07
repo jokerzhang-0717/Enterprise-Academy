@@ -45,6 +45,11 @@ public class SysUser {
 
   private String avatarUrl;
 
+  /** 性别：男 / 女 */
+  private String gender;
+
+  private Integer age;
+
   private String phone;
 
   private String email;

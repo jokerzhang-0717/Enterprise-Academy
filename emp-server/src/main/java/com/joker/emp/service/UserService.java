@@ -111,6 +111,8 @@ public class UserService {
     item.put("grade", user.getGrade());
     item.put("specialty", user.getSpecialty());
     item.put("avatarUrl", user.getAvatarUrl());
+    item.put("gender", user.getGender());
+    item.put("age", user.getAge());
     item.put("phone", user.getPhone());
     item.put("email", user.getEmail());
     item.put("role", user.getRole());
@@ -255,21 +257,25 @@ public class UserService {
   }
 
   @Transactional
-  public Map<String, Object> updateProfile(String name, String phone, String email,
-      String jobTitle, String specialty, String grade, String avatarUrl) {
+  public Map<String, Object> updateProfile(String name, String gender, Integer age,
+      String phone, String email, String jobTitle, String specialty, String grade,
+      String avatarUrl) {
     Long userId = AuthContext.userId();
     SysUser user = userMapper.selectById(userId);
     if (user == null) {
       throw BizException.notFound("用户不存在");
     }
-    if (name != null && !name.isBlank()) user.setName(name);
-    if (phone != null) user.setPhone(phone);
-    if (email != null) user.setEmail(email);
-    if (jobTitle != null) user.setJobTitle(jobTitle);
-    if (specialty != null) user.setSpecialty(specialty);
-    if (grade != null) user.setGrade(grade);
-    if (avatarUrl != null) user.setAvatarUrl(avatarUrl);
-    userMapper.updateById(user);
+    userMapper.update(null, Wrappers.<SysUser>lambdaUpdate()
+        .eq(SysUser::getId, userId)
+        .set(name != null && !name.isBlank(), SysUser::getName, name)
+        .set(SysUser::getGender, gender == null || gender.isBlank() ? null : gender)
+        .set(SysUser::getAge, age)
+        .set(SysUser::getPhone, phone)
+        .set(SysUser::getEmail, email)
+        .set(jobTitle != null, SysUser::getJobTitle, jobTitle)
+        .set(specialty != null, SysUser::getSpecialty, specialty)
+        .set(grade != null, SysUser::getGrade, grade)
+        .set(avatarUrl != null, SysUser::getAvatarUrl, avatarUrl));
     return detail(userId);
   }
 }

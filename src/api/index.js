@@ -9,6 +9,7 @@ import {
   adaptAdminCourse,
   adaptAdminDepartment,
   adaptAdminExam,
+  adaptAnnouncementMessage,
   adaptCertificate,
   adaptCourse,
   adaptExamAssignment,
@@ -68,6 +69,15 @@ export const fetchLesson = (courseId, lessonId) =>
 
 export const saveLessonProgress = (courseId, lessonId, payload) =>
   http.post(`/courses/${courseId}/lessons/${lessonId}/progress`, payload);
+
+export const startStudySession = (courseId, lessonId, sessionId) =>
+  http.post(`/courses/${courseId}/lessons/${lessonId}/study-sessions`, { sessionId });
+
+export const heartbeatStudySession = (sessionId) =>
+  http.post(`/study-sessions/${sessionId}/heartbeat`);
+
+export const stopStudySession = (sessionId) =>
+  http.post(`/study-sessions/${sessionId}/stop`);
 
 export const fetchMyLearning = () => http.get('/courses/my-learning');
 
@@ -146,6 +156,15 @@ export const fetchAnnouncement = (id) => http.get(`/announcements/${id}`);
 
 export const fetchUnreadAnnouncementCount = () => http.get('/announcements/unread-count');
 
+export const markAllAnnouncementsRead = () => http.put('/announcements/read-all', {});
+
+/** 学员端消息中心：直接读取管理端已发布的公告 */
+export const fetchAnnouncementMessages = (params = { page: 1, size: 100 }) =>
+  http.get('/announcements', params).then((page) => ({
+    ...page,
+    records: (page?.records || []).map(adaptAnnouncementMessage),
+  }));
+
 export const fetchNotifications = (params = { page: 1, size: 100 }) =>
   http.get('/notifications', params).then((page) => ({
     ...page,
@@ -195,7 +214,7 @@ export const deleteAdminUser = (id) => http.delete(`/admin/users/${id}`);
 export const updateAdminUserStatus = (id, accountStatus) =>
   http.put(`/admin/users/${id}/status`, { accountStatus });
 
-export const resetAdminUserPassword = (id, password = '123456') =>
+export const resetAdminUserPassword = (id, password = '12345678') =>
   http.post(`/admin/users/${id}/reset-password`, { newPassword: password });
 
 /* ---------- 部门 ---------- */

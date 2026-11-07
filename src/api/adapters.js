@@ -282,13 +282,9 @@ export const adaptExamQuestion = (question) => {
     typeLabel: question.typeLabel,
     score: Number(question.score || 0),
     title: question.title,
-    codeSnippet: question.codeContent
-      ? {
-          filename: question.codeFilename || '',
-          runtime: question.codeRuntime || '',
-          code: question.codeContent,
-        }
-      : null,
+    knowledgePoint: question.knowledgePoint || '',
+    difficulty: Number(question.difficulty || 2),
+    difficultyLabel: question.difficultyLabel || '中等',
     options,
     answer,
     correctAnswer: answer,
@@ -308,16 +304,14 @@ export const adaptCertificate = (cert) => {
     title: cert.templateTitle || cert.title || '',
     level: cert.levelLabel || cert.level || '',
     validity: cert.validityLabel || cert.validity || '',
-    rankingScore: cert.rankingScore || '',
     privilege: cert.privilegeText || cert.privilege || '',
     description: cert.description || '',
     issueDate: formatDate(cert.issueDate),
-    category: cert.category || 'architecture',
+    category: cert.category || '',
     status: cert.status,
     statusLabel: cert.statusLabel || '',
     serialNumber: cert.serialNumber || '',
     issueOrg: cert.issueOrg || '',
-    badgeType: cert.badgeType || 'blockchain',
   };
 };
 
@@ -357,6 +351,34 @@ export const adaptNotification = (notice) => {
   };
 };
 
+/** 学员端公告 → 消息中心视图模型（消息来源于管理端公告管理） */
+export const adaptAnnouncementMessage = (announcement) => {
+  if (!announcement) return null;
+  const content = announcement.content || '';
+  const plain = content.replace(/\s+/g, ' ').trim();
+  return {
+    ...announcement,
+    id: toId(announcement.id),
+    numericId: announcement.id,
+    type: 'announcement',
+    typeLabel: announcement.isTop ? '置顶公告' : '企业公告',
+    sender: announcement.authorName || '企业培训中心',
+    time: formatMessageTime(announcement.publishAt || announcement.createdAt),
+    preview: plain.length > 120 ? `${plain.slice(0, 120)}…` : plain,
+    priority: announcement.isTop ? 'urgent' : 'normal',
+    isRead: Boolean(announcement.isRead),
+    attachmentsCount: 0,
+    details: {
+      fullContent: content,
+      bulletPoints: [],
+      officialNoticeId: announcement.extId || '',
+      examDuration: '',
+      passingScore: '',
+      attachments: [],
+    },
+  };
+};
+
 /* ============================== 考勤 / 请假 ============================== */
 
 export const adaptLeave = (leave) => {
@@ -380,6 +402,7 @@ export const adaptLeave = (leave) => {
     // 管理端审批列表字段
     applicant: leave.userName || leave.applicant || '',
     userName: leave.userName || leave.applicant || '',
+    avatarUrl: leave.avatarUrl || '',
     employeeId: leave.employeeNo || leave.employeeId || '',
     employeeNo: leave.employeeNo || leave.employeeId || '',
     department: leave.department || '',
@@ -454,6 +477,7 @@ export const adaptAdminCertificate = (cert) => {
     // 管理端列表/弹窗沿用 holder 命名
     holder: cert.userName || cert.holder || '',
     userName: cert.userName || cert.holder || '',
+    avatarUrl: cert.avatarUrl || '',
     employeeNo: cert.employeeNo || '',
     employeeId: cert.employeeNo || cert.employeeId || '',
     department: cert.department || '',
@@ -485,7 +509,7 @@ export const adaptAdminAnnouncement = (notice) => {
 
 export const adaptAdminCheckin = (checkin) => {
   if (!checkin) return null;
-  const statusMap = { 1: 'normal', 2: 'late', 3: 'missing' };
+  const statusMap = { 1: 'normal', 2: 'late', 3: 'missing', 4: 'early' };
   return {
     ...checkin,
     id: toId(checkin.id),

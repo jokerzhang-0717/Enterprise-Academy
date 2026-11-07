@@ -9,6 +9,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -63,7 +64,7 @@ public class FileController {
   }
 
   /**
-   * 稳定访问地址：/api/files/view/{objectName}。
+   * 稳定访问地址：/api/files/view/{objectName}，支持视频播放器的 Range 分段读取。
    * 该路径在鉴权白名单中，便于 <img>/<video>/<a download> 直接访问。
    */
   @GetMapping("/view/**")
@@ -75,17 +76,75 @@ public class FileController {
 
     StatObjectResponse stat = storageService.stat(objectName);
     String contentType = stat.contentType() == null ? "application/octet-stream" : stat.contentType();
-    InputStreamResource resource = new InputStreamResource(storageService.open(objectName));
+    long fileSize = stat.size();
+    ByteRange range;
+    try {
+      range = parseRange(request.getHeader(HttpHeaders.RANGE), fileSize);
+    } catch (IllegalArgumentException ex) {
+      return ResponseEntity.status(HttpStatus.REQUESTED_RANGE_NOT_SATISFIABLE)
+          .header(HttpHeaders.ACCEPT_RANGES, "bytes")
+          .header(HttpHeaders.CONTENT_RANGE, "bytes */" + fileSize)
+          .build();
+    }
 
-    return ResponseEntity.ok()
+    boolean partial = range != null;
+    long start = partial ? range.start() : 0;
+    long length = partial ? range.end() - range.start() + 1 : fileSize;
+    InputStreamResource resource = new InputStreamResource(
+        partial ? storageService.open(objectName, start, length) : storageService.open(objectName));
+
+    ResponseEntity.BodyBuilder response = ResponseEntity.status(
+            partial ? HttpStatus.PARTIAL_CONTENT : HttpStatus.OK)
+        .header(HttpHeaders.ACCEPT_RANGES, "bytes")
         .header(HttpHeaders.CONTENT_TYPE, contentType)
-        .header(HttpHeaders.CONTENT_LENGTH, String.valueOf(stat.size()))
+        .contentLength(length)
         .header(HttpHeaders.CACHE_CONTROL, "public, max-age=86400")
         .header(HttpHeaders.CONTENT_DISPOSITION,
-            "inline; filename=\"" + objectName.substring(objectName.lastIndexOf('/') + 1) + "\"")
-        .contentType(MediaType.parseMediaType(contentType))
-        .body(resource);
+            "inline; filename=\"" + objectName.substring(objectName.lastIndexOf('/') + 1) + "\"");
+    if (partial) {
+      response.header(HttpHeaders.CONTENT_RANGE,
+          "bytes " + range.start() + "-" + range.end() + "/" + fileSize);
+    }
+    return response.contentType(MediaType.parseMediaType(contentType)).body(resource);
   }
+
+  private ByteRange parseRange(String header, long fileSize) {
+    if (header == null || header.isBlank()) {
+      return null;
+    }
+    if (fileSize <= 0 || !header.startsWith("bytes=") || header.indexOf(',') >= 0) {
+      throw new IllegalArgumentException("Invalid byte range");
+    }
+
+    String[] bounds = header.substring("bytes=".length()).split("-", -1);
+    if (bounds.length != 2) {
+      throw new IllegalArgumentException("Invalid byte range");
+    }
+    try {
+      long start;
+      long end;
+      if (bounds[0].isEmpty()) {
+        long suffixLength = Long.parseLong(bounds[1]);
+        if (suffixLength <= 0) {
+          throw new IllegalArgumentException("Invalid byte range");
+        }
+        start = Math.max(0, fileSize - suffixLength);
+        end = fileSize - 1;
+      } else {
+        start = Long.parseLong(bounds[0]);
+        end = bounds[1].isEmpty() ? fileSize - 1 : Long.parseLong(bounds[1]);
+        if (start < 0 || start >= fileSize || end < start) {
+          throw new IllegalArgumentException("Invalid byte range");
+        }
+        end = Math.min(end, fileSize - 1);
+      }
+      return new ByteRange(start, end);
+    } catch (NumberFormatException ex) {
+      throw new IllegalArgumentException("Invalid byte range", ex);
+    }
+  }
+
+  private record ByteRange(long start, long end) {}
 
   public record PresignUploadRequest(String fileName, String contentType, String folder) {
   }

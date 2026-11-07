@@ -20,11 +20,11 @@
     <header class="att-header">
       <div class="att-header__meta">
         <span class="att-tag">HYBRID LMS ATTENDANCE</span>
-        <span class="att-header__emp">企业工号: {{ employeeId }}</span>
+        <span v-if="employeeId" class="att-header__emp">企业工号: {{ employeeId }}</span>
       </div>
       <h1 class="att-header__title">培训考勤打卡与请假联动中心</h1>
       <p class="att-header__desc">
-        线下实体教室定位感应与线上会议协同打卡系统，出勤学时自动计入年度高阶技术职级考核。
+        记录今日签到与签退状态，管理培训相关请假申请及审批进度。
       </p>
     </header>
 
@@ -77,7 +77,7 @@
           <div>
             <p class="att-punch__state">今日已签退</p>
             <p class="att-punch__time">
-              {{ checkedOutAt || punchedOutFallback || '—' }}
+              {{ checkedOutAt || '—' }}
               <span class="att-punch__time-note">签退成功</span>
             </p>
           </div>
@@ -302,17 +302,20 @@ import {
   X,
 } from 'lucide-vue-next';
 import { useAttendance } from '../composables/useAttendance.js';
-import { useLeaveRequests, loadLeaves, submitLeave } from '../composables/useLeaveRequests.js';
+import { useLeaveRequests, submitLeave } from '../composables/useLeaveRequests.js';
 
 const props = defineProps({
   employeeId: {
     type: String,
-    default: 'ZK-20250422-09'
+    default: '',
   }
 });
 
-const currentTime = ref('16:56:55');
-const punchedOutFallback = ref('');
+const formatClock = (date) => {
+  const pad = (value) => String(value).padStart(2, '0');
+  return `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+};
+const currentTime = ref(formatClock(new Date()));
 const {
   isCheckedIn,
   isCheckedOut,
@@ -320,7 +323,6 @@ const {
   checkedOutAt,
   checkIn,
   checkOut,
-  loadAttendance,
 } = useAttendance();
 const leaveRecords = useLeaveRequests();
 const currentPage = ref(1);
@@ -340,27 +342,15 @@ const leaveTime = ref('');
 const leaveTimeInput = ref(null);
 const leaveDays = ref('');
 const leaveErrors = ref({ type: '', time: '', days: '', reason: '' });
-const leaveReason = ref(
-  '因核心结算集群在16:30进行双机房切流验证，需现场跟进发布 (工单: PROD-OPS-20250518-09)。申请缺席下午后半程实操。'
-);
+const leaveReason = ref('');
 const notice = ref(null);
 
 let timer = null;
 let noticeTimer = null;
 onMounted(() => {
   timer = setInterval(() => {
-    const now = new Date();
-    const h = String(now.getHours()).padStart(2, '0');
-    const m = String(now.getMinutes()).padStart(2, '0');
-    const s = String(now.getSeconds()).padStart(2, '0');
-    currentTime.value = `${h}:${m}:${s}`;
+    currentTime.value = formatClock(new Date());
   }, 1000);
-
-  // 签到/签退状态以后端为准，页面刷新后仍能恢复今日状态
-  loadAttendance().catch((err) => {
-    showNotice('考勤状态加载失败', err?.message || '请稍后重试');
-  });
-  loadLeaves(true).catch(() => {});
 });
 
 onUnmounted(() => {
@@ -375,8 +365,7 @@ const handlePunchOut = async () => {
   punching.value = true;
   try {
     await checkOut();
-    if (!checkedOutAt.value) punchedOutFallback.value = currentTime.value;
-    showNotice('签退成功', `签退时间：${checkedOutAt.value || punchedOutFallback.value || currentTime.value}`);
+    showNotice('签退成功', checkedOutAt.value ? `签退时间：${checkedOutAt.value}` : '');
   } catch (err) {
     showNotice('签退失败', err?.message || '请先完成签到');
   } finally {
@@ -389,7 +378,7 @@ const handlePunchIn = async () => {
   punching.value = true;
   try {
     await checkIn();
-    showNotice('签到成功', `签到时间：${checkedInAt.value || currentTime.value}`);
+    showNotice('签到成功', checkedInAt.value ? `签到时间：${checkedInAt.value}` : '');
   } catch (err) {
     showNotice('签到失败', err?.message || '请稍后重试');
   } finally {
@@ -414,7 +403,6 @@ const handleSubmitLeave = async () => {
   try {
     await submitLeave({
       leaveType: leaveType.value.trim(),
-      trainingTitle: '《2025 架构设计委员会春季技术研讨与实操培训》',
       startDate: leaveTime.value,
       leaveDays: days,
       reason: leaveReason.value.trim(),
@@ -424,7 +412,7 @@ const handleSubmitLeave = async () => {
     leaveTime.value = '';
     leaveDays.value = '';
     leaveReason.value = '';
-    showNotice('请假申请已提交', '申请已流转至研发组负责人与 HR 审批。');
+    showNotice('请假申请已提交', '可在下方请假记录中查看审批进度。');
   } catch (err) {
     showNotice('请假申请提交失败', err?.message || '请稍后重试');
   } finally {

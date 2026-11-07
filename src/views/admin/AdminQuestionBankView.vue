@@ -5,7 +5,7 @@
     <div class="page-head">
       <div>
         <h1 class="page-title">题库管理</h1>
-        <p class="page-sub">全题库统一维护 · 题目发布后即被对应考试引用</p>
+        <p class="page-sub">统一维护题库 · 组卷时复制为独立试卷，发布后内容锁定</p>
       </div>
       <div class="page-head-actions">
         <button class="btn btn--secondary" @click="openImportModal">
@@ -22,6 +22,10 @@
       <div class="stat-item">
         <span class="stat-value">{{ questions.length }}</span>
         <span class="stat-label">总题数</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-value stat-value--green">{{ poolQuestionCount }}</span>
+        <span class="stat-label">备用题</span>
       </div>
       <div class="stat-item">
         <span class="stat-value stat-value--blue">{{ typeCount('single') }}</span>
@@ -45,6 +49,7 @@
     <div class="toolbar">
       <select v-model="examFilter" class="select">
         <option value="">全部考试</option>
+        <option value="__standalone__">备用题库</option>
         <option v-for="exam in exams" :key="exam.id" :value="exam.id">
           {{ exam.title.slice(0, 24) }}{{ exam.title.length > 24 ? '…' : '' }}
         </option>
@@ -72,20 +77,39 @@
 
     <!-- 题目列表 -->
     <div class="question-list">
-      <article v-for="(q, idx) in pagedQuestions" :key="q.id" class="question-item" @click="openEdit(q)">
+      <article
+        v-for="(q, idx) in pagedQuestions"
+        :key="q.id"
+        class="question-item"
+        :class="{ 'question-item--locked': isQuestionLocked(q) }"
+        @click="openEdit(q)"
+      >
         <div class="q-index">{{ (page - 1) * PAGE_SIZE + idx + 1 }}</div>
         <div class="q-main">
           <div class="q-top">
             <span class="q-type-chip" :class="`q-type-chip--${q.type}`">{{ q.typeLabel }}</span>
             <span class="q-score">{{ q.score }} 分</span>
             <span class="q-exam">{{ examTitle(q.examId) }}</span>
+            <span v-if="isQuestionLocked(q)" class="q-exam">已锁定</span>
+            <span v-if="q.knowledgePoint" class="q-exam">{{ q.knowledgePoint }}</span>
+            <span class="q-exam">难度：{{ q.difficultyLabel }}</span>
             <span v-if="q.answer" class="q-answer mono">答案:{{ q.answer }}</span>
           </div>
           <p class="q-title">{{ q.title }}</p>
         </div>
         <div class="q-actions" @click.stop>
-          <button class="icon-btn" title="编辑" @click="openEdit(q)"><EditPen /></button>
-          <button class="icon-btn icon-btn--danger" title="删除" @click="removeQ(q)"><Delete /></button>
+          <button
+            class="icon-btn"
+            :title="isQuestionLocked(q) ? '考试已发布或已有作答，题目已锁定' : '编辑'"
+            :disabled="isQuestionLocked(q)"
+            @click="openEdit(q)"
+          ><EditPen /></button>
+          <button
+            class="icon-btn icon-btn--danger"
+            :title="isQuestionLocked(q) ? '考试已发布或已有作答，题目已锁定' : '删除'"
+            :disabled="isQuestionLocked(q)"
+            @click="removeQ(q)"
+          ><Delete /></button>
         </div>
       </article>
       <p v-if="!filteredQuestions.length" class="empty-tip">没有匹配的题目,点击右上角「新增题目」添加。</p>
@@ -107,9 +131,9 @@
         <form class="modal-body" @submit.prevent="saveQ">
           <div class="field-row">
             <label class="field">
-              <span class="field-label">所属考试</span>
+              <span class="field-label">题目归属</span>
               <select v-model="form.examId" class="field-input">
-                <option value="" disabled>请选择考试</option>
+                <option value="">备用题库（推荐）</option>
                 <option v-for="exam in exams" :key="exam.id" :value="exam.id">
                   {{ exam.title.slice(0, 28) }}{{ exam.title.length > 28 ? '…' : '' }}
                 </option>
@@ -127,7 +151,19 @@
               <span class="field-label">分值</span>
               <input v-model.number="form.score" type="number" min="1" class="field-input" />
             </label>
+            <label class="field">
+              <span class="field-label">难度</span>
+              <select v-model.number="form.difficulty" class="field-input">
+                <option :value="1">简单</option>
+                <option :value="2">中等</option>
+                <option :value="3">困难</option>
+              </select>
+            </label>
           </div>
+          <label class="field">
+            <span class="field-label">知识点</span>
+            <input v-model.trim="form.knowledgePoint" type="text" class="field-input" placeholder="如：数据库事务" />
+          </label>
           <label class="field">
             <span class="field-label">题干</span>
             <textarea v-model.trim="form.title" rows="3" class="field-input field-textarea" placeholder="请输入题目内容"></textarea>
@@ -176,13 +212,14 @@
         </div>
         <div class="modal-body import-body">
           <label class="field">
-            <span class="field-label">所属考试</span>
+            <span class="field-label">导入到</span>
             <select v-model="importExamId" class="field-input">
-              <option value="" disabled>请选择所属考试</option>
+              <option value="">备用题库（推荐，组卷时再选入考试）</option>
               <option v-for="exam in exams" :key="exam.id" :value="exam.id">
                 {{ exam.title }}
               </option>
             </select>
+            <span class="field-hint">导入到备用题库的题目不会自动关联考试，可在新建或编辑考试时统一组卷。</span>
           </label>
 
           <div class="field">
@@ -299,7 +336,14 @@ const qTypeOptions = [
 ];
 
 const typeCount = (type) => questions.filter(q => q.type === type).length;
+const poolQuestionCount = computed(() => questions.filter((question) => !question.examId).length);
+const isQuestionLocked = (question) => {
+  if (!question.examId) return false;
+  const exam = exams.find((item) => item.id === question.examId);
+  return Boolean(exam && (exam.statusCode !== 1 || Number(exam.attemptCount || 0) > 0));
+};
 const examTitle = (examId) => {
+  if (!examId) return '备用题库';
   const exam = exams.find(e => e.id === examId);
   return exam ? `所属:${exam.title.slice(0, 14)}${exam.title.length > 14 ? '…' : ''}` : '未关联考试';
 };
@@ -307,9 +351,10 @@ const examTitle = (examId) => {
 const filteredQuestions = computed(() => {
   const kw = keyword.value.trim().toLowerCase();
   return questions.filter(q => {
-    const hitExam = !examFilter.value || q.examId === examFilter.value;
+    const hitExam = !examFilter.value
+      || (examFilter.value === '__standalone__' ? !q.examId : q.examId === examFilter.value);
     const hitType = !typeFilter.value || q.type === typeFilter.value;
-    const hitKw = !kw || q.title.toLowerCase().includes(kw);
+    const hitKw = !kw || `${q.title || ''} ${q.knowledgePoint || ''}`.toLowerCase().includes(kw);
     return hitExam && hitType && hitKw;
   });
 });
@@ -328,6 +373,8 @@ const emptyForm = () => ({
   examId: '',
   type: 'single',
   score: 5,
+  knowledgePoint: '',
+  difficulty: 2,
   title: '',
   options: [
     { key: 'A', text: '' }, { key: 'B', text: '' },
@@ -347,12 +394,18 @@ const openAdd = () => {
 };
 
 const openEdit = (q) => {
+  if (isQuestionLocked(q)) {
+    showToast('该考试已发布或已有作答记录，题目已锁定。', 'info');
+    return;
+  }
   editingId.value = q.numericId ?? q.id;
   formError.value = '';
   form.value = {
     examId: q.examId,
     type: q.type,
     score: q.score,
+    knowledgePoint: q.knowledgePoint || '',
+    difficulty: q.difficulty || 2,
     title: q.title,
     options: (q.options && q.options.length) ? q.options.map(o => ({ ...o })) : emptyForm().options,
     answer: q.answer || ''
@@ -383,10 +436,12 @@ const typeCodeMap = { single: 1, multiple: 2, judgment: 3, application: 4 };
 const toSavePayload = (source) => {
   const objective = source.type !== 'application';
   return {
-    examId: Number(source.examId),
+    examId: source.examId ? Number(source.examId) : 0,
     type: typeCodeMap[source.type] ?? 1,
     score: Number(source.score) || 5,
     title: source.title.trim(),
+    knowledgePoint: (source.knowledgePoint || '').trim(),
+    difficulty: Number(source.difficulty) || 2,
     correctAnswer: objective ? String(source.answer || '').trim().toUpperCase() : '',
     options: objective
       ? source.options
@@ -397,7 +452,6 @@ const toSavePayload = (source) => {
 };
 
 const saveQ = async () => {
-  if (!form.value.examId) { formError.value = '请选择所属考试。'; return; }
   if (!form.value.title.trim()) { formError.value = '请输入题干。'; return; }
   if (needOptions.value) {
     const hasOption = form.value.options.some(o => o.text.trim());
@@ -426,6 +480,10 @@ const saveQ = async () => {
 };
 
 const removeQ = (q) => {
+  if (isQuestionLocked(q)) {
+    showToast('该考试已发布或已有作答记录，题目已锁定。', 'info');
+    return;
+  }
   const exam = adminStore.exams.find(e => e.id === q.examId);
   askConfirm({
     tone: 'danger',
@@ -458,7 +516,7 @@ const parsedList = ref([]);
 const importing = ref(false);
 
 const openImportModal = () => {
-  importExamId.value = exams[0]?.id || '';
+  importExamId.value = '';
   importRawText.value = '';
   parsedList.value = [];
   importModalOpen.value = true;
@@ -629,30 +687,26 @@ const handleImportFile = (e) => {
 };
 
 const confirmImport = async () => {
-  if (!importExamId.value) {
-    showToast('请先选择所属考试', 'error');
-    return;
-  }
   if (!parsedList.value.length) {
     showToast('没有可导入的有效题目', 'error');
     return;
   }
 
   importing.value = true;
-  let failed = 0;
+  const failures = [];
   for (const item of parsedList.value) {
     try {
       await createAdminQuestion(toSavePayload({ ...item, examId: importExamId.value }));
-    } catch (err) {
-      failed += 1;
+    } catch (error) {
+      failures.push(error?.message || '未知错误');
     }
   }
   await loadQuestions();
   importing.value = false;
 
-  const done = parsedList.value.length - failed;
-  if (failed) {
-    showToast(`导入完成：成功 ${done} 题，失败 ${failed} 题。`, 'error');
+  const done = parsedList.value.length - failures.length;
+  if (failures.length) {
+    showToast(`导入完成：成功 ${done} 题，失败 ${failures.length} 题。${failures[0]}`, 'error');
   } else {
     showToast(`已成功导入 ${done} 道新题目！`, 'success');
     closeImportModal();
@@ -747,7 +801,7 @@ button { cursor: pointer; }
 /* ========== 题型统计 ========== */
 .stat-strip {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 12px;
 }
 
@@ -907,6 +961,13 @@ button { cursor: pointer; }
   box-shadow: inset 3px 0 0 var(--app-accent), 0 4px 16px var(--app-accent-a20);
 }
 .question-item:hover .q-title { color: var(--app-accent-deep); }
+.question-item--locked { cursor: default; }
+.question-item--locked:hover {
+  background: var(--app-surface);
+  border-color: var(--app-border);
+  box-shadow: none;
+}
+.question-item--locked:hover .q-title { color: var(--app-text); }
 /* 卡片底变成青底后,原本同底的序号块与单选 chip 会糊在一起,改用实底卡片色保住边界 */
 .question-item:hover .q-index,
 .question-item:hover .q-type-chip--single { background: var(--app-surface); }
@@ -994,6 +1055,12 @@ button { cursor: pointer; }
 .icon-btn svg { width: 14px; height: 14px; }
 .icon-btn:hover { background: var(--app-accent-soft); color: var(--app-accent-deep); border-color: var(--app-accent-border); }
 .icon-btn--danger:hover { background: var(--app-rose-bg); color: var(--app-rose-fg); border-color: var(--app-rose-line); }
+.icon-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.icon-btn:disabled:hover {
+  color: var(--app-text-3);
+  background: var(--app-surface-2);
+  border-color: var(--app-border);
+}
 
 .empty-tip {
   padding: 40px 0;
@@ -1083,6 +1150,12 @@ button { cursor: pointer; }
   font-size: 12px;
   font-weight: 600;
   color: var(--app-text-3);
+}
+
+.field-hint {
+  color: var(--app-text-5);
+  font-size: 11px;
+  line-height: 1.5;
 }
 
 .field-input {

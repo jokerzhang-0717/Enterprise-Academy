@@ -163,9 +163,20 @@
               清除本题选择
             </button>
 
-            <button type="button" class="exam-btn exam-btn--next" @click="handleNextQuestion">
-              <span>保存并前往下一题 (Q{{ Math.min(totalQuestions, currentQuestionIdx + 1) }})</span>
-              <ArrowRight class="exam-icon exam-icon--xs" />
+            <button
+              type="button"
+              class="exam-btn exam-btn--next"
+              :disabled="submitting"
+              @click="currentQuestionIdx === totalQuestions ? openSubmitConfirm() : handleNextQuestion()"
+            >
+              <template v-if="currentQuestionIdx === totalQuestions">
+                <span>提交试卷</span>
+                <Award class="exam-icon exam-icon--xs" />
+              </template>
+              <template v-else>
+                <span>保存并前往下一题 (Q{{ currentQuestionIdx + 1 }})</span>
+                <ArrowRight class="exam-icon exam-icon--xs" />
+              </template>
             </button>
           </div>
         </div>
@@ -240,14 +251,12 @@
         <div class="exam-panel exam-side__panel">
           <div class="exam-sheet__top">
             <h3 class="exam-side__title">全卷答题卡</h3>
-            <span class="exam-sheet__hint">点击直达考题</span>
+            <span class="exam-sheet__hint">{{ totalQuestions }} 题 · 点击题号跳转</span>
           </div>
-
-          <!-- 按题型分段的全卷答题卡 -->
-          <div v-for="section in sheetSections" :key="section.key" class="exam-sheet__section">
+          <div v-for="section in sheetSections" :key="section.type" class="exam-sheet__section">
             <div class="exam-sheet__head">
-              <span>{{ section.title }} {{ section.range }}</span>
-              <span class="exam-sheet__score">{{ section.scoreText }}</span>
+              <span>{{ section.label }}</span>
+              <span class="exam-sheet__range">第 {{ section.start }}–{{ section.end }} 题</span>
             </div>
             <div class="exam-sheet__grid">
               <button
@@ -256,6 +265,8 @@
                 type="button"
                 class="exam-sheet__cell"
                 :class="getGridButtonClass(qNum)"
+                :aria-label="`跳转到第 ${qNum} 题`"
+                :aria-current="qNum === currentQuestionIdx ? 'step' : undefined"
                 @click="jumpToQuestion(qNum)"
               >
                 {{ qNum }}
@@ -272,7 +283,7 @@
             @click="openSubmitConfirm"
           >
             <Award class="exam-icon exam-icon--sm" />
-            <span>提交试卷并即时出分</span>
+            <span>提交试卷</span>
           </button>
         </div>
       </aside>
@@ -355,6 +366,13 @@ const switchCount = ref(0);
 const secondsLeft = ref(0);
 const currentQuestionIdx = ref(1);
 
+const questionTypeOrder = {
+  single: 0,
+  multiple: 1,
+  judgment: 2,
+  application: 3,
+};
+
 let timer = null;
 let textSaveTimer = null;
 
@@ -368,7 +386,10 @@ const idxByQuestionId = computed(() => {
 
 const applySession = (paper, session) => {
   attemptId.value = session.attemptId;
-  questions.value = paper.questions || [];
+  questions.value = [...(paper.questions || [])].sort((a, b) =>
+    (questionTypeOrder[a.type] ?? Number.MAX_SAFE_INTEGER)
+      - (questionTypeOrder[b.type] ?? Number.MAX_SAFE_INTEGER)
+  );
   // 倒计时逻辑：优先使用后端返回的剩余时间，如果没有则使用考试设定的时长
   const sessionRemaining = Number(session.remainingSeconds) || 0;
   const examDurationSeconds = Number(paper.durationMinutes || 60) * 60;
@@ -452,6 +473,31 @@ const formattedTimer = computed(() => {
 
 const totalQuestions = computed(() => questions.value.length);
 const currentQuestion = computed(() => questions.value[currentQuestionIdx.value - 1] || null);
+const sheetSections = computed(() => {
+  const sections = [];
+  questions.value.forEach((question, index) => {
+    const type = question.type;
+    let section = sections[sections.length - 1];
+    if (!section || section.type !== type) {
+      section = {
+        type,
+        label: {
+          single: '单选题',
+          multiple: '多选题',
+          judgment: '判断题',
+          application: '应用题',
+        }[type] || question.typeLabel || '其他题型',
+        start: index + 1,
+        end: index + 1,
+        numbers: [],
+      };
+      sections.push(section);
+    }
+    section.end = index + 1;
+    section.numbers.push(index + 1);
+  });
+  return sections;
+});
 const currentAnswer = computed(() => answers.value[currentQuestionIdx.value]?.text || '');
 const selectedOptions = computed(() => answers.value[currentQuestionIdx.value]?.selected || []);
 const answeredCount = computed(() =>
@@ -464,39 +510,6 @@ const isFlagged = computed(() => Boolean(flags.value[currentQuestionIdx.value]))
 const progressPercent = computed(() =>
   totalQuestions.value ? Math.round((answeredCount.value / totalQuestions.value) * 100) : 0
 );
-
-/* 答题卡按题型分段，段内题目序号连续 */
-const CN_ORDINALS = ['一', '二', '三', '四', '五', '六', '七', '八', '九', '十'];
-const sheetSections = computed(() => {
-  const groups = [];
-  questions.value.forEach((question, i) => {
-    const last = groups[groups.length - 1];
-    if (last && last.type === question.type) {
-      last.end = i + 1;
-      last.scores.push(question.score);
-    } else {
-      groups.push({
-        type: question.type,
-        label: String(question.typeLabel || '').replace(/题$/, ''),
-        start: i + 1,
-        end: i + 1,
-        scores: [question.score],
-      });
-    }
-  });
-  return groups.map((group, i) => {
-    const uniform = group.scores.every(score => score === group.scores[0]);
-    return {
-      key: `${group.type}-${group.start}`,
-      title: `${CN_ORDINALS[i] || i + 1}、${group.label}题`,
-      range: `(${group.start} - ${group.end})`,
-      scoreText: uniform
-        ? `每题 ${group.scores[0]} 分`
-        : `${Math.min(...group.scores)} - ${Math.max(...group.scores)} 分`,
-      numbers: Array.from({ length: group.end - group.start + 1 }, (_, k) => group.start + k),
-    };
-  });
-});
 
 /* 同一题连续修改（多选连点）必须串行提交，否则并发插入撞 uk_attempt_answer 唯一键 */
 let saveChain = Promise.resolve();
@@ -827,31 +840,30 @@ const showRulesHint = () => {
 /* ============ Layout ============ */
 .exam-layout {
   display: grid;
+  width: 100%;
+  min-width: 0;
   grid-template-columns: 1fr;
   gap: 20px;
 }
-@media (min-width: 1024px) {
-  .exam-layout { grid-template-columns: repeat(12, 1fr); }
+@media (min-width: 1200px) {
+  .exam-layout { grid-template-columns: minmax(0, 2fr) minmax(300px, 1fr); }
 }
 .exam-main {
   display: flex;
+  min-width: 0;
   flex-direction: column;
   gap: 16px;
-}
-@media (min-width: 1024px) {
-  .exam-main { grid-column: span 8 / span 8; }
 }
 .exam-side {
   display: flex;
+  min-width: 0;
   flex-direction: column;
   gap: 16px;
-}
-@media (min-width: 1024px) {
-  .exam-side { grid-column: span 4 / span 4; }
 }
 
 /* ============ Panel ============ */
 .exam-panel {
+  min-width: 0;
   padding: 24px;
   border: 1px solid var(--c-border);
   border-radius: 16px;
@@ -1283,18 +1295,21 @@ const showRulesHint = () => {
   font-weight: 600;
   color: var(--c-text);
 }
-.exam-sheet__score {
+.exam-sheet__range {
   font-size: 10px;
   font-weight: 400;
   color: var(--c-muted);
 }
 .exam-sheet__grid {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  min-width: 0;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 8px;
 }
 .exam-sheet__cell {
   position: relative;
+  min-width: 0;
+  width: 100%;
   height: 36px;
   border: 1px solid transparent;
   border-radius: 8px;

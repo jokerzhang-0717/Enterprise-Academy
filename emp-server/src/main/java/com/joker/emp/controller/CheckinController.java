@@ -37,9 +37,7 @@ public class CheckinController {
 
   @PostMapping("/check-in")
   public ApiResponse<Map<String, Object>> checkIn(@RequestBody(required = false) CheckinAction request) {
-    return ApiResponse.ok(checkinService.checkIn(
-        request == null ? null : request.location(),
-        request == null ? null : request.method()));
+    return ApiResponse.ok(checkinService.checkIn(request == null ? null : request.method()));
   }
 
   @PostMapping("/check-out")
@@ -54,6 +52,6 @@ public class CheckinController {
     return ApiResponse.ok(checkinService.stats(from, to));
   }
 
-  public record CheckinAction(String location, Integer method) {
+  public record CheckinAction(Integer method) {
   }
 }

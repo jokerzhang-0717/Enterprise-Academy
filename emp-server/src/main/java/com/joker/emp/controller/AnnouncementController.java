@@ -6,6 +6,7 @@ import com.joker.emp.service.AnnouncementService;
 import java.util.Map;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -31,6 +32,11 @@ public class AnnouncementController {
   @GetMapping("/unread-count")
   public ApiResponse<Map<String, Object>> unreadCount() {
     return ApiResponse.ok(Map.of("count", announcementService.unreadCount()));
+  }
+
+  @PutMapping("/read-all")
+  public ApiResponse<Map<String, Object>> markAllRead() {
+    return ApiResponse.ok(Map.of("updated", announcementService.markAllRead()));
   }
 
   @GetMapping("/{id}")

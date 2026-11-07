@@ -91,6 +91,7 @@
           :id="`exam-${exam.id}`"
           :key="exam.id"
           class="exm-card"
+          :class="{ 'exm-card--search-target': searchTargetId === `exam-${exam.id}` }"
         >
           <!-- 左侧信息 -->
           <div class="exm-card__info">
@@ -245,8 +246,8 @@ const scrollToTarget = (targetId) => {
 };
 
 watch(
-  () => props.searchTargetId,
-  (targetId) => {
+  [() => props.searchTargetId, exams],
+  ([targetId, records]) => {
     if (!targetId) return;
 
     // 只在当前筛选不包含目标时才重置，且重置后值不变就不再赋值
@@ -254,9 +255,9 @@ watch(
       filterTab.value = 'all';
     }
 
-    scrollToTarget(targetId);
+    if (records.length) scrollToTarget(targetId);
   },
-  { immediate: true },
+  { immediate: true, deep: true },
 );
 </script>
 
@@ -455,6 +456,10 @@ watch(
 .exm-card:hover {
   border-color: var(--c-sky);
   background: var(--c-blue-bg);
+}
+.exm-card--search-target {
+  border-color: var(--c-sky);
+  box-shadow: 0 0 0 3px var(--app-accent-soft);
 }
 
 .exm-card__info {

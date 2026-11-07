@@ -49,6 +49,14 @@ mysql -uroot -p enterprise_academy < ../sql/seed.sql
 
 > `schema.sql` 会重建表，已有数据的环境请勿重复执行。
 
+已有数据库升级题库知识点与难度字段时，备份数据库后执行一次：
+
+```bash
+mysql -uroot -p enterprise_academy < ../sql/migrate_exam_question_metadata.sql
+```
+
+考试创建/编辑时会将所选题目复制到该考试的试卷中；发布后或产生作答记录后，试卷题目不可再修改。
+
 ## 环境变量
 
 复制 `.env.example` 并按需修改，或在启动前直接注入环境变量：
@@ -57,6 +65,11 @@ mysql -uroot -p enterprise_academy < ../sql/seed.sql
 | --- | --- | --- |
 | `MYSQL_USERNAME` | `root` | MySQL 用户名 |
 | `MYSQL_PASSWORD` | `123456` | MySQL 密码 |
+| `REDIS_HOST` | `127.0.0.1` | 学习计时 Redis 地址 |
+| `REDIS_PORT` | `6379` | 学习计时 Redis 端口 |
+| `REDIS_PASSWORD` | 空 | Redis 密码（无密码时留空） |
+| `REDIS_DATABASE` | `0` | Redis DB 编号 |
+| `API_RESPONSE_CACHE_TTL` | `1s` | 登录用户 API 读取缓存时间；成功写操作会立即使旧缓存失效 |
 | `EMP_JWT_SECRET` | 内置开发密钥 | JWT 签名密钥，生产必须覆盖（≥32 字节） |
 | `MINIO_ENDPOINT` | `http://127.0.0.1:9000` | MinIO 地址 |
 | `MINIO_ACCESS_KEY` | `zhang` | MinIO Access Key |
@@ -65,6 +78,7 @@ mysql -uroot -p enterprise_academy < ../sql/seed.sql
 | `MINIO_PUBLIC_READ` | `true` | 是否给桶设置公共只读；生产建议 `false` |
 
 数据库连接、端口等其余配置见 `src/main/resources/application.yml`。服务默认端口 `8080`，上下文路径 `/api`。
+课程播放期间需要 Redis 记录活跃会话，学习时长心跳会同步写入 MySQL；请先启动 Redis 服务。
 
 ## 构建与启动
 

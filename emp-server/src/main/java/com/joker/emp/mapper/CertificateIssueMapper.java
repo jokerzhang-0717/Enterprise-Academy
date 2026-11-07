@@ -18,8 +18,9 @@ public interface CertificateIssueMapper extends BaseMapper<CertificateIssue> {
              ci.blockchain_hash AS blockchainHash, ci.template_id AS templateId,
              ct.title AS templateTitle, ct.level_label AS levelLabel,
              ct.category, ct.issue_org AS issueOrg, ct.validity_months AS validityMonths,
-             ct.badge_type AS badgeType, ct.privilege_text AS privilegeText,
+             ct.description, ct.badge_type AS badgeType, ct.privilege_text AS privilegeText,
              ci.user_id AS userId, u.name AS userName, u.employee_no AS employeeNo,
+             u.avatar_url AS avatarUrl,
              d.name AS department
       FROM certificate_issue ci
       JOIN certificate_template ct ON ct.id = ci.template_id
@@ -36,8 +37,9 @@ public interface CertificateIssueMapper extends BaseMapper<CertificateIssue> {
              ci.blockchain_hash AS blockchainHash, ci.template_id AS templateId,
              ct.title AS templateTitle, ct.level_label AS levelLabel,
              ct.category, ct.issue_org AS issueOrg, ct.validity_months AS validityMonths,
-             ct.badge_type AS badgeType, ct.privilege_text AS privilegeText,
+             ct.description, ct.badge_type AS badgeType, ct.privilege_text AS privilegeText,
              ci.user_id AS userId, u.name AS userName, u.employee_no AS employeeNo,
+             u.avatar_url AS avatarUrl,
              d.name AS department
       FROM certificate_issue ci
       JOIN certificate_template ct ON ct.id = ci.template_id

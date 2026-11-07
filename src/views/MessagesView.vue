@@ -12,7 +12,7 @@
           </span>
         </div>
         <p class="text-xs text-[color:var(--app-text-4)] mt-0.5">
-          汇集全企培训通告、学习进度督促、认证考评安排与调休考勤审批结果
+          汇集全企培训公告与通知，与管理员在「公告管理」中发布的已发布公告实时同步
         </p>
       </div>
 
@@ -135,7 +135,7 @@
             />
             <span>全选</span>
           </label>
-          <span>共 {{ messages.length }} 条站内信，{{ unreadCount }} 条未读</span>
+          <span>共 {{ messages.length }} 条公告，{{ unreadCount }} 条未读</span>
         </div>
 
         <div class="messages-cards min-h-[423px] space-y-3">
@@ -143,6 +143,7 @@
             v-for="msg in paginatedMessages"
             :key="msg.id"
             :id="`message-${msg.id}`"
+            :class="{ 'search-result-target': searchTargetId === `message-${msg.id}` }"
             @click="emit('open-message', msg.id)"
             class="relative cursor-pointer rounded-2xl border border-[color:var(--app-accent-soft)] bg-[color:var(--app-surface)] p-4 shadow-xs transition-all hover:border-[color:var(--app-accent-border)] hover:bg-[color:var(--app-accent-soft)]"
           >
@@ -187,7 +188,7 @@
             </div>
           </div>
           <div v-if="!messages.length" class="rounded-2xl border border-dashed border-[color:var(--app-border-strong)] bg-[color:var(--app-surface)] py-12 text-center text-sm text-[color:var(--app-text-5)]">
-            暂无消息通知
+            暂无公告
           </div>
         </div>
 
@@ -241,8 +242,7 @@ import {
   Trash2,
   X
 } from 'lucide-vue-next';
-import { MESSAGES_DATA } from '../mockData.js';
-import { useMessages } from '../composables/useMessages.js';
+import { useMessages, markAllMessagesRead, loadMessages } from '../composables/useMessages.js';
 
 const props = defineProps({
   detailMode: {
@@ -288,6 +288,8 @@ const syncFullscreen = () => {
 onMounted(() => {
   syncFullscreen();
   document.addEventListener('fullscreenchange', syncFullscreen);
+  // 进入消息中心时同步管理端最新已发布公告
+  loadMessages(true).catch(() => {});
 });
 
 onBeforeUnmount(() => {
@@ -299,43 +301,56 @@ watch(totalPages, pageCount => {
 });
 
 watch(
-  () => props.searchTargetId,
-  targetId => {
+  [() => props.searchTargetId, messages],
+  ([targetId, records]) => {
     if (!targetId) return;
+    const messageIndex = records.findIndex(message => `message-${message.id}` === targetId);
+    if (messageIndex < 0) return;
+    currentPage.value = Math.floor(messageIndex / pageSize.value) + 1;
     nextTick(() => document.getElementById(targetId)?.scrollIntoView({ behavior: 'smooth', block: 'center' }));
   },
-  { immediate: true },
+  { immediate: true, deep: true },
 );
 
 const goBackToList = () => {
   emit('navigate', 'messages');
 };
 
-const handleMarkAllRead = () => {
+const handleMarkAllRead = async () => {
   const unreadBeforeUpdate = unreadCount.value;
   if (!unreadBeforeUpdate) {
     showNotice('所有消息已是已读状态');
     return;
   }
-  messages.value = messages.value.map(m => ({ ...m, isRead: true }));
-  showNotice(`已将 ${unreadBeforeUpdate} 条未读消息标记为已读`);
+  try {
+    await markAllMessagesRead();
+    showNotice(`已将 ${unreadBeforeUpdate} 条未读消息标记为已读`);
+  } catch {
+    showNotice('标记已读失败，请稍后重试');
+  }
 };
 
 const handleDeleteSelected = () => {
   if (!selectedIds.value.length) return;
-  const count = selectedIds.value.length;
   const idsToDelete = new Set(selectedIds.value);
-  deletedMessages.value = messages.value.filter(message => idsToDelete.has(message.id));
+  const removed = [];
+  messages.value.forEach((message, index) => {
+    if (idsToDelete.has(message.id)) removed.push({ index, message });
+  });
+  deletedMessages.value = removed;
   messages.value = messages.value.filter(message => !idsToDelete.has(message.id));
   selectedIds.value = [];
-  deleteNotice.value = `已删除 ${count} 条消息`;
+  deleteNotice.value = `已从当前列表移除 ${removed.length} 条公告`;
   clearTimeout(deleteNoticeTimeout);
   deleteNoticeTimeout = setTimeout(clearDeleteNotice, 5000);
 };
 
 const undoDelete = () => {
-  messages.value = [...messages.value, ...deletedMessages.value]
-    .sort((left, right) => MESSAGES_DATA.findIndex(message => message.id === left.id) - MESSAGES_DATA.findIndex(message => message.id === right.id));
+  const restored = [...messages.value];
+  deletedMessages.value.forEach(({ index, message }) => {
+    restored.splice(Math.min(index, restored.length), 0, message);
+  });
+  messages.value = restored;
   deletedMessages.value = [];
   selectedIds.value = [];
   clearDeleteNotice();
@@ -389,6 +404,11 @@ const toggleSelectAll = () => {
 
 .messages-cards {
   flex: 1 0 auto;
+}
+
+.search-result-target {
+  border-color: var(--app-accent) !important;
+  box-shadow: 0 0 0 3px var(--app-accent-soft);
 }
 
 .messages-pagination {

@@ -4,9 +4,7 @@
     <header class="page-header">
       <div class="page-heading">
         <div class="update-badge">
-          <span>人才资产认证体系</span>
-          <span>·</span>
-          <span class="update-time">更新时间: 今日 09:30</span>
+          <span>我的学习成果</span>
         </div>
         <h1 class="page-title">荣誉证书</h1>
         <p class="page-description">查看企业技术资质认证资产与合规证书。</p>
@@ -20,10 +18,10 @@
           <div class="metric-copy">
             <div class="metric-label">已获得官方认证</div>
             <div class="metric-value">
-              4 <span class="metric-unit">张证书</span>
+              {{ certificates.length }} <span class="metric-unit">张证书</span>
             </div>
             <div class="metric-note metric-note--blue">
-              <span aria-hidden="true">↑</span> 领先同序列 88% 同仁
+              <span>{{ loading ? '正在同步' : loadError ? '暂不可用' : '个人证书记录' }}</span>
             </div>
           </div>
           <div class="metric-icon metric-icon--blue">
@@ -33,28 +31,27 @@
 
         <article class="metric-card">
           <div class="metric-copy">
-            <div class="metric-label">技术雷达点亮技能</div>
+            <div class="metric-label">证书类别</div>
             <div class="metric-value metric-value--purple">
-              12 <span class="metric-unit">项能力</span>
+              {{ categoryCount }} <span class="metric-unit">类</span>
             </div>
             <div class="metric-note metric-note--purple">
-              <span aria-hidden="true">★</span> 包含 3 项云原生核心项
+              <span>按已发放证书统计</span>
             </div>
           </div>
           <div class="metric-icon metric-icon--blue metric-icon--purple">
-            <Cpu class="icon icon--large" aria-hidden="true" />
+            <Award class="icon icon--large" aria-hidden="true" />
           </div>
         </article>
 
         <article class="metric-card">
           <div class="metric-copy">
-            <div class="metric-label">企业合规有效状态</div>
+            <div class="metric-label">最近发放</div>
             <div class="metric-value metric-value--green">
-              100% <span class="metric-unit">生效中</span>
+              {{ latestIssueDate || '—' }}
             </div>
             <div class="metric-note metric-note--green">
-              <span class="status-dot" aria-hidden="true"></span>
-              <span>全部证书在合规保护期</span>
+              <span>{{ certificates.length ? '最近一张证书的发放日期' : '暂无发放记录' }}</span>
             </div>
           </div>
           <div class="metric-icon metric-icon--green">
@@ -66,7 +63,7 @@
       <!-- 证书分类筛选 -->
       <nav class="filter-list" aria-label="证书分类">
           <button
-            v-for="filter in CERT_FILTERS"
+            v-for="filter in certificateFilters"
             :key="filter.key"
             type="button"
             @click="selectedFilter = filter.key"
@@ -80,11 +77,18 @@
 
       <!-- 证书卡片列表 -->
       <section class="certificate-grid" aria-label="证书列表">
+        <p v-if="loading" class="certificate-empty">正在加载证书记录…</p>
+        <p v-else-if="loadError" class="certificate-empty certificate-empty--error">{{ loadError }}</p>
+        <p v-else-if="!filteredCerts.length" class="certificate-empty">
+          {{ selectedFilter === 'all' ? '目前还没有已发放的证书。' : '该分类下暂无证书。' }}
+        </p>
         <div
+          v-else
           v-for="cert in filteredCerts"
           :key="cert.id"
           :id="`certificate-${cert.id}`"
           class="certificate-card"
+          :class="{ 'certificate-card--search-target': searchTargetId === `certificate-${cert.id}` }"
         >
           <!-- 卡片背景装饰 -->
           <div class="certificate-watermark" aria-hidden="true">
@@ -101,7 +105,7 @@
                 <span class="level-name">{{ cert.level }}</span>
               </div>
 
-              <span class="validity-badge">
+              <span v-if="cert.validity" class="validity-badge">
                 {{ cert.validity }}
               </span>
             </div>
@@ -109,22 +113,22 @@
             <h3 class="certificate-title">{{ cert.title }}</h3>
 
             <p class="certificate-description">
-              {{ cert.description }}
+              {{ cert.description || '未设置证书说明' }}
             </p>
 
             <!-- 证书信息 -->
             <div class="certificate-details">
               <div class="detail-item">
-                <span class="detail-label">防伪编号</span>
-                <span class="detail-value detail-value--mono">{{ cert.serialNumber }}</span>
+                <span class="detail-label">{{ cert.blockchainHash ? '区块链存证摘要' : '证书编号' }}</span>
+                <span class="detail-value detail-value--mono">{{ cert.blockchainHash || cert.serialNumber || '—' }}</span>
               </div>
               <div class="detail-item">
                 <span class="detail-label">颁发机构</span>
-                <span class="detail-value">{{ cert.issueOrg }}</span>
+                <span class="detail-value">{{ cert.issueOrg || '—' }}</span>
               </div>
               <div class="detail-item">
                 <span class="detail-label">发放日期</span>
-                <span class="detail-value detail-value--mono">{{ cert.issueDate }}</span>
+                <span class="detail-value detail-value--mono">{{ cert.issueDate || '—' }}</span>
               </div>
               <div class="detail-item">
                 <span class="detail-label">考核评级</span>
@@ -137,7 +141,7 @@
           <div class="certificate-footer">
             <div class="certificate-privilege">
               <ShieldCheck class="icon icon--tiny" aria-hidden="true" />
-              <span>{{ cert.privilege }}</span>
+              <span>{{ cert.privilege || '未设置证书权益' }}</span>
             </div>
 
             <button
@@ -156,14 +160,13 @@
 </template>
 
 <script setup>
-import { ref, computed, nextTick, watch } from 'vue';
-import { 
-  Award, 
-  ShieldCheck, 
-  Cpu, 
+import { ref, computed, nextTick, onMounted, watch } from 'vue';
+import {
+  Award,
+  ShieldCheck,
   Eye
 } from 'lucide-vue-next';
-import { CERTIFICATES_DATA } from '../mockData.js';
+import { fetchMyCertificates } from '../api/index.js';
 
 const emit = defineEmits(['open-certificate-modal']);
 const props = defineProps({
@@ -174,35 +177,60 @@ const props = defineProps({
 });
 
 const selectedFilter = ref('all');
+const certificates = ref([]);
+const loading = ref(true);
+const loadError = ref('');
 
-const CERT_FILTERS = [
-  { key: 'all',          label: '全部证书' },
-  { key: 'architecture', label: '架构实战类' },
-  { key: 'compliance',   label: '合规风控类' },
-  { key: 'devops',       label: '运维与容灾' }
-];
+const categoryLabels = {
+  ai: 'AI 技术类',
+  architecture: '架构实战类',
+  compliance: '合规风控类',
+  devops: '运维与容灾',
+};
+const categoryLabel = (category) => categoryLabels[category] || category;
 
-const countOf = (key) =>
-  key === 'all'
-    ? CERTIFICATES_DATA.length
-    : CERTIFICATES_DATA.filter(c => c.category === key).length;
+const certificateFilters = computed(() => [
+  { key: 'all', label: '全部证书' },
+  ...[...new Set(certificates.value.map((certificate) => categoryLabel(certificate.category)).filter(Boolean))]
+    .map((label) => ({ key: label, label })),
+]);
+
+const categoryCount = computed(() =>
+  new Set(certificates.value.map((certificate) => certificate.category).filter(Boolean)).size);
+const latestIssueDate = computed(() => certificates.value[0]?.issueDate || '');
+
+const countOf = (category) => category === 'all'
+  ? certificates.value.length
+  : certificates.value.filter((certificate) => categoryLabel(certificate.category) === category).length;
 
 const filteredCerts = computed(() => {
-  return CERTIFICATES_DATA.filter(c => {
-    if (selectedFilter.value === 'all') return true;
-    return c.category === selectedFilter.value;
-  });
+  if (selectedFilter.value === 'all') return certificates.value;
+  return certificates.value.filter((certificate) => categoryLabel(certificate.category) === selectedFilter.value);
 });
 
 watch(
-  () => props.searchTargetId,
-  targetId => {
-    if (!targetId) return;
+  [() => props.searchTargetId, certificates],
+  ([targetId, records]) => {
+    if (!targetId || !records.length) return;
     selectedFilter.value = 'all';
     nextTick(() => document.getElementById(targetId)?.scrollIntoView({ behavior: 'smooth', block: 'center' }));
   },
-  { immediate: true },
+  { immediate: true, deep: true },
 );
+
+const loadCertificates = async () => {
+  loading.value = true;
+  loadError.value = '';
+  try {
+    certificates.value = await fetchMyCertificates();
+  } catch (error) {
+    loadError.value = error?.message || '证书记录加载失败，请稍后重试。';
+  } finally {
+    loading.value = false;
+  }
+};
+
+onMounted(loadCertificates);
 </script>
 
 <style scoped>
@@ -220,6 +248,16 @@ watch(
   flex-direction: column;
   gap: 24px;
 }
+.certificate-empty {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: 2rem;
+  border: 1px dashed var(--app-border);
+  border-radius: 0.75rem;
+  color: var(--app-text-4);
+  text-align: center;
+}
+.certificate-empty--error { color: var(--app-rose-fg); }
 
 /* 页面标题 */
 .page-header {
@@ -453,6 +491,10 @@ watch(
 
 .certificate-card:hover {
   border-color: var(--app-accent);
+}
+.certificate-card--search-target {
+  border-color: var(--app-accent);
+  box-shadow: 0 0 0 3px var(--app-accent-soft);
 }
 
 .certificate-main {

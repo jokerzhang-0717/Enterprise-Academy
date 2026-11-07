@@ -36,12 +36,10 @@ public class ExamQuestion {
 
   private String title;
 
-  /** 题干附带的代码片段元信息 */
-  private String codeFilename;
+  private String knowledgePoint;
 
-  private String codeRuntime;
-
-  private String codeContent;
+  /** 1 简单 2 中等 3 困难 */
+  private Integer difficulty;
 
   /** 客观题答案：单选/判断 "A"，多选 "ABD"；主观题为空 */
   private String correctAnswer;

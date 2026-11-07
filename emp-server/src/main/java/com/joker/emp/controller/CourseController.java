@@ -6,6 +6,7 @@ import com.joker.emp.common.PageResult;
 import com.joker.emp.entity.CourseLesson;
 import com.joker.emp.mapper.CourseLessonMapper;
 import com.joker.emp.service.CourseService;
+import com.joker.emp.service.StudySessionTrackingService;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -23,10 +24,13 @@ public class CourseController {
 
   private final CourseService courseService;
   private final CourseLessonMapper lessonMapper;
+  private final StudySessionTrackingService studySessionTrackingService;
 
-  public CourseController(CourseService courseService, CourseLessonMapper lessonMapper) {
+  public CourseController(CourseService courseService, CourseLessonMapper lessonMapper,
+      StudySessionTrackingService studySessionTrackingService) {
     this.courseService = courseService;
     this.lessonMapper = lessonMapper;
+    this.studySessionTrackingService = studySessionTrackingService;
   }
 
   @GetMapping("/courses")
@@ -62,6 +66,22 @@ public class CourseController {
         request.watchedSeconds(), request.completed()));
   }
 
+  @PostMapping("/courses/{id}/lessons/{lessonId}/study-sessions")
+  public ApiResponse<Map<String, Object>> startStudySession(@PathVariable Long id,
+      @PathVariable Long lessonId, @RequestBody StudySessionRequest request) {
+    return ApiResponse.ok(studySessionTrackingService.start(id, lessonId, request.sessionId()));
+  }
+
+  @PostMapping("/study-sessions/{sessionId}/heartbeat")
+  public ApiResponse<Map<String, Object>> heartbeatStudySession(@PathVariable String sessionId) {
+    return ApiResponse.ok(studySessionTrackingService.heartbeat(sessionId));
+  }
+
+  @PostMapping("/study-sessions/{sessionId}/stop")
+  public ApiResponse<Map<String, Object>> stopStudySession(@PathVariable String sessionId) {
+    return ApiResponse.ok(studySessionTrackingService.stop(sessionId));
+  }
+
   @GetMapping("/courses/{id}/lessons/{lessonId}")
   public ApiResponse<Map<String, Object>> player(@PathVariable Long id,
       @PathVariable Long lessonId) {
@@ -95,5 +115,8 @@ public class CourseController {
   }
 
   public record ProgressRequest(Integer watchedSeconds, Boolean completed) {
+  }
+
+  public record StudySessionRequest(String sessionId) {
   }
 }

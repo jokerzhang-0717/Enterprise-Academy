@@ -15,6 +15,8 @@ import com.joker.emp.mapper.SysUserMapper;
 import com.joker.emp.security.AuthContext;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.format.DateTimeParseException;
+import java.time.temporal.ChronoUnit;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -73,7 +75,7 @@ public class CheckinService {
   }
 
   @Transactional
-  public Map<String, Object> checkIn(String location, Integer method) {
+  public Map<String, Object> checkIn(Integer method) {
     Long userId = AuthContext.userId();
     LocalDate today = LocalDate.now();
     CheckinRecord exists = checkinMapper.selectOne(Wrappers.<CheckinRecord>lambdaQuery()
@@ -83,7 +85,7 @@ public class CheckinService {
     if (exists != null && exists.getCheckInTime() != null) {
       throw new BizException("今天已经签到过了");
     }
-    LocalTime now = LocalTime.now();
+    LocalTime now = LocalTime.now().truncatedTo(ChronoUnit.SECONDS);
     if (exists == null) {
       exists = new CheckinRecord();
       exists.setUserId(userId);
@@ -91,15 +93,11 @@ public class CheckinService {
       exists.setCheckInTime(now);
       exists.setMethod(method == null ? 3 : method);
       exists.setStatus(now.isAfter(LocalTime.of(9, 0)) ? 2 : 1);
-      exists.setLocation(location == null || location.isBlank() ? "企业总部·移动端定位" : location);
       checkinMapper.insert(exists);
     } else {
       exists.setCheckInTime(now);
       exists.setMethod(method == null ? 3 : method);
       exists.setStatus(now.isAfter(LocalTime.of(9, 0)) ? 2 : 1);
-      if (location != null) {
-        exists.setLocation(location);
-      }
       checkinMapper.updateById(exists);
     }
     logService.record("user", "完成签到", "checkin", exists.getId());
@@ -119,8 +117,9 @@ public class CheckinService {
     if (record.getCheckOutTime() != null) {
       throw new BizException("今天已经签退过了");
     }
-    record.setCheckOutTime(LocalTime.now());
-    if (LocalTime.now().isBefore(LocalTime.of(18, 0))) {
+    LocalTime now = LocalTime.now().truncatedTo(ChronoUnit.SECONDS);
+    record.setCheckOutTime(now);
+    if (now.isBefore(LocalTime.of(18, 0))) {
       record.setStatus(4);
     }
     checkinMapper.updateById(record);
@@ -152,25 +151,43 @@ public class CheckinService {
     record.setMethod(request.method() == null ? 1 : request.method());
     record.setStatus(request.status() == null
         ? (request.checkInTime() == null ? 3 : 1) : request.status());
-    record.setLocation(request.location());
     checkinMapper.insert(record);
     logService.record("user", "补录签到记录", "checkin", record.getId());
     return toItem(record);
   }
 
   @Transactional
-  public Map<String, Object> update(Long id, CheckinSaveRequest request) {
+  public Map<String, Object> update(Long id, CheckinUpdateRequest request) {
     CheckinRecord record = requireRecord(id);
+    if (request.checkinDate() != null && !request.checkinDate().equals(record.getCheckinDate())) {
+      CheckinRecord duplicate = checkinMapper.selectOne(Wrappers.<CheckinRecord>lambdaQuery()
+          .eq(CheckinRecord::getUserId, record.getUserId())
+          .eq(CheckinRecord::getCheckinDate, request.checkinDate())
+          .ne(CheckinRecord::getId, id)
+          .last("LIMIT 1"));
+      if (duplicate != null) {
+        throw new BizException(409, "该学员当天已有签到记录");
+      }
+    }
     if (request.courseId() != null) record.setCourseId(request.courseId());
     if (request.checkinDate() != null) record.setCheckinDate(request.checkinDate());
-    if (request.checkInTime() != null) record.setCheckInTime(request.checkInTime());
-    if (request.checkOutTime() != null) record.setCheckOutTime(request.checkOutTime());
-    if (request.method() != null) record.setMethod(request.method());
+    if (request.checkInTime() != null) record.setCheckInTime(parseTime(request.checkInTime()));
+    if (request.checkOutTime() != null) record.setCheckOutTime(parseTime(request.checkOutTime()));
     if (request.status() != null) record.setStatus(request.status());
-    if (request.location() != null) record.setLocation(request.location());
     checkinMapper.updateById(record);
     logService.record("user", "更新签到记录", "checkin", id);
     return toItem(record);
+  }
+
+  private LocalTime parseTime(String value) {
+    if (value.isBlank()) {
+      return null;
+    }
+    try {
+      return LocalTime.parse(value);
+    } catch (DateTimeParseException exception) {
+      throw new BizException("签到时间格式不正确");
+    }
   }
 
   @Transactional
@@ -210,7 +227,6 @@ public class CheckinService {
     item.put("methodLabel", methodText(record.getMethod()));
     item.put("status", record.getStatus());
     item.put("statusLabel", statusText(record.getStatus()));
-    item.put("location", record.getLocation());
     if (record.getUserId() != null) {
       SysUser user = userMapper.selectById(record.getUserId());
       item.put("userName", user == null ? null : user.getName());
@@ -248,7 +264,10 @@ public class CheckinService {
   }
 
   public record CheckinSaveRequest(Long userId, Long courseId, LocalDate checkinDate,
-      LocalTime checkInTime, LocalTime checkOutTime, Integer method, Integer status,
-      String location) {
+      LocalTime checkInTime, LocalTime checkOutTime, Integer method, Integer status) {
+  }
+
+  public record CheckinUpdateRequest(Long courseId, LocalDate checkinDate,
+      String checkInTime, String checkOutTime, Integer status) {
   }
 }

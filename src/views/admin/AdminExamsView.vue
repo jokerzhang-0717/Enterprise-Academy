@@ -175,7 +175,7 @@
 
     <!-- 新建 / 编辑考试弹窗 -->
     <div v-if="modalOpen" class="modal-backdrop" @click.self="closeModal">
-      <div class="modal">
+      <div class="modal modal--exam-editor">
         <div class="modal-head">
           <h2 class="modal-title">{{ editingId ? '编辑考试' : '新建考试' }}</h2>
           <button type="button" class="modal-close" @click="closeModal"><Close /></button>
@@ -225,12 +225,98 @@
 
           <label class="field">
             <span class="field-label">及格分</span>
-            <input v-model.number="form.passScore" type="number" min="0" max="100" class="field-input" />
+            <input v-model.number="form.passScore" type="number" min="0" class="field-input" />
           </label>
+          <section class="paper-builder" aria-label="试卷组卷">
+            <div class="paper-builder-head">
+              <div>
+                <h3>试卷组卷</h3>
+                <p>从题库筛选并批量选题，加入考试时会保存为独立试卷副本。</p>
+              </div>
+              <div class="paper-summary">
+                <strong>{{ selectedQuestions.length }} 题</strong>
+                <span :class="{ 'paper-summary__over-limit': selectedTotalScore > 100 }">
+                  总分 {{ selectedTotalScore }} / 100 分
+                </span>
+                <span>还可选 {{ Math.max(0, 100 - selectedTotalScore) }} 分</span>
+              </div>
+            </div>
+            <div v-if="!canEditQuestionSet" class="paper-locked">
+              考试已发布或已有作答，试卷已锁定。此处仅供查看。
+            </div>
+            <div class="builder-filters">
+              <input
+                v-model.trim="builderKeyword"
+                type="search"
+                class="field-input"
+                placeholder="搜索题干"
+                aria-label="搜索题干"
+              />
+              <select v-model="builderTypeFilter" class="field-input" aria-label="按题型筛选">
+                <option value="">全部题型</option>
+                <option v-for="type in questionTypes" :key="type.value" :value="type.value">
+                  {{ type.label }}
+                </option>
+              </select>
+              <input
+                v-model.trim="builderKnowledgeFilter"
+                type="search"
+                class="field-input"
+                placeholder="筛选知识点"
+                aria-label="按知识点筛选"
+              />
+              <select v-model.number="builderDifficultyFilter" class="field-input" aria-label="按难度筛选">
+                <option :value="0">全部难度</option>
+                <option :value="1">简单</option>
+                <option :value="2">中等</option>
+                <option :value="3">困难</option>
+              </select>
+            </div>
+            <div class="builder-random">
+              <span>按当前筛选随机抽取</span>
+              <input v-model.number="randomPickCount" type="number" min="1" class="field-input" aria-label="随机抽题数量" />
+              <button
+                type="button"
+                class="btn btn--ghost"
+                :disabled="!canEditQuestionSet || selectedTotalScore >= 100"
+                @click="addRandomQuestions"
+              >
+                随机加入
+              </button>
+              <span class="builder-result">可选 {{ filteredQuestionPool.length }} 道</span>
+            </div>
+            <div v-if="filteredQuestionPool.length" class="builder-question-list">
+              <label
+                v-for="question in filteredQuestionPool"
+                :key="question.numericId"
+                class="builder-question"
+                :class="{ 'builder-question--selected': selectedQuestionIds.includes(question.numericId) }"
+              >
+                <input
+                  type="checkbox"
+                  :checked="selectedQuestionIds.includes(question.numericId)"
+                  :disabled="!canEditQuestionSet"
+                  @change="handleQuestionSelection(question, $event.target.checked)"
+                />
+                <span class="builder-question-main">
+                  <span class="builder-question-meta">
+                    {{ question.typeLabel }} · {{ question.score }} 分 · {{ question.difficultyLabel }}
+                    <span v-if="question.knowledgePoint">· {{ question.knowledgePoint }}</span>
+                  </span>
+                  <span class="builder-question-title">{{ question.title }}</span>
+                </span>
+                <span v-if="question.examId && question.examId !== editingId" class="builder-source">复制自其他试卷</span>
+                <span v-else-if="!question.examId" class="builder-source">备用题</span>
+              </label>
+            </div>
+            <div v-else class="builder-empty">
+              暂无符合条件的题目。请先到题库新增题目并保存为“备用题库”，或调整筛选条件。
+            </div>
+          </section>
           <p v-if="formError" class="form-error">{{ formError }}</p>
           <div class="modal-actions">
             <button type="button" class="btn btn--ghost" @click="closeModal">取消</button>
-            <button type="submit" class="btn btn--primary" :disabled="saving">{{ saving ? '保存中…' : (editingId ? '保存修改' : '保存为待发布') }}</button>
+            <button type="submit" class="btn btn--primary" :disabled="saving">{{ saving ? '保存中…' : (editingId ? '保存修改' : '保存并完成组卷') }}</button>
           </div>
         </form>
       </div>
@@ -258,6 +344,7 @@ import { adminStore, loadExams, loadQuestions, questionCount } from '../../admin
 import {
   createAdminExam,
   deleteAdminExam,
+  fetchAdminExam,
   updateAdminExam,
   updateAdminExamStatus,
 } from '../../api/index.js';
@@ -370,6 +457,48 @@ const modalOpen = ref(false);
 const editingId = ref(null);
 const formError = ref('');
 const saving = ref(false);
+const editingExam = ref(null);
+const selectedQuestionIds = ref([]);
+const builderKeyword = ref('');
+const builderKnowledgeFilter = ref('');
+const builderTypeFilter = ref('');
+const builderDifficultyFilter = ref(0);
+const randomPickCount = ref(5);
+
+const questionTypes = [
+  { value: 'single', label: '单选题' },
+  { value: 'multiple', label: '多选题' },
+  { value: 'judgment', label: '判断题' },
+  { value: 'application', label: '问答题' },
+];
+
+const canEditQuestionSet = computed(() =>
+  !editingId.value
+    || (editingExam.value?.statusCode === 1 && !Number(editingExam.value?.attemptCount || 0)),
+);
+
+const filteredQuestionPool = computed(() => {
+  const keyword = builderKeyword.value.toLowerCase();
+  const knowledge = builderKnowledgeFilter.value.toLowerCase();
+  return adminStore.questions.filter((question) => {
+    const text = `${question.title || ''} ${question.knowledgePoint || ''}`.toLowerCase();
+    return (!keyword || text.includes(keyword))
+      && (!knowledge || (question.knowledgePoint || '').toLowerCase().includes(knowledge))
+      && (!builderTypeFilter.value || question.type === builderTypeFilter.value)
+      && (!builderDifficultyFilter.value || question.difficulty === builderDifficultyFilter.value);
+  });
+});
+
+const selectedQuestions = computed(() => {
+  const byId = new Map(adminStore.questions.map((question) => [question.numericId, question]));
+  return selectedQuestionIds.value.map((id) => byId.get(id)).filter(Boolean);
+});
+
+const selectedTotalScore = computed(() =>
+  Number(selectedQuestions.value.reduce(
+    (sum, question) => sum + Number(question.score || 0), 0,
+  ).toFixed(2)),
+);
 
 const defaultDate = () => {
   const d = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000);
@@ -402,8 +531,17 @@ const timeWindowPreview = computed(() =>
   `${form.value.examDate} ${form.value.startTime} ~ ${form.value.endTime}`
 );
 
-const openCreate = () => {
+const openCreate = async () => {
+  try {
+    await loadQuestions();
+  } catch (error) {
+    showToast(error?.message || '加载题库失败，请稍后重试。', 'error');
+    return;
+  }
   editingId.value = null;
+  editingExam.value = null;
+  selectedQuestionIds.value = [];
+  resetBuilderFilters();
   formError.value = '';
   form.value = {
     code: '',
@@ -418,6 +556,14 @@ const openCreate = () => {
   modalOpen.value = true;
 };
 
+const resetBuilderFilters = () => {
+  builderKeyword.value = '';
+  builderKnowledgeFilter.value = '';
+  builderTypeFilter.value = '';
+  builderDifficultyFilter.value = 0;
+  randomPickCount.value = 5;
+};
+
 /* 接口返回 ISO 时间则直接取，种子数据只有展示用时间窗时尽力解析 */
 const fromIso = (value) => {
   const m = /^(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2})/.exec(value || '');
@@ -430,13 +576,27 @@ const parseWindow = (text) => {
   return { examDate: date || defaultDate(), startTime: times[0] || '14:00', endTime: times[1] || '15:30' };
 };
 
-const openEdit = (exam) => {
+const openEdit = async (exam) => {
+  try {
+    const [, detailedExam] = await Promise.all([
+      loadQuestions(),
+      fetchAdminExam(exam.numericId ?? exam.id),
+    ]);
+    editingExam.value = detailedExam;
+  } catch (error) {
+    showToast(error?.message || '加载题库失败，请稍后重试。', 'error');
+    return;
+  }
   const start = fromIso(exam.startAt);
   const end = fromIso(exam.endAt);
   const win = start && end
     ? { examDate: start.date, startTime: start.time, endTime: end.time }
     : parseWindow(exam.timeWindow);
   editingId.value = exam.id;
+  selectedQuestionIds.value = adminStore.questions
+    .filter((question) => question.examId === exam.id)
+    .map((question) => question.numericId);
+  resetBuilderFilters();
   formError.value = '';
   form.value = {
     code: exam.code || '',
@@ -453,6 +613,63 @@ const openEdit = (exam) => {
   modalOpen.value = true;
 };
 
+const handleQuestionSelection = (question, checked) => {
+  const questionId = question.numericId;
+  if (!checked) {
+    selectedQuestionIds.value = selectedQuestionIds.value.filter((id) => id !== questionId);
+    formError.value = '';
+    return;
+  }
+  if (selectedQuestionIds.value.includes(questionId)) return;
+  const nextTotal = selectedTotalScore.value + Number(question.score || 0);
+  if (nextTotal > 100) {
+    formError.value = `加入该题后总分将达到 ${nextTotal} 分，试卷总分不能超过 100 分。`;
+    showToast('试卷总分不能超过 100 分，请减少选题。', 'error');
+    return;
+  }
+  selectedQuestionIds.value = [...selectedQuestionIds.value, questionId];
+  formError.value = '';
+};
+
+const addRandomQuestions = () => {
+  const alreadySelected = new Set(selectedQuestionIds.value);
+  const available = filteredQuestionPool.value.filter(
+    (question) => !alreadySelected.has(question.numericId),
+  );
+  const shuffled = [...available];
+  for (let index = shuffled.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(Math.random() * (index + 1));
+    [shuffled[index], shuffled[swapIndex]] = [shuffled[swapIndex], shuffled[index]];
+  }
+  const count = Math.max(0, Math.floor(Number(randomPickCount.value) || 0));
+  const selected = [];
+  let remainingScore = Math.max(0, 100 - selectedTotalScore.value);
+  for (const question of shuffled) {
+    if (selected.length >= count) break;
+    const score = Number(question.score || 0);
+    if (score <= remainingScore) {
+      selected.push(question);
+      remainingScore = Number((remainingScore - score).toFixed(2));
+    }
+  }
+  if (!selected.length) {
+    showToast(
+      selectedTotalScore.value >= 100
+        ? '试卷总分已达 100 分，不能再加入题目。'
+        : '当前筛选下没有符合剩余分值的题目。',
+      'info',
+    );
+    return;
+  }
+  selectedQuestionIds.value = [
+    ...selectedQuestionIds.value,
+    ...selected.map((question) => question.numericId),
+  ];
+  if (selected.length < count) {
+    showToast(`已随机加入 ${selected.length} 题，试卷总分不能超过 100 分。`, 'info');
+  }
+};
+
 const closeModal = () => {
   modalOpen.value = false;
   formError.value = '';
@@ -467,6 +684,22 @@ const saveExam = async () => {
     formError.value = '结束时间需要晚于开始时间。';
     return;
   }
+  if (canEditQuestionSet.value && selectedQuestions.value.length === 0) {
+    formError.value = '请至少选择一道题目完成组卷。';
+    return;
+  }
+  if (canEditQuestionSet.value && selectedTotalScore.value > 100) {
+    formError.value = '试卷总分不能超过 100 分，请减少选题。';
+    return;
+  }
+  if (!Number.isFinite(Number(form.value.passScore)) || Number(form.value.passScore) < 0) {
+    formError.value = '请输入有效的及格分。';
+    return;
+  }
+  if (canEditQuestionSet.value && Number(form.value.passScore) > selectedTotalScore.value) {
+    formError.value = '及格分不能超过试卷总分。';
+    return;
+  }
   const dup = exams.some(e => e.code === form.value.code && e.id !== editingId.value);
   if (dup) { formError.value = '考试编号已存在，请换一个。'; return; }
 
@@ -478,6 +711,12 @@ const saveExam = async () => {
     endAt: `${form.value.examDate}T${form.value.endTime}:00`,
     durationMinutes: durationMinutes.value,
     passScore: form.value.passScore,
+    ...(canEditQuestionSet.value
+      ? {
+          questionIds: selectedQuestionIds.value,
+          totalScore: selectedTotalScore.value,
+        }
+      : {}),
     ...(editingId.value ? { status: form.value.status } : {}),
   };
 
@@ -490,7 +729,7 @@ const saveExam = async () => {
       await createAdminExam(payload);
       showToast(`已创建考试「${payload.title}」，当前为待发布`, 'success');
     }
-    await loadExams();
+    await Promise.all([loadExams(), loadQuestions()]);
     closeModal();
   } catch (error) {
     formError.value = error?.message || '保存失败，请稍后重试。';
@@ -501,7 +740,7 @@ const saveExam = async () => {
 
 const publishExam = async (exam) => {
   if (!questionCount(exam.id)) {
-    showToast('该考试暂无题目，请先到「题库管理」为该考试添加题目后再发布。', 'info');
+    showToast('该考试暂无题目，请先编辑考试并完成组卷后再发布。', 'info');
     return;
   }
   try {
@@ -945,6 +1184,17 @@ th.ops, td.ops { text-align: right; }
   animation: modal-in 0.22s ease-out;
 }
 
+.modal--exam-editor {
+  max-width: 860px;
+  max-height: calc(100vh - 40px);
+  display: flex;
+  flex-direction: column;
+}
+
+.modal--exam-editor .modal-body {
+  overflow-y: auto;
+}
+
 @keyframes modal-in {
   from { opacity: 0; transform: translateY(10px) scale(0.98); }
   to   { opacity: 1; transform: translateY(0) scale(1); }
@@ -990,6 +1240,130 @@ th.ops, td.ops { text-align: right; }
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 12px;
+}
+
+.paper-builder {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px;
+  background: var(--app-surface-2);
+  border: 1px solid var(--app-border);
+  border-radius: 12px;
+}
+
+.paper-builder-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.paper-builder-head h3 {
+  color: var(--app-heading);
+  font-size: 14px;
+}
+
+.paper-builder-head p {
+  margin-top: 4px;
+  color: var(--app-text-4);
+  font-size: 12px;
+}
+
+.paper-summary {
+  display: flex;
+  flex-shrink: 0;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  color: var(--app-brand-ink);
+  font-size: 12px;
+}
+
+.paper-summary strong { font-size: 15px; }
+.paper-summary__over-limit { color: var(--app-red-700); font-weight: 700; }
+.paper-locked {
+  padding: 8px 10px;
+  color: var(--app-amber-fg);
+  background: var(--app-amber-bg);
+  border-radius: 8px;
+  font-size: 12px;
+}
+
+.builder-filters {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.builder-random {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--app-text-3);
+  font-size: 12px;
+}
+
+.builder-random .field-input { width: 76px; }
+.builder-result { margin-left: auto; color: var(--app-text-4); }
+.btn:disabled { opacity: 0.55; cursor: not-allowed; }
+
+.builder-question-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+.builder-question {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 9px 10px;
+  background: var(--app-surface);
+  border: 1px solid var(--app-border-soft);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.builder-question--selected {
+  border-color: var(--app-brand);
+  background: var(--app-brand-soft);
+}
+
+.builder-question input {
+  flex-shrink: 0;
+  margin-top: 3px;
+  accent-color: var(--app-brand);
+}
+
+.builder-question-main {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.builder-question-meta,
+.builder-source {
+  color: var(--app-text-4);
+  font-size: 11px;
+}
+
+.builder-question-title {
+  color: var(--app-text);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.builder-source { flex-shrink: 0; }
+.builder-empty {
+  padding: 22px 10px;
+  color: var(--app-text-4);
+  text-align: center;
+  font-size: 12px;
 }
 
 .field {
@@ -1066,5 +1440,9 @@ th.ops, td.ops { text-align: right; }
 @media (max-width: 640px) {
   .overview-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .field-row { grid-template-columns: 1fr; }
+  .builder-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .builder-random { flex-wrap: wrap; }
+  .builder-result { margin-left: 0; }
+  .builder-source { display: none; }
 }
 </style>

@@ -82,7 +82,17 @@
           <span class="todo-count">{{ todos.length }}</span>
         </div>
         <div class="todo-list">
-          <div v-for="todo in todos" :key="todo.id" class="todo-item">
+          <div
+            v-for="todo in todos"
+            :key="todo.id"
+            class="todo-item"
+            role="button"
+            tabindex="0"
+            :aria-label="`${todo.title}，${todo.action}`"
+            @click="$emit('navigate', todo.view)"
+            @keydown.enter.prevent="$emit('navigate', todo.view)"
+            @keydown.space.prevent="$emit('navigate', todo.view)"
+          >
             <span class="todo-dot" :class="`todo-dot--${todo.level}`"></span>
             <div class="todo-text">
               <div class="todo-title">{{ todo.title }}</div>
@@ -90,7 +100,7 @@
             </div>
             <button
               class="todo-action"
-              @click="$emit('navigate', todo.view)"
+              @click.stop="$emit('navigate', todo.view)"
             >{{ todo.action }}</button>
           </div>
         </div>
@@ -128,7 +138,9 @@ import {
   RefreshRight, Warning, Check, EditPen, OfficeBuilding
 } from '@element-plus/icons-vue';
 import { adminStore } from '../../adminStore.js';
+import { fetchAdminCheckins } from '../../api/index.js';
 import { relativeTime } from '../../api/adapters.js';
+import { useToast } from '../../composables/useToast.js';
 
 const props = defineProps({
   user: { type: Object, default: () => ({ name: '王智远' }) }
@@ -164,8 +176,26 @@ const clockDate = computed(() => {
 });
 
 let clockTimer = null;
+const todayKey = (() => {
+  const d = new Date();
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+})();
+const todayCheckins = ref([]);
+const { show: showToast } = useToast();
+
+const refreshTodayCheckins = async () => {
+  try {
+    const page = await fetchAdminCheckins({ date: todayKey });
+    todayCheckins.value = page?.records || [];
+  } catch (error) {
+    showToast(error?.message || '今日签到数据加载失败，请稍后重试。', 'error');
+  }
+};
+
 onMounted(() => {
   clockTimer = setInterval(() => { now.value = new Date(); }, 1000);
+  refreshTodayCheckins();
 });
 onUnmounted(() => {
   if (clockTimer) clearInterval(clockTimer);
@@ -181,13 +211,8 @@ const requiredCourses = computed(() => adminStore.courses.filter(c => c.isRequir
 const attemptTotal = computed(() =>
   (dash.value.exams || []).reduce((sum, e) => sum + Number(e.attemptCount || 0), 0));
 
-const todayKey = (() => {
-  const d = new Date();
-  const pad = (n) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-})();
-const todayCheckins = computed(() => adminStore.checkins.filter(c => c.checkinDate === todayKey));
-const attendedToday = computed(() => todayCheckins.value.filter(c => c.status !== 'missing').length);
+const attendedToday = computed(() =>
+  todayCheckins.value.filter(c => Boolean(c.checkInTime)).length);
 const todayRate = computed(() => {
   const total = activeLearners.value;
   if (!total) return '0.0%';
@@ -629,8 +654,17 @@ button { font-family: inherit; cursor: pointer; }
   gap: 10px;
   padding: 10px 0;
   border-top: 1px solid var(--app-border-soft);
+  cursor: pointer;
+  outline: none;
+  transition: background 0.15s;
 }
 .todo-item:first-child { border-top: none; }
+.todo-item:hover .todo-title,
+.todo-item:focus-visible .todo-title { color: var(--app-accent-deep); }
+.todo-item:focus-visible {
+  border-radius: 8px;
+  box-shadow: 0 0 0 2px var(--app-ring-accent);
+}
 
 .todo-dot {
   width: 8px;

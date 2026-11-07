@@ -19,6 +19,7 @@
           type="button"
           class="profile-avatar"
           aria-label="更换头像"
+          :disabled="uploadingAvatar || savingProfile"
           @click="avatarInput?.click()"
         >
           <img v-if="form.avatarUrl" :src="form.avatarUrl" alt="个人头像" class="profile-avatar__img" />
@@ -169,9 +170,9 @@
       <!-- 底部提交 -->
       <div class="profile-card__foot">
         <p class="profile-note">带 <b class="profile-note__star">*</b> 的项目为必填信息</p>
-        <button type="submit" class="profile-btn profile-btn--primary">
+        <button type="submit" class="profile-btn profile-btn--primary" :disabled="savingProfile || uploadingAvatar">
           <Save class="profile-icon" />
-          保存设置
+          {{ savingProfile ? '正在保存…' : '保存设置' }}
         </button>
       </div>
     </form>
@@ -196,35 +197,36 @@
       <form class="profile-grid profile-grid--spaced profile-grid--password" @submit.prevent="submitPasswordChange">
         <label class="profile-field profile-field--full">
           <span>当前密码</span>
-          <input v-model="passwordForm.current" type="password" autocomplete="current-password" required maxlength="128" placeholder="请输入当前密码" />
+          <input v-model="passwordForm.current" type="password" autocomplete="current-password" required maxlength="128" :disabled="changingPassword" @input="clearPasswordFeedback" placeholder="请输入当前密码" />
         </label>
         <label class="profile-field">
           <span>新密码</span>
-          <input v-model="passwordForm.next" type="password" autocomplete="new-password" required minlength="8" maxlength="128" placeholder="至少 8 位" />
+          <input v-model="passwordForm.next" type="password" autocomplete="new-password" required minlength="8" maxlength="128" :disabled="changingPassword" @input="clearPasswordFeedback" placeholder="至少 8 位" />
         </label>
         <label class="profile-field">
           <span>确认新密码</span>
-          <input v-model="passwordForm.confirm" type="password" autocomplete="new-password" required minlength="8" maxlength="128" placeholder="再次输入新密码" />
+          <input v-model="passwordForm.confirm" type="password" autocomplete="new-password" required minlength="8" maxlength="128" :disabled="changingPassword" @input="clearPasswordFeedback" placeholder="再次输入新密码" />
         </label>
 
         <div class="profile-password__foot">
-          <p class="profile-note profile-note--wrap">密码修改需要由身份认证服务验证并保存；此演示界面仅提供表单校验。</p>
-          <button type="submit" class="profile-btn profile-btn--violet">
+          <p class="profile-note profile-note--wrap">修改时会验证当前密码；新密码至少 8 位。</p>
+          <button type="submit" class="profile-btn profile-btn--violet" :disabled="changingPassword">
             <KeyRound class="profile-icon" />
-            提交修改
+            {{ changingPassword ? '正在修改…' : '提交修改' }}
           </button>
         </div>
 
         <p v-if="passwordError" role="alert" class="profile-field__error profile-field__error--block">{{ passwordError }}</p>
-        <p v-if="passwordNotice" role="status" class="profile-alert profile-alert--warn">{{ passwordNotice }}</p>
       </form>
     </section>
   </div>
 </template>
 
 <script setup>
-import { reactive, ref, watch } from 'vue';
+import { onMounted, reactive, ref, watch } from 'vue';
 import { Check, KeyRound, LockKeyhole, Save, ShieldCheck, UserRound } from 'lucide-vue-next';
+import { changePassword, fetchProfile, updateProfile, uploadFile } from '../api/index.js';
+import { useToast } from '../composables/useToast.js';
 
 const props = defineProps({
   user: {
@@ -233,21 +235,24 @@ const props = defineProps({
   },
 });
 
-const emit = defineEmits(['update-user']);
+const emit = defineEmits(['update-user', 'password-changed']);
 const saved = ref(false);
 const avatarError = ref('');
 const avatarInput = ref(null);
+const uploadingAvatar = ref(false);
+const savingProfile = ref(false);
 const phoneInput = ref(null);
 const emailInput = ref(null);
 const phoneError = ref('');
 const emailError = ref('');
 const passwordError = ref('');
-const passwordNotice = ref('');
+const changingPassword = ref(false);
 const passwordForm = reactive({
   current: '',
   next: '',
   confirm: '',
 });
+const { show: showToast } = useToast();
 const form = reactive({
   name: '',
   department: '',
@@ -260,24 +265,53 @@ const form = reactive({
 });
 
 /* 单向同步：props.user -> form，不会回写 props，无闭环风险 */
-watch(
-  () => props.user,
-  (user) => {
-    form.name = user.name || '';
-    form.department = user.department || '';
-    form.title = user.title || '';
-    form.gender = user.gender || '';
-    form.age = user.age ?? '';
-    form.phone = user.phone || '';
-    form.email = user.email || '';
-    form.avatarUrl = user.avatarUrl || '';
-    saved.value = false;
-  },
-  { immediate: true },
-);
+const syncProfileForm = (source, fallback = props.user) => {
+  const user = source || props.user;
+  const valueOrFallback = (value, fallbackValue) =>
+    value !== undefined && value !== null && value !== '' ? value : fallbackValue ?? '';
+  form.name = valueOrFallback(user.name, fallback.name);
+  form.department = valueOrFallback(user.department, fallback.department);
+  form.title = valueOrFallback(user.title, fallback.title);
+  form.gender = valueOrFallback(user.gender, fallback.gender);
+  form.age = valueOrFallback(user.age, fallback.age);
+  form.phone = valueOrFallback(user.phone, fallback.phone);
+  form.email = valueOrFallback(user.email, fallback.email);
+  form.avatarUrl = valueOrFallback(user.avatarUrl, fallback.avatarUrl);
+  saved.value = false;
+};
 
-const handleAvatarChange = (event) => {
+watch(() => props.user.id, () => syncProfileForm(), { immediate: true });
+watch(() => props.user.avatarUrl, (avatarUrl) => {
+  form.avatarUrl = avatarUrl || '';
+});
+
+/* 登录快照可能滞后，进入页面时以数据库最新资料为准 */
+onMounted(async () => {
+  try {
+    const fresh = await fetchProfile();
+    if (fresh) {
+      syncProfileForm(fresh, props.user);
+      emit('update-user', {
+        ...props.user,
+        ...fresh,
+        name: form.name,
+        department: form.department,
+        title: form.title,
+        gender: form.gender,
+        age: form.age === '' ? null : Number(form.age),
+        phone: form.phone,
+        email: form.email,
+        avatarUrl: form.avatarUrl,
+      });
+    }
+  } catch (error) {
+    showToast(error?.message || '最新个人资料加载失败，当前显示登录时保存的资料。', 'error');
+  }
+});
+
+const handleAvatarChange = async (event) => {
   const file = event.target.files?.[0];
+  event.target.value = '';
   avatarError.value = '';
   if (!file) return;
 
@@ -292,22 +326,25 @@ const handleAvatarChange = (event) => {
     return;
   }
 
-  const reader = new FileReader();
-  reader.onload = () => {
-    if (typeof reader.result !== 'string') {
-      avatarError.value = '无法读取该图片，请重新选择';
-      return;
-    }
-    form.avatarUrl = reader.result;
+  uploadingAvatar.value = true;
+  try {
+    const result = await uploadFile(file, 'avatar');
+    const avatarUrl = result?.url || result?.directUrl;
+    if (!avatarUrl) throw new Error('上传成功但未获取到头像地址，请重试。');
+    const updatedUser = await updateProfile({ avatarUrl });
+    form.avatarUrl = updatedUser?.avatarUrl || avatarUrl;
+    if (updatedUser) emit('update-user', updatedUser);
     saved.value = false;
-  };
-  reader.onerror = () => {
-    avatarError.value = '图片读取失败，请重试';
-  };
-  reader.readAsDataURL(file);
+    showToast('头像已更新。', 'success');
+  } catch (error) {
+    avatarError.value = error?.message || '头像上传失败，请稍后重试。';
+    showToast(avatarError.value, 'error');
+  } finally {
+    uploadingAvatar.value = false;
+  }
 };
 
-const saveProfile = () => {
+const saveProfile = async () => {
   validatePhone();
   validateEmail();
   if (phoneError.value || emailError.value) {
@@ -315,8 +352,27 @@ const saveProfile = () => {
     return;
   }
 
-  emit('update-user', { ...form });
-  saved.value = true;
+  savingProfile.value = true;
+  try {
+    const updatedUser = await updateProfile({
+      name: form.name,
+      gender: form.gender,
+      age: form.age === '' ? null : Number(form.age),
+      phone: form.phone,
+      email: form.email,
+      jobTitle: form.title,
+      specialty: props.user.specialty || '',
+      grade: props.user.grade || '',
+      avatarUrl: form.avatarUrl,
+    });
+    emit('update-user', updatedUser);
+    saved.value = true;
+    showToast('个人资料已保存。', 'success');
+  } catch (error) {
+    showToast(error?.message || '个人资料保存失败，请稍后重试。', 'error');
+  } finally {
+    savingProfile.value = false;
+  }
 };
 
 const validatePhone = () => {
@@ -331,10 +387,18 @@ const validateEmail = () => {
     : '';
 };
 
-const submitPasswordChange = () => {
+const clearPasswordFeedback = () => {
   passwordError.value = '';
-  passwordNotice.value = '';
+};
 
+const submitPasswordChange = async () => {
+  clearPasswordFeedback();
+  if (changingPassword.value) return;
+
+  if (!passwordForm.current) {
+    passwordError.value = '请输入当前密码';
+    return;
+  }
   if (passwordForm.next.length < 8) {
     passwordError.value = '新密码至少需要 8 位';
     return;
@@ -348,10 +412,19 @@ const submitPasswordChange = () => {
     return;
   }
 
-  passwordForm.current = '';
-  passwordForm.next = '';
-  passwordForm.confirm = '';
-  passwordNotice.value = '表单校验通过；当前项目尚未接入身份认证服务，登录密码未实际修改。';
+  changingPassword.value = true;
+  try {
+    await changePassword(passwordForm.current, passwordForm.next);
+    passwordForm.current = '';
+    passwordForm.next = '';
+    passwordForm.confirm = '';
+    emit('password-changed');
+  } catch (error) {
+    passwordError.value = error?.message || '密码修改失败，请检查当前密码后重试。';
+    showToast(passwordError.value, 'error');
+  } finally {
+    changingPassword.value = false;
+  }
 };
 </script>
 
@@ -891,6 +964,10 @@ const submitPasswordChange = () => {
   margin: 0;
   background: var(--app-amber-50);
   color: var(--app-amber-deep);
+}
+.profile-btn--violet:disabled {
+  cursor: wait;
+  opacity: 0.65;
 }
 
 /* ==================== 10 隐藏元素 ==================== */

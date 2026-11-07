@@ -42,8 +42,6 @@ public class CheckinRecord {
   /** 1 正常 2 迟到 3 缺勤 4 早退 */
   private Integer status;
 
-  private String location;
-
   @TableField(fill = FieldFill.INSERT)
   private LocalDateTime createdAt;
 

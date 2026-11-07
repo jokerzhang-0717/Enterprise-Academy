@@ -29,12 +29,13 @@ public class ProfileController {
 
   @PutMapping
   public ApiResponse<Map<String, Object>> update(@RequestBody ProfileRequest request) {
-    return ApiResponse.ok(userService.updateProfile(request.name(), request.phone(),
-        request.email(), request.jobTitle(), request.specialty(), request.grade(),
-        request.avatarUrl()));
+    return ApiResponse.ok(userService.updateProfile(request.name(), request.gender(),
+        request.age(), request.phone(), request.email(), request.jobTitle(),
+        request.specialty(), request.grade(), request.avatarUrl()));
   }
 
-  public record ProfileRequest(String name, String phone, String email, String jobTitle,
-                               String specialty, String grade, String avatarUrl) {
+  public record ProfileRequest(String name, String gender, Integer age, String phone,
+                               String email, String jobTitle, String specialty,
+                               String grade, String avatarUrl) {
   }
 }
