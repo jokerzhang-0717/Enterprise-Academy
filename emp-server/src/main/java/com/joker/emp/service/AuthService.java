@@ -7,8 +7,12 @@ import com.joker.emp.entity.SysUser;
 import com.joker.emp.mapper.DepartmentMapper;
 import com.joker.emp.mapper.SysUserMapper;
 import com.joker.emp.security.AuthContext;
+import com.joker.emp.security.AuthTokenStore;
 import com.joker.emp.security.AuthUser;
+import com.joker.emp.security.CredentialFingerprint;
 import com.joker.emp.security.JwtService;
+import com.joker.emp.security.LoginRateLimiter;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -26,42 +30,83 @@ public class AuthService {
   private final DepartmentMapper departmentMapper;
   private final PasswordEncoder passwordEncoder;
   private final JwtService jwtService;
+  private final AuthTokenStore tokenStore;
+  private final LoginRateLimiter rateLimiter;
 
   public AuthService(SysUserMapper userMapper, DepartmentMapper departmentMapper,
-      PasswordEncoder passwordEncoder, JwtService jwtService) {
+      PasswordEncoder passwordEncoder, JwtService jwtService, AuthTokenStore tokenStore,
+      LoginRateLimiter rateLimiter) {
     this.userMapper = userMapper;
     this.departmentMapper = departmentMapper;
     this.passwordEncoder = passwordEncoder;
     this.jwtService = jwtService;
+    this.tokenStore = tokenStore;
+    this.rateLimiter = rateLimiter;
   }
 
-  public Map<String, Object> login(String employeeNo, String password) {
+  public Map<String, Object> login(String employeeNo, String password, String ip) {
+    rateLimiter.checkLoginAllowed(employeeNo, ip);
+
     SysUser user = userMapper.selectOne(Wrappers.<SysUser>lambdaQuery()
         .eq(SysUser::getEmployeeNo, employeeNo)
         .last("LIMIT 1"));
     if (user == null || !matches(user, password)) {
+      rateLimiter.recordLoginFailure(employeeNo, ip);
       throw BizException.unauthorized("工号或密码错误");
     }
     if (user.getAccountStatus() != null && user.getAccountStatus() == 2) {
       throw BizException.forbidden("账号已被停用，请联系管理员");
     }
 
-    user.setLastActiveAt(LocalDateTime.now());
-    userMapper.updateById(user);
+    rateLimiter.resetLoginFailures(employeeNo);
+    touch(user);
+    return issueSession(user);
+  }
 
-    AuthUser authUser = new AuthUser(user.getId(), user.getEmployeeNo(), user.getName(),
-        user.getRole(), user.getDepartmentId());
-    Map<String, Object> result = new LinkedHashMap<>();
-    result.put("token", jwtService.createToken(authUser));
-    result.put("tokenType", "Bearer");
-    result.put("expiresIn", jwtService.getExpireSeconds());
-    result.put("user", toSafeUser(user));
-    return result;
+  /**
+   * 用一次性刷新令牌换发新的访问令牌与刷新令牌。
+   * 账号停用、密码变更后，旧刷新令牌立即失效。
+   */
+  public Map<String, Object> refresh(String refreshToken) {
+    AuthTokenStore.RefreshSession session = tokenStore.consumeRefreshToken(refreshToken);
+    if (session == null) {
+      throw BizException.unauthorized("登录状态已失效，请重新登录");
+    }
+    SysUser user = userMapper.selectById(session.userId());
+    if (user == null) {
+      throw BizException.unauthorized("账号不存在，请重新登录");
+    }
+    if (user.getAccountStatus() != null && user.getAccountStatus() == 2) {
+      throw BizException.unauthorized("账号已被停用，请联系管理员");
+    }
+    String fingerprint = CredentialFingerprint.of(user.getId(), user.getPasswordHash());
+    if (!fingerprint.equals(session.credentialFingerprint())) {
+      throw BizException.unauthorized("登录状态已失效，请重新登录");
+    }
+
+    touch(user);
+    return issueSession(user);
+  }
+
+  /** 登出：吊销刷新令牌，并把当前访问令牌写入黑名单直到自然过期。 */
+  public void logout(String accessToken, String refreshToken) {
+    tokenStore.revokeRefreshToken(refreshToken);
+    if (accessToken == null || accessToken.isBlank()) {
+      return;
+    }
+    try {
+      JwtService.ParsedAccessToken parsed = jwtService.parseAccessToken(accessToken);
+      long remaining = parsed.expiresAt().getEpochSecond() - Instant.now().getEpochSecond();
+      tokenStore.blacklistAccessToken(parsed.jti(), Math.max(1, remaining));
+    } catch (IllegalArgumentException ignored) {
+      // 令牌已过期或无效时无需再拉黑；刷新令牌仍会被吊销。
+    }
   }
 
   @Transactional
   public Map<String, Object> register(String name, String employeeNo, String password,
-      Long departmentId, String jobTitle, String email, String phone) {
+      Long departmentId, String jobTitle, String email, String phone, String ip) {
+    rateLimiter.checkRegisterAllowed(ip);
     if (employeeNo == null || employeeNo.isBlank()) {
       throw new BizException("请输入企业工号");
     }
@@ -160,5 +205,27 @@ public class AuthService {
     result.put("accountStatus", user.getAccountStatus());
     result.put("lastActiveAt", user.getLastActiveAt());
     return result;
+  }
+
+  private Map<String, Object> issueSession(SysUser user) {
+    AuthUser authUser = new AuthUser(user.getId(), user.getEmployeeNo(), user.getName(),
+        user.getRole(), user.getDepartmentId());
+    String fingerprint = CredentialFingerprint.of(user.getId(), user.getPasswordHash());
+    JwtService.IssuedAccessToken access = jwtService.createAccessToken(authUser, fingerprint);
+    String refreshToken = tokenStore.createRefreshToken(user.getId(), fingerprint);
+
+    Map<String, Object> result = new LinkedHashMap<>();
+    result.put("token", access.token());
+    result.put("tokenType", "Bearer");
+    result.put("expiresIn", access.expiresInSeconds());
+    result.put("refreshToken", refreshToken);
+    result.put("refreshExpiresIn", tokenStore.getRefreshExpireSeconds());
+    result.put("user", toSafeUser(user));
+    return result;
+  }
+
+  private void touch(SysUser user) {
+    user.setLastActiveAt(LocalDateTime.now());
+    userMapper.updateById(user);
   }
 }

@@ -31,4 +31,8 @@ public class BizException extends RuntimeException {
   public static BizException notFound(String message) {
     return new BizException(404, message);
   }
+
+  public static BizException tooManyRequests(String message) {
+    return new BizException(429, message);
+  }
 }

@@ -3,7 +3,7 @@
   "info": {
     "title": "企业学堂（Enterprise Academy）API",
     "version": "1.0.0",
-    "description": "企业学堂后端接口文档，可直接导入 Apifox / Postman / Swagger Editor。\n\n- 服务地址：`http://127.0.0.1:8080/api`（Spring Boot context-path 为 `/api`）\n- 鉴权方式：登录后把 `data.token` 放入请求头 `Authorization: Bearer <token>`\n- 管理端接口（`/admin/**` 以及 `POST /notifications/send`）要求账号角色 `role=2`\n- 统一响应：`{ \"code\": 0, \"message\": \"ok\", \"data\": ... }`\n- 分页响应：`data` 为 `{ total, page, size, records }`\n- 时间格式：`LocalDateTime` 为 `yyyy-MM-ddTHH:mm:ss`，`LocalDate` 为 `yyyy-MM-dd`，`LocalTime` 为 `HH:mm:ss`\n- 错误码与 HTTP 状态码一致：400 参数错误、401 未登录、403 无权限、404 不存在、409 冲突、413 文件过大、415 请求格式不支持\n\n演示账号：学员 `EMP-2024098 / 123456`，管理员 `admin / 123456`。\n"
+    "description": "企业学堂后端接口文档，可直接导入 Apifox / Postman / Swagger Editor。\n\n- 服务地址：`http://127.0.0.1:8080/api`（Spring Boot context-path 为 `/api`）\n- 鉴权方式：登录后把 `data.token` 放入请求头 `Authorization: Bearer <token>`；只接受该请求头，不再兼容 `X-Token` 或 `?token=`\n- 访问令牌默认 15 分钟；过期后用 `POST /auth/refresh` 与 `data.refreshToken` 换发新令牌\n- 退出登录、修改密码或账号停用后，相关令牌立即失效\n- 管理端接口（`/admin/**` 以及 `POST /notifications/send`）要求账号角色 `role=2`\n- 统一响应：`{ \"code\": 0, \"message\": \"ok\", \"data\": ... }`\n- 分页响应：`data` 为 `{ total, page, size, records }`\n- 时间格式：`LocalDateTime` 为 `yyyy-MM-ddTHH:mm:ss`，`LocalDate` 为 `yyyy-MM-dd`，`LocalTime` 为 `HH:mm:ss`\n- 错误码与 HTTP 状态码一致：400 参数错误、401 未登录、403 无权限、404 不存在、409 冲突、413 文件过大、415 请求格式不支持、429 请求过于频繁\n\n演示账号：学员 `EMP-2024098 / 123456`，管理员 `admin / 123456`。\n"
   },
   "servers": [
     {
@@ -85,7 +85,7 @@
           "认证与个人"
         ],
         "summary": "登录",
-        "description": "使用企业工号和密码登录，返回 JWT。该接口无需鉴权。",
+        "description": "使用企业工号和密码登录，返回 15 分钟访问令牌和 7 天刷新令牌。该接口无需鉴权；连续失败会返回 429。",
         "security": [],
         "requestBody": {
           "required": true,
@@ -115,7 +115,9 @@
                   "data": {
                     "token": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.signature",
                     "tokenType": "Bearer",
-                    "expiresIn": 43200,
+                    "expiresIn": 900,
+                    "refreshToken": "b_V4Y2F0aW9uLXJlZnJlc2gtdG9rZW4tZXhhbXBsZQ",
+                    "refreshExpiresIn": 604800,
                     "user": {
                       "id": 1,
                       "employeeNo": "EMP-2024098",
@@ -145,6 +147,68 @@
           },
           "403": {
             "$ref": "#/components/responses/Forbidden"
+          },
+          "429": {
+            "$ref": "#/components/responses/TooManyRequests"
+          }
+        }
+      }
+    },
+    "/auth/refresh": {
+      "post": {
+        "tags": [
+          "认证与个人"
+        ],
+        "summary": "刷新访问令牌",
+        "description": "使用登录返回的 `refreshToken` 换发新的访问令牌与刷新令牌。刷新令牌一次性使用；账号停用或密码变更后返回 401。该接口无需鉴权。",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefreshTokenRequest"
+              },
+              "example": {
+                "refreshToken": "b_V4Y2F0aW9uLXJlZnJlc2gtdG9rZW4tZXhhbXBsZQ"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "刷新成功，返回新的访问令牌与刷新令牌",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                },
+                "example": {
+                  "code": 0,
+                  "message": "ok",
+                  "data": {
+                    "token": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.new-signature",
+                    "tokenType": "Bearer",
+                    "expiresIn": 900,
+                    "refreshToken": "bmV3LXJlZnJlc2gtdG9rZW4tZXhhbXBsZQ",
+                    "refreshExpiresIn": 604800,
+                    "user": {
+                      "id": 1,
+                      "employeeNo": "EMP-2024098",
+                      "name": "李明",
+                      "role": 1,
+                      "accountStatus": 1
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
           }
         }
       }
@@ -185,6 +249,9 @@
           },
           "409": {
             "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/TooManyRequests"
           }
         }
       }
@@ -245,13 +312,27 @@
           "认证与个人"
         ],
         "summary": "退出登录",
-        "description": "无状态 JWT，服务端仅返回成功，客户端自行丢弃 token。",
+        "description": "吊销刷新令牌，并将当前访问令牌写入黑名单直到自然过期。该接口无需鉴权，访问令牌过期后仍可吊销刷新令牌。",
+        "security": [],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LogoutRequest"
+              },
+              "example": {
+                "refreshToken": "b_V4Y2F0aW9uLXJlZnJlc2gtdG9rZW4tZXhhbXBsZQ"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "$ref": "#/components/responses/OkVoid"
           },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
           }
         }
       }
@@ -5071,7 +5152,7 @@
         "type": "http",
         "scheme": "bearer",
         "bearerFormat": "JWT",
-        "description": "登录接口返回的 token，填入 `Bearer <token>`。"
+        "description": "登录接口返回的 15 分钟访问令牌，填入 `Bearer <token>`；过期后用 `/auth/refresh` 换发。"
       }
     },
     "parameters": {
@@ -5339,6 +5420,21 @@
           }
         }
       },
+      "TooManyRequests": {
+        "description": "请求过于频繁（登录失败次数超限或注册过于频繁）",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ApiResponse"
+            },
+            "example": {
+              "code": 429,
+              "message": "登录失败次数过多，请稍后再试",
+              "data": null
+            }
+          }
+        }
+      },
       "InternalError": {
         "description": "服务器内部错误",
         "content": {
@@ -5496,6 +5592,29 @@
             "format": "password",
             "minLength": 6,
             "example": "654321"
+          }
+        }
+      },
+      "RefreshTokenRequest": {
+        "type": "object",
+        "required": [
+          "refreshToken"
+        ],
+        "properties": {
+          "refreshToken": {
+            "type": "string",
+            "description": "登录或上一次刷新返回的一次性刷新令牌",
+            "example": "b_V4Y2F0aW9uLXJlZnJlc2gtdG9rZW4tZXhhbXBsZQ"
+          }
+        }
+      },
+      "LogoutRequest": {
+        "type": "object",
+        "properties": {
+          "refreshToken": {
+            "type": "string",
+            "description": "需要吊销的刷新令牌；访问令牌通过 Authorization 请求头传入",
+            "example": "b_V4Y2F0aW9uLXJlZnJlc2gtdG9rZW4tZXhhbXBsZQ"
           }
         }
       },

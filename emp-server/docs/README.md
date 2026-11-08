@@ -55,7 +55,9 @@ Content-Type: application/json
   "data": {
     "token": "eyJhbGciOiJIUzI1NiJ9...",
     "tokenType": "Bearer",
-    "expiresIn": 43200,
+    "expiresIn": 900,
+    "refreshToken": "b_V4Y2F0aW9uLXJlZnJlc2gtdG9rZW4...",
+    "refreshExpiresIn": 604800,
     "user": {
       "id": 1,
       "employeeNo": "EMP-2024098",
@@ -71,6 +73,8 @@ Content-Type: application/json
 ```http
 Authorization: Bearer {{token}}
 ```
+
+访问令牌默认 15 分钟。过期后调用 `POST /auth/refresh`，请求体传 `{ "refreshToken": "{{refreshToken}}" }` 换发新令牌；退出登录调用 `POST /auth/logout` 吊销两类令牌。
 
 演示账号：
 

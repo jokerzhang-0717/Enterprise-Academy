@@ -98,10 +98,14 @@ mvn spring-boot:run
 
 ## 鉴权
 
-1. 登录：`POST /api/auth/login`，请求体 `{ "employeeNo": "EMP-2024098", "password": "123456" }`。
-2. 后续请求携带 `Authorization: Bearer <token>`（也兼容 `X-Token` 与 `token` 查询参数）。
-3. 管理端接口额外要求 `role = 2`，否则返回 403。
-4. 无需登录的白名单：`/auth/login`、`/auth/register`、`/files/view/**`、`/certificates/verify/**`。
+1. 登录：`POST /api/auth/login`，请求体 `{ "employeeNo": "EMP-2024098", "password": "123456" }`，返回 15 分钟访问令牌 `token` 与 7 天刷新令牌 `refreshToken`。
+2. 后续请求只携带 `Authorization: Bearer <token>`；不再兼容 `X-Token`、裸 header 或 `token` 查询参数。
+3. 访问令牌过期后调用 `POST /api/auth/refresh`，请求体 `{ "refreshToken": "..." }` 换发新令牌；刷新令牌一次性使用，每次刷新都会轮换。
+4. 退出登录调用 `POST /api/auth/logout`，同时吊销访问令牌（Redis 黑名单）与刷新令牌；账号停用、密码修改后旧令牌立即失效。
+5. 服务端每次请求都会查询数据库校验账号状态、角色与凭证指纹，因此停用账号或调整角色可立即生效。
+6. 管理端接口额外要求 `role = 2`，否则返回 403。
+7. 无需登录的白名单：`/auth/login`、`/auth/register`、`/auth/refresh`、`/auth/logout`、`/files/view/**`、`/certificates/verify/**`。
+8. 登录 / 注册带 Redis 限流：同一工号 15 分钟内连续失败 5 次，或同一 IP 注册过于频繁，会返回 429。
 
 演示账号（`seed.sql`）：
 

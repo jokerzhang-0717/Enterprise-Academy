@@ -2,6 +2,8 @@ package com.joker.emp.security;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.joker.emp.common.ApiResponse;
+import com.joker.emp.entity.SysUser;
+import com.joker.emp.mapper.SysUserMapper;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.nio.charset.StandardCharsets;
@@ -14,10 +16,15 @@ import org.springframework.web.servlet.HandlerInterceptor;
 public class AuthInterceptor implements HandlerInterceptor {
 
   private final JwtService jwtService;
+  private final AuthTokenStore tokenStore;
+  private final SysUserMapper userMapper;
   private final ObjectMapper objectMapper;
 
-  public AuthInterceptor(JwtService jwtService, ObjectMapper objectMapper) {
+  public AuthInterceptor(JwtService jwtService, AuthTokenStore tokenStore,
+      SysUserMapper userMapper, ObjectMapper objectMapper) {
     this.jwtService = jwtService;
+    this.tokenStore = tokenStore;
+    this.userMapper = userMapper;
     this.objectMapper = objectMapper;
   }
 
@@ -34,13 +41,37 @@ public class AuthInterceptor implements HandlerInterceptor {
       return false;
     }
 
-    AuthUser user;
+    JwtService.ParsedAccessToken parsed;
     try {
-      user = jwtService.parse(token);
+      parsed = jwtService.parseAccessToken(token);
     } catch (IllegalArgumentException ex) {
       writeError(response, 401, ex.getMessage());
       return false;
     }
+
+    if (tokenStore.isAccessTokenRevoked(parsed.jti())) {
+      writeError(response, 401, "登录状态已失效，请重新登录");
+      return false;
+    }
+
+    // 每次请求都以数据库为准，账号停用 / 角色调整立即生效。
+    SysUser account = userMapper.selectById(parsed.user().id());
+    if (account == null) {
+      writeError(response, 401, "账号不存在，请重新登录");
+      return false;
+    }
+    if (account.getAccountStatus() != null && account.getAccountStatus() == 2) {
+      writeError(response, 401, "账号已被停用，请联系管理员");
+      return false;
+    }
+    String fingerprint = CredentialFingerprint.of(account.getId(), account.getPasswordHash());
+    if (!fingerprint.equals(parsed.credentialFingerprint())) {
+      writeError(response, 401, "登录状态已失效，请重新登录");
+      return false;
+    }
+
+    AuthUser user = new AuthUser(account.getId(), account.getEmployeeNo(), account.getName(),
+        account.getRole(), account.getDepartmentId());
     AuthContext.set(user);
 
     if (handler instanceof HandlerMethod method) {
@@ -60,19 +91,13 @@ public class AuthInterceptor implements HandlerInterceptor {
     AuthContext.clear();
   }
 
+  /** 只接受 Authorization: Bearer <token>，不再兼容裸 header、X-Token 或查询参数。 */
   private String resolveToken(HttpServletRequest request) {
     String header = request.getHeader("Authorization");
     if (header != null && header.startsWith("Bearer ")) {
       return header.substring(7).trim();
     }
-    if (header != null && !header.isBlank()) {
-      return header.trim();
-    }
-    String alias = request.getHeader("X-Token");
-    if (alias != null && !alias.isBlank()) {
-      return alias.trim();
-    }
-    return request.getParameter("token");
+    return null;
   }
 
   private void writeError(HttpServletResponse response, int code, String message) throws Exception {

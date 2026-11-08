@@ -294,6 +294,7 @@ import {
   clearAuth,
   getStoredUser,
   getToken,
+  setRefreshToken,
   setStoredUser,
   setToken,
   setUnauthorizedHandler,
@@ -625,6 +626,7 @@ const handleLoginSuccess = (payload) => {
   const user = payload?.user || null;
   if (!user) return;
   setToken(payload.token);
+  setRefreshToken(payload.refreshToken);
   setStoredUser(user);
   currentUser.value = user;
   const requestedPath = route.query.redirect;

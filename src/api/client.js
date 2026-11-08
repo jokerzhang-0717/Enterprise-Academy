@@ -9,6 +9,7 @@
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
 
 const TOKEN_KEY = 'emp_token';
+const REFRESH_TOKEN_KEY = 'emp_refresh_token';
 const USER_KEY = 'emp_user';
 // Keep credentials scoped to this tab so separate accounts can coexist on the same origin.
 const authStorage = () => window.sessionStorage;
@@ -47,6 +48,23 @@ export const setToken = (token) => {
   }
 };
 
+export const getRefreshToken = () => {
+  try {
+    return authStorage().getItem(REFRESH_TOKEN_KEY) || '';
+  } catch {
+    return '';
+  }
+};
+
+export const setRefreshToken = (token) => {
+  try {
+    if (token) authStorage().setItem(REFRESH_TOKEN_KEY, token);
+    else authStorage().removeItem(REFRESH_TOKEN_KEY);
+  } catch {
+    /* ignore */
+  }
+};
+
 export const getStoredUser = () => {
   try {
     const raw = authStorage().getItem(USER_KEY);
@@ -67,6 +85,7 @@ export const setStoredUser = (user) => {
 
 export const clearAuth = () => {
   setToken('');
+  setRefreshToken('');
   setStoredUser(null);
 };
 
@@ -95,6 +114,40 @@ const parseBody = async (response) => {
   }
 };
 
+let refreshPromise = null;
+
+/**
+ * 使用刷新令牌换发新的访问令牌。
+ * 多个并发请求同时收到 401 时共享同一次刷新，避免刷新令牌被重复消费。
+ */
+const refreshSession = async () => {
+  if (refreshPromise) return refreshPromise;
+  refreshPromise = (async () => {
+    const refreshToken = getRefreshToken();
+    if (!refreshToken) return false;
+    try {
+      const response = await fetch(`${BASE_URL}/auth/refresh`, {
+        method: 'POST',
+        headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refreshToken }),
+      });
+      const payload = await parseBody(response);
+      const data = payload && typeof payload === 'object' && 'code' in payload
+        ? payload.data
+        : payload;
+      if (!response.ok || !data?.token) return false;
+      setToken(data.token);
+      setRefreshToken(data.refreshToken || refreshToken);
+      return true;
+    } catch {
+      return false;
+    } finally {
+      refreshPromise = null;
+    }
+  })();
+  return refreshPromise;
+};
+
 /**
  * 发起请求
  * @param {string} path 以 / 开头的接口路径（不含 /api 前缀）
@@ -114,6 +167,7 @@ export const request = async (path, options = {}) => {
     body,
     formData,
     auth = true,
+    retryAfterRefresh = false,
     signal,
     headers: extraHeaders = {},
   } = options;
@@ -144,6 +198,14 @@ export const request = async (path, options = {}) => {
   }
 
   const payload = await parseBody(response);
+
+  // 访问令牌过期时先用刷新令牌静默续期，再重试一次原请求。
+  if (response.status === 401 && auth && !retryAfterRefresh) {
+    const refreshed = await refreshSession();
+    if (refreshed) {
+      return request(path, { ...options, retryAfterRefresh: true });
+    }
+  }
 
   if (response.status === 401) {
     clearAuth();

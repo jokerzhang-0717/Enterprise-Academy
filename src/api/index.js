@@ -1,7 +1,7 @@
 /**
  * 后端接口封装（与 emp-server/docs/openapi.yaml 一一对应）
  */
-import { http } from './client.js';
+import { getRefreshToken, http } from './client.js';
 import {
   adaptAdminAnnouncement,
   adaptAdminCertificate,
@@ -42,7 +42,8 @@ export const fetchMe = () => http.get('/auth/me').then(adaptUser);
 export const changePassword = (oldPassword, newPassword) =>
   http.put('/auth/password', { oldPassword, newPassword });
 
-export const logoutApi = () => http.post('/auth/logout');
+export const logoutApi = () =>
+  http.post('/auth/logout', { refreshToken: getRefreshToken() });
 
 /* ============================== 个人资料 ============================== */
 

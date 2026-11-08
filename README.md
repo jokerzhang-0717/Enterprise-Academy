@@ -230,11 +230,13 @@ curl -X POST http://localhost:8080/api/auth/login \
   -d '{"employeeNo":"admin","password":"123456"}'
 ```
 
-成功后会返回 `data.token`，后续请求携带：
+成功后会返回 `data.token` 与 `data.refreshToken`，后续请求携带：
 
 ```http
 Authorization: Bearer <token>
 ```
+
+访问令牌默认 15 分钟。过期后调用 `POST /api/auth/refresh` 并传入 `refreshToken` 换发新令牌；退出登录时调用 `POST /api/auth/logout` 吊销两类令牌。
 
 ---
 
@@ -254,6 +256,13 @@ Authorization: Bearer <token>
 | `REDIS_DATABASE` | `0` | Redis DB 编号 |
 | `API_RESPONSE_CACHE_TTL` | `1s` | 登录用户 API 读缓存 TTL |
 | `EMP_JWT_SECRET` | 开发默认值 | JWT 签名密钥，生产必须覆盖，至少 32 字节 |
+| `EMP_JWT_EXPIRE_MINUTES` | `15` | 访问令牌有效期（分钟） |
+| `AUTH_REFRESH_TOKEN_DAYS` | `7` | 刷新令牌有效期（天） |
+| `AUTH_MAX_LOGIN_ATTEMPTS` | `5` | 同一工号在窗口期内允许的登录失败次数 |
+| `AUTH_MAX_LOGIN_IP_ATTEMPTS` | `30` | 同一 IP 在窗口期内允许的登录失败次数 |
+| `AUTH_LOGIN_WINDOW_MINUTES` | `15` | 登录失败计数窗口（分钟） |
+| `AUTH_MAX_REGISTER_ATTEMPTS` | `5` | 同一 IP 在窗口期内允许的注册次数 |
+| `AUTH_REGISTER_WINDOW_MINUTES` | `60` | 注册限流窗口（分钟） |
 | `MINIO_ENDPOINT` | `http://127.0.0.1:9000` | MinIO 地址 |
 | `MINIO_ACCESS_KEY` | 开发默认值 | MinIO Access Key，生产必须覆盖 |
 | `MINIO_SECRET_KEY` | 开发默认值 | MinIO Secret Key，生产必须覆盖 |
@@ -303,10 +312,13 @@ Authorization: Bearer <token>
 
 鉴权说明：
 
-- 登录：`POST /api/auth/login`
-- 后续请求：`Authorization: Bearer <token>`
+- 登录：`POST /api/auth/login`，返回 15 分钟访问令牌与 7 天刷新令牌
+- 后续请求：仅使用 `Authorization: Bearer <token>`
+- 访问令牌过期：`POST /api/auth/refresh`，请求体 `{ "refreshToken": "..." }`
+- 退出登录：`POST /api/auth/logout`，吊销访问令牌与刷新令牌
+- 账号停用、密码修改后旧令牌立即失效
 - 管理端接口要求 `role = 2`，否则返回 `403`
-- 无需登录：`/auth/login`、`/auth/register`、`/files/view/**`、`/certificates/verify/**`
+- 无需登录：`/auth/login`、`/auth/register`、`/auth/refresh`、`/auth/logout`、`/files/view/**`、`/certificates/verify/**`
 
 修改接口后，可在 `emp-server` 目录下校验文档与路由：
 

@@ -410,6 +410,7 @@ const handleSubmit = async () => {
     const result = await loginApi(employeeId.value, password.value);
     emit('login-success', {
       token: result.token,
+      refreshToken: result.refreshToken,
       user: result.user,
       employeeId: result.user?.employeeId || employeeId.value,
       rememberDevice: rememberDevice.value,
@@ -456,6 +457,7 @@ const handleRegister = async () => {
     showToast('注册成功，已自动登录', 'success');
     emit('login-success', {
       token: result.token,
+      refreshToken: result.refreshToken,
       user: result.user,
       employeeId: result.user?.employeeId || registerEmployeeId.value,
       rememberDevice: rememberDevice.value,
