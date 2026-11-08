@@ -963,19 +963,9 @@ button { cursor: pointer; }
 .question-item:hover .q-score,
 .question-item:hover .q-exam { color: var(--app-accent-deep); }
 .question-item--locked { cursor: default; }
-.question-item--locked:hover {
-  background: var(--app-surface);
-  border-color: var(--app-border);
-  box-shadow: none;
-}
-.question-item--locked:hover .q-title { color: var(--app-text); }
-.question-item--locked:hover .q-score { color: var(--app-text-4); }
-.question-item--locked:hover .q-exam { color: var(--app-text-5); }
 /* 卡片底变成青底后,原本同底的序号块与单选 chip 会糊在一起,改用实底卡片色保住边界 */
 .question-item:hover .q-index,
 .question-item:hover .q-type-chip--single { background: var(--app-surface); }
-.question-item--locked:hover .q-index,
-.question-item--locked:hover .q-type-chip--single { background: var(--app-accent-soft); }
 
 .q-index {
   width: 26px;
