@@ -71,6 +71,8 @@ mysql -uroot -p enterprise_academy < ../sql/migrate_exam_question_metadata.sql
 | `REDIS_DATABASE` | `0` | Redis DB 编号 |
 | `API_RESPONSE_CACHE_TTL` | `1s` | 登录用户 API 读取缓存时间；成功写操作会立即使旧缓存失效 |
 | `EMP_JWT_SECRET` | 内置开发密钥 | JWT 签名密钥，生产必须覆盖（≥32 字节） |
+| `EMP_JWT_EXPIRE_MINUTES` | `15` | 访问令牌有效期（分钟） |
+| `EMP_ALLOWED_ORIGINS` | 空（仅本机 3000/5173） | 允许跨域的前端地址，逗号分隔；生产按实际域名配置 |
 | `MINIO_ENDPOINT` | `http://127.0.0.1:9000` | MinIO 地址 |
 | `MINIO_ACCESS_KEY` | `zhang` | MinIO Access Key |
 | `MINIO_SECRET_KEY` | `12345678` | MinIO Secret Key |

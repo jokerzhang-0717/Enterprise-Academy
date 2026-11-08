@@ -257,6 +257,7 @@ Authorization: Bearer <token>
 | `API_RESPONSE_CACHE_TTL` | `1s` | 登录用户 API 读缓存 TTL |
 | `EMP_JWT_SECRET` | 开发默认值 | JWT 签名密钥，生产必须覆盖，至少 32 字节 |
 | `EMP_JWT_EXPIRE_MINUTES` | `15` | 访问令牌有效期（分钟） |
+| `EMP_ALLOWED_ORIGINS` | 空（仅本机 3000/5173） | 允许跨域的前端地址，逗号分隔；生产按实际域名配置 |
 | `AUTH_REFRESH_TOKEN_DAYS` | `7` | 刷新令牌有效期（天） |
 | `AUTH_MAX_LOGIN_ATTEMPTS` | `5` | 同一工号在窗口期内允许的登录失败次数 |
 | `AUTH_MAX_LOGIN_IP_ATTEMPTS` | `30` | 同一 IP 在窗口期内允许的登录失败次数 |

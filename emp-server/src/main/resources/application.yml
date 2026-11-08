@@ -55,6 +55,8 @@ emp:
     # 访问令牌短时效，前端通过 /auth/refresh 自动续期
     expire-minutes: ${EMP_JWT_EXPIRE_MINUTES:15}
     issuer: emp-server
+    # 允许跨域的前端地址，逗号分隔；留空时只允许本机 3000/5173 开发端口
+    allowed-origins: ${EMP_ALLOWED_ORIGINS:}
   auth:
     # 刷新令牌有效期（天）与登录 / 注册限流
     refresh-token-days: ${AUTH_REFRESH_TOKEN_DAYS:7}
