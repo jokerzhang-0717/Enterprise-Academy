@@ -7,6 +7,9 @@ import com.joker.emp.entity.CourseLesson;
 import com.joker.emp.mapper.CourseLessonMapper;
 import com.joker.emp.service.CourseService;
 import com.joker.emp.service.StudySessionTrackingService;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotBlank;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -61,14 +64,14 @@ public class CourseController {
 
   @PostMapping("/courses/{id}/lessons/{lessonId}/progress")
   public ApiResponse<Map<String, Object>> updateProgress(@PathVariable Long id,
-      @PathVariable Long lessonId, @RequestBody ProgressRequest request) {
+      @PathVariable Long lessonId, @Valid @RequestBody ProgressRequest request) {
     return ApiResponse.ok(courseService.updateLessonProgress(id, lessonId,
         request.watchedSeconds(), request.completed()));
   }
 
   @PostMapping("/courses/{id}/lessons/{lessonId}/study-sessions")
   public ApiResponse<Map<String, Object>> startStudySession(@PathVariable Long id,
-      @PathVariable Long lessonId, @RequestBody StudySessionRequest request) {
+      @PathVariable Long lessonId, @Valid @RequestBody StudySessionRequest request) {
     return ApiResponse.ok(studySessionTrackingService.start(id, lessonId, request.sessionId()));
   }
 
@@ -114,9 +117,10 @@ public class CourseController {
     return ApiResponse.ok(courseService.instructors());
   }
 
-  public record ProgressRequest(Integer watchedSeconds, Boolean completed) {
+  public record ProgressRequest(@Min(value = 0, message = "观看时长不能为负") Integer watchedSeconds,
+                                Boolean completed) {
   }
 
-  public record StudySessionRequest(String sessionId) {
+  public record StudySessionRequest(@NotBlank(message = "学习会话ID无效") String sessionId) {
   }
 }

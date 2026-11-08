@@ -17,4 +17,13 @@ public interface StudySessionMapper extends BaseMapper<StudySession> {
       """)
   BigDecimal selectStudyMinutes(@Param("userId") Long userId,
       @Param("courseId") Long courseId);
+
+  /** 课时累计学习秒数，仅用于服务端完成度判定，不信任客户端上报值。 */
+  @Select("""
+      SELECT COALESCE(SUM(duration_minutes), 0) * 60
+      FROM study_session
+      WHERE user_id = #{userId} AND lesson_id = #{lessonId}
+      """)
+  BigDecimal selectStudySecondsByLesson(@Param("userId") Long userId,
+      @Param("lessonId") Long lessonId);
 }

@@ -21,6 +21,7 @@ import com.joker.emp.mapper.CourseTagMapper;
 import com.joker.emp.mapper.EnrollmentMapper;
 import com.joker.emp.mapper.InstructorMapper;
 import com.joker.emp.mapper.LessonProgressMapper;
+import com.joker.emp.mapper.StudySessionMapper;
 import com.joker.emp.mapper.TagMapper;
 import com.joker.emp.security.AuthContext;
 import java.math.BigDecimal;
@@ -48,13 +49,14 @@ public class CourseService {
   private final InstructorMapper instructorMapper;
   private final EnrollmentMapper enrollmentMapper;
   private final LessonProgressMapper lessonProgressMapper;
+  private final StudySessionMapper studySessionMapper;
   private final OperationLogService logService;
 
   public CourseService(CourseMapper courseMapper, CourseCategoryMapper categoryMapper,
       CourseChapterMapper chapterMapper, CourseLessonMapper lessonMapper,
       CourseTagMapper courseTagMapper, TagMapper tagMapper, InstructorMapper instructorMapper,
       EnrollmentMapper enrollmentMapper, LessonProgressMapper lessonProgressMapper,
-      OperationLogService logService) {
+      StudySessionMapper studySessionMapper, OperationLogService logService) {
     this.courseMapper = courseMapper;
     this.categoryMapper = categoryMapper;
     this.chapterMapper = chapterMapper;
@@ -64,6 +66,7 @@ public class CourseService {
     this.instructorMapper = instructorMapper;
     this.enrollmentMapper = enrollmentMapper;
     this.lessonProgressMapper = lessonProgressMapper;
+    this.studySessionMapper = studySessionMapper;
     this.logService = logService;
   }
 
@@ -460,21 +463,35 @@ public class CourseService {
         .eq(LessonProgress::getUserId, userId)
         .eq(LessonProgress::getLessonId, lessonId)
         .last("LIMIT 1"));
+
+    long trustedSeconds = studySessionMapper.selectStudySecondsByLesson(userId, lessonId)
+        .longValue();
+    boolean newlyCompleted = Boolean.TRUE.equals(completed)
+        && (progress == null || !Boolean.TRUE.equals(progress.getIsCompleted()));
+    if (newlyCompleted) {
+      long requiredSeconds = requiredStudySeconds(lesson);
+      if (trustedSeconds < requiredSeconds) {
+        throw new BizException("学习时长不足：本课时需累计学习 "
+            + formatStudyMinutes(requiredSeconds) + "，当前 "
+            + formatStudyMinutes(trustedSeconds));
+      }
+    }
+    int safeWatchedSeconds = clampWatchedSeconds(watchedSeconds, lesson);
+
     if (progress == null) {
       progress = new LessonProgress();
       progress.setUserId(userId);
       progress.setLessonId(lessonId);
-      progress.setWatchedSeconds(watchedSeconds == null ? 0 : watchedSeconds);
+      progress.setWatchedSeconds(safeWatchedSeconds);
       progress.setIsCompleted(Boolean.TRUE.equals(completed));
       if (Boolean.TRUE.equals(completed)) {
         progress.setCompletedAt(LocalDateTime.now());
       }
       lessonProgressMapper.insert(progress);
     } else {
-      if (watchedSeconds != null) {
-        progress.setWatchedSeconds(Math.max(progress.getWatchedSeconds() == null ? 0 : progress.getWatchedSeconds(),
-            watchedSeconds));
-      }
+      progress.setWatchedSeconds(Math.max(
+          progress.getWatchedSeconds() == null ? 0 : progress.getWatchedSeconds(),
+          safeWatchedSeconds));
       if (Boolean.TRUE.equals(completed)) {
         progress.setIsCompleted(true);
         progress.setCompletedAt(LocalDateTime.now());
@@ -497,9 +514,6 @@ public class CourseService {
     if (percent >= 100) {
       enrollment.setStatus(3);
       enrollment.setCompletedAt(LocalDateTime.now());
-      if (enrollment.getScore() == null) {
-        enrollment.setScore(BigDecimal.valueOf(95));
-      }
     } else if (percent > 0) {
       enrollment.setStatus(2);
     }
@@ -721,12 +735,36 @@ public class CourseService {
       return "未开始";
     }
     if (Integer.valueOf(3).equals(enrollment.getStatus())) {
-      return "已结课 · 成绩优秀 " + (enrollment.getScore() == null ? 95 : enrollment.getScore()) + "分";
+      BigDecimal score = enrollment.getScore();
+      return score == null ? "已结课"
+          : "已结课 · " + score.stripTrailingZeros().toPlainString() + "分";
     }
     if (Integer.valueOf(2).equals(enrollment.getStatus())) {
       return "学习中 · " + enrollment.getProgressPercent() + "%";
     }
     return "未开始";
+  }
+
+  /**
+   * 完成课时所需的服务端学习时长：默认取课时时长的一半，限制在 30 秒到 30 分钟之间；
+   * 课时未配置时长时要求至少学习 60 秒。
+   */
+  private long requiredStudySeconds(CourseLesson lesson) {
+    Integer duration = lesson.getDurationSeconds();
+    long required = duration == null || duration <= 0 ? 60L : Math.round(duration * 0.5d);
+    return Math.min(1800L, Math.max(30L, required));
+  }
+
+  /** 客户端上报的观看进度仅用于断点续播，限制在合法范围内，不作为完成依据。 */
+  private int clampWatchedSeconds(Integer watchedSeconds, CourseLesson lesson) {
+    int value = watchedSeconds == null ? 0 : Math.max(0, watchedSeconds);
+    Integer duration = lesson.getDurationSeconds();
+    int upperBound = duration == null || duration <= 0 ? 86_400 : duration;
+    return Math.min(value, upperBound);
+  }
+
+  private String formatStudyMinutes(long seconds) {
+    return Math.max(1, (seconds + 59) / 60) + " 分钟";
   }
 
   private String relativeTime(LocalDateTime time) {
