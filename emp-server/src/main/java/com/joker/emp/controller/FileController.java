@@ -1,16 +1,19 @@
 package com.joker.emp.controller;
 
 import com.joker.emp.common.ApiResponse;
+import com.joker.emp.common.BizException;
+import com.joker.emp.security.AdminOnly;
+import com.joker.emp.security.AuthContext;
 import com.joker.emp.storage.StorageService;
 import io.minio.StatObjectResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
+import java.util.Set;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -26,6 +29,8 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 @RequestMapping("/files")
 public class FileController {
 
+  private static final Set<String> ADMIN_FOLDERS = Set.of("video", "cover", "courseware");
+
   private final StorageService storageService;
 
   public FileController(StorageService storageService) {
@@ -37,11 +42,16 @@ public class FileController {
   public ApiResponse<Map<String, Object>> upload(
       @RequestParam("file") MultipartFile file,
       @RequestParam(value = "folder", required = false) String folder) {
+    if (folder != null && ADMIN_FOLDERS.contains(folder.trim().toLowerCase())
+        && !AuthContext.require().isAdmin()) {
+      throw BizException.forbidden("需要管理员权限");
+    }
     String baseUrl = ServletUriComponentsBuilder.fromCurrentContextPath().build().toUriString();
     return ApiResponse.ok(storageService.upload(file, folder, baseUrl));
   }
 
-  /** 大文件（课程视频）直传：服务端只签发预签名 PUT 地址。 */
+  /** 大文件（课程视频）直传：服务端只签发预签名 PUT 地址，仅管理员可用。 */
+  @AdminOnly
   @PostMapping("/presign-upload")
   public ApiResponse<Map<String, Object>> presignUpload(@RequestBody PresignUploadRequest request) {
     String baseUrl = ServletUriComponentsBuilder.fromCurrentContextPath().build().toUriString();
@@ -49,6 +59,7 @@ public class FileController {
         request.fileName(), request.contentType(), request.folder(), baseUrl));
   }
 
+  @AdminOnly
   @GetMapping("/presign")
   public ApiResponse<Map<String, Object>> presignDownload(@RequestParam String objectName) {
     return ApiResponse.ok(Map.of(
@@ -57,6 +68,7 @@ public class FileController {
     ));
   }
 
+  @AdminOnly
   @DeleteMapping
   public ApiResponse<Void> delete(@RequestParam String objectName) {
     storageService.delete(objectName);
@@ -75,8 +87,11 @@ public class FileController {
     String objectName = URLDecoder.decode(raw, StandardCharsets.UTF_8);
 
     StatObjectResponse stat = storageService.stat(objectName);
-    String contentType = stat.contentType() == null ? "application/octet-stream" : stat.contentType();
+    String contentType = storageService.resolveContentType(objectName);
     long fileSize = stat.size();
+    boolean inline = storageService.isInlineSafe(objectName);
+    String fileName = storageService.objectFileName(objectName)
+        .replaceAll("[\\r\\n\"\\\\]", "_");
     ByteRange range;
     try {
       range = parseRange(request.getHeader(HttpHeaders.RANGE), fileSize);
@@ -97,15 +112,17 @@ public class FileController {
             partial ? HttpStatus.PARTIAL_CONTENT : HttpStatus.OK)
         .header(HttpHeaders.ACCEPT_RANGES, "bytes")
         .header(HttpHeaders.CONTENT_TYPE, contentType)
+        .header("X-Content-Type-Options", "nosniff")
+        .header("Content-Security-Policy", "default-src 'none'; sandbox")
         .contentLength(length)
-        .header(HttpHeaders.CACHE_CONTROL, "public, max-age=86400")
+        .header(HttpHeaders.CACHE_CONTROL, inline ? "public, max-age=86400" : "private, no-store")
         .header(HttpHeaders.CONTENT_DISPOSITION,
-            "inline; filename=\"" + objectName.substring(objectName.lastIndexOf('/') + 1) + "\"");
+            (inline ? "inline" : "attachment") + "; filename=\"" + fileName + "\"");
     if (partial) {
       response.header(HttpHeaders.CONTENT_RANGE,
           "bytes " + range.start() + "-" + range.end() + "/" + fileSize);
     }
-    return response.contentType(MediaType.parseMediaType(contentType)).body(resource);
+    return response.body(resource);
   }
 
   private ByteRange parseRange(String header, long fileSize) {

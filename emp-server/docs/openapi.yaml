@@ -904,7 +904,10 @@ paths:
     post:
       tags: [文件]
       summary: 上传文件（服务端转发）
-      description: multipart/form-data；适合头像、图片、PDF 等小文件。
+      description: |-
+        multipart/form-data；适合头像、图片、PDF 等小文件。
+        仅允许图片、音视频、PDF、Office、txt、zip、rar 等受支持扩展名；HTML/SVG/脚本会被拒绝。
+        video / cover / courseware 目录仅管理员可写。
       requestBody:
         required: true
         content:
@@ -918,7 +921,7 @@ paths:
                   format: binary
                 folder:
                   type: string
-                  description: 自定义目录，如 avatar / course / attachment
+                  description: 目录，仅支持 avatar / cover / video / courseware / attachment / notice / common / misc
             encoding:
               file:
                 contentType: application/octet-stream
@@ -946,8 +949,10 @@ paths:
   /files/presign-upload:
     post:
       tags: [文件]
-      summary: 获取直传预签名地址
-      description: 大文件（课程视频）由前端直接 PUT 到返回的 uploadUrl，再把 objectName 保存到业务表。
+      summary: 获取直传预签名地址（管理员）
+      description: |-
+        大文件（课程视频）由前端直接 PUT 到返回的 uploadUrl，再把 objectName 保存到业务表。
+        仅管理员可用，文件扩展名与 Content-Type 由服务端校验。
       requestBody:
         required: true
         content:
@@ -957,7 +962,7 @@ paths:
             example:
               fileName: course-video.mp4
               contentType: video/mp4
-              folder: course
+              folder: video
       responses:
         '200': { $ref: '#/components/responses/Ok' }
         '400': { $ref: '#/components/responses/BadRequest' }
@@ -965,7 +970,7 @@ paths:
   /files/presign:
     get:
       tags: [文件]
-      summary: 获取下载预签名地址
+      summary: 获取下载预签名地址（管理员）
       parameters:
         - $ref: '#/components/parameters/ObjectNameQuery'
       responses:
@@ -975,7 +980,7 @@ paths:
   /files:
     delete:
       tags: [文件]
-      summary: 删除文件
+      summary: 删除文件（管理员）
       parameters:
         - $ref: '#/components/parameters/ObjectNameQuery'
       responses:

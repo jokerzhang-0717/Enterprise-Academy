@@ -19,7 +19,9 @@ import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.LinkedHashMap;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
@@ -35,6 +37,39 @@ import org.springframework.web.multipart.MultipartFile;
 public class StorageService {
 
   private static final Logger log = LoggerFactory.getLogger(StorageService.class);
+
+  /** 只允许业务需要的文件类型，避免上传 HTML/SVG/脚本后在应用同源执行。 */
+  private static final Map<String, String> ALLOWED_CONTENT_TYPES = Map.ofEntries(
+      Map.entry(".jpg", "image/jpeg"),
+      Map.entry(".jpeg", "image/jpeg"),
+      Map.entry(".png", "image/png"),
+      Map.entry(".gif", "image/gif"),
+      Map.entry(".webp", "image/webp"),
+      Map.entry(".bmp", "image/bmp"),
+      Map.entry(".mp4", "video/mp4"),
+      Map.entry(".webm", "video/webm"),
+      Map.entry(".ogg", "video/ogg"),
+      Map.entry(".mov", "video/quicktime"),
+      Map.entry(".mp3", "audio/mpeg"),
+      Map.entry(".wav", "audio/wav"),
+      Map.entry(".m4a", "audio/mp4"),
+      Map.entry(".pdf", "application/pdf"),
+      Map.entry(".doc", "application/msword"),
+      Map.entry(".docx",
+          "application/vnd.openxmlformats-officedocument.wordprocessingml.document"),
+      Map.entry(".xls", "application/vnd.ms-excel"),
+      Map.entry(".xlsx",
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"),
+      Map.entry(".ppt", "application/vnd.ms-powerpoint"),
+      Map.entry(".pptx",
+          "application/vnd.openxmlformats-officedocument.presentationml.presentation"),
+      Map.entry(".txt", "text/plain"),
+      Map.entry(".zip", "application/zip"),
+      Map.entry(".rar", "application/vnd.rar")
+  );
+
+  private static final Set<String> ALLOWED_FOLDERS = Set.of(
+      "avatar", "cover", "video", "courseware", "attachment", "notice", "common", "misc");
 
   private final MinioClient client;
   private final MinioProperties properties;
@@ -68,23 +103,26 @@ public class StorageService {
     if (file == null || file.isEmpty()) {
       throw new BizException("请选择要上传的文件");
     }
+    String contentType = resolveContentType(file.getOriginalFilename());
     String objectName = buildObjectName(file.getOriginalFilename(), folder);
     try (InputStream in = file.getInputStream()) {
       client.putObject(PutObjectArgs.builder()
           .bucket(properties.getBucket())
           .object(objectName)
           .stream(in, file.getSize(), -1)
-          .contentType(file.getContentType() == null ? "application/octet-stream" : file.getContentType())
+          .contentType(contentType)
           .build());
     } catch (Exception ex) {
-      throw new BizException(500, "文件上传失败：" + ex.getMessage());
+      log.error("文件上传失败 object={}", objectName, ex);
+      throw new BizException(500, "文件上传失败，请稍后重试");
     }
     return describe(objectName, file.getOriginalFilename(), file.getSize(),
-        file.getContentType(), publicBaseUrl);
+        contentType, publicBaseUrl);
   }
 
   public Map<String, Object> presignUpload(String fileName, String contentType, String folder,
       String publicBaseUrl) {
+    String resolvedContentType = resolveContentType(fileName);
     String objectName = buildObjectName(fileName, folder);
     try {
       String uploadUrl = client.getPresignedObjectUrl(GetPresignedObjectUrlArgs.builder()
@@ -93,25 +131,29 @@ public class StorageService {
           .object(objectName)
           .expiry(properties.getPresignExpiryMinutes(), TimeUnit.MINUTES)
           .build());
-      Map<String, Object> result = describe(objectName, fileName, null, contentType, publicBaseUrl);
+      Map<String, Object> result = describe(objectName, fileName, null, resolvedContentType,
+          publicBaseUrl);
       result.put("uploadUrl", uploadUrl);
       result.put("method", "PUT");
       return result;
     } catch (Exception ex) {
-      throw new BizException(500, "生成上传地址失败：" + ex.getMessage());
+      log.error("生成上传地址失败 object={}", objectName, ex);
+      throw new BizException(500, "生成上传地址失败，请稍后重试");
     }
   }
 
   public String presignDownload(String objectName) {
+    String safeObjectName = requireObjectName(objectName);
     try {
       return client.getPresignedObjectUrl(GetPresignedObjectUrlArgs.builder()
           .method(Method.GET)
           .bucket(properties.getBucket())
-          .object(objectName)
+          .object(safeObjectName)
           .expiry(properties.getPresignExpiryMinutes(), TimeUnit.MINUTES)
           .build());
     } catch (Exception ex) {
-      throw new BizException(500, "生成下载地址失败：" + ex.getMessage());
+      log.error("生成下载地址失败 object={}", safeObjectName, ex);
+      throw new BizException(500, "生成下载地址失败，请稍后重试");
     }
   }
 
@@ -119,49 +161,81 @@ public class StorageService {
     if (objectName == null || objectName.isBlank()) {
       return;
     }
+    String safeObjectName = requireObjectName(objectName);
     try {
       client.removeObject(RemoveObjectArgs.builder()
           .bucket(properties.getBucket())
-          .object(objectName)
+          .object(safeObjectName)
           .build());
     } catch (Exception ex) {
-      throw new BizException(500, "文件删除失败：" + ex.getMessage());
+      log.error("文件删除失败 object={}", safeObjectName, ex);
+      throw new BizException(500, "文件删除失败，请稍后重试");
     }
   }
 
   public InputStream open(String objectName) {
+    String safeObjectName = requireObjectName(objectName);
     try {
       return client.getObject(GetObjectArgs.builder()
           .bucket(properties.getBucket())
-          .object(objectName)
+          .object(safeObjectName)
           .build());
     } catch (Exception ex) {
-      throw BizException.notFound("文件不存在：" + objectName);
+      log.debug("读取文件失败 object={}", safeObjectName, ex);
+      throw BizException.notFound("文件不存在");
     }
   }
 
   public InputStream open(String objectName, long offset, long length) {
+    String safeObjectName = requireObjectName(objectName);
     try {
       return client.getObject(GetObjectArgs.builder()
           .bucket(properties.getBucket())
-          .object(objectName)
+          .object(safeObjectName)
           .offset(offset)
           .length(length)
           .build());
     } catch (Exception ex) {
-      throw BizException.notFound("文件不存在：" + objectName);
+      log.debug("分段读取文件失败 object={}", safeObjectName, ex);
+      throw BizException.notFound("文件不存在");
     }
   }
 
   public StatObjectResponse stat(String objectName) {
+    String safeObjectName = requireObjectName(objectName);
     try {
       return client.statObject(StatObjectArgs.builder()
           .bucket(properties.getBucket())
-          .object(objectName)
+          .object(safeObjectName)
           .build());
     } catch (Exception ex) {
-      throw BizException.notFound("文件不存在：" + objectName);
+      log.debug("读取文件元数据失败 object={}", safeObjectName, ex);
+      throw BizException.notFound("文件不存在");
     }
+  }
+
+  /** 按扩展名解析受信任的 Content-Type，不能使用上传时客户端声明的类型。 */
+  public String resolveContentType(String fileName) {
+    String extension = extension(fileName);
+    String contentType = ALLOWED_CONTENT_TYPES.get(extension);
+    if (contentType == null) {
+      throw new BizException("不支持的文件类型");
+    }
+    return contentType;
+  }
+
+  /** 只有图片、音视频和 PDF 允许内联展示，其余一律作为附件下载。 */
+  public boolean isInlineSafe(String fileName) {
+    String contentType = ALLOWED_CONTENT_TYPES.get(extension(fileName));
+    return contentType != null && (contentType.startsWith("image/")
+        || contentType.startsWith("video/")
+        || contentType.startsWith("audio/")
+        || "application/pdf".equals(contentType));
+  }
+
+  public String objectFileName(String objectName) {
+    String safeObjectName = requireObjectName(objectName);
+    return safeObjectName.substring(safeObjectName.lastIndexOf('/') + 1);
   }
 
   public String directUrl(String objectName) {
@@ -184,18 +258,51 @@ public class StorageService {
   }
 
   private String buildObjectName(String originalName, String folder) {
-    String ext = "";
-    if (originalName != null) {
-      int dot = originalName.lastIndexOf('.');
-      if (dot >= 0 && dot < originalName.length() - 1) {
-        ext = originalName.substring(dot).toLowerCase();
-      }
-    }
-    String safeFolder = (folder == null || folder.isBlank())
-        ? "misc"
-        : folder.replaceAll("[^a-zA-Z0-9/_-]", "");
+    String ext = extension(originalName);
+    String safeFolder = normalizeFolder(folder);
     return safeFolder + "/" + LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy/MM")) + "/"
         + UUID.randomUUID().toString().replace("-", "") + ext;
+  }
+
+  private String normalizeFolder(String folder) {
+    if (folder == null || folder.isBlank()) {
+      return "misc";
+    }
+    String cleaned = folder.trim().toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9/_-]", "");
+    if (cleaned.isEmpty()) {
+      return "misc";
+    }
+    if (!ALLOWED_FOLDERS.contains(cleaned)) {
+      throw new BizException("不支持的文件目录");
+    }
+    return cleaned;
+  }
+
+  private String extension(String name) {
+    if (name == null) {
+      return "";
+    }
+    String clean = name.replace('\\', '/');
+    int slash = clean.lastIndexOf('/');
+    if (slash >= 0) {
+      clean = clean.substring(slash + 1);
+    }
+    int dot = clean.lastIndexOf('.');
+    if (dot < 0 || dot == clean.length() - 1) {
+      return "";
+    }
+    return clean.substring(dot).toLowerCase(Locale.ROOT);
+  }
+
+  private String requireObjectName(String objectName) {
+    if (objectName == null || objectName.isBlank()) {
+      throw new BizException("缺少文件标识");
+    }
+    String name = objectName.trim();
+    if (name.startsWith("/") || name.contains("..") || name.contains("\\")) {
+      throw new BizException("非法的文件标识");
+    }
+    return name;
   }
 
   private String encodePath(String objectName) {
