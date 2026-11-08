@@ -953,14 +953,15 @@ button { cursor: pointer; }
   border: 1px solid var(--app-border);
   border-radius: 12px;
   cursor: pointer;
-  transition: background 0.15s, box-shadow 0.15s, border-color 0.15s;
+  transition: background 0.15s, color 0.15s, box-shadow 0.15s;
 }
 .question-item:hover {
   background: var(--app-accent-soft);
-  border-color: var(--app-accent-border);
-  box-shadow: inset 3px 0 0 var(--app-accent), 0 4px 16px var(--app-accent-a20);
+  box-shadow: inset 3px 0 0 var(--app-accent);
 }
-.question-item:hover .q-title { color: var(--app-accent-deep); }
+.question-item:hover .q-title,
+.question-item:hover .q-score,
+.question-item:hover .q-exam { color: var(--app-accent-deep); }
 .question-item--locked { cursor: default; }
 .question-item--locked:hover {
   background: var(--app-surface);
@@ -968,9 +969,13 @@ button { cursor: pointer; }
   box-shadow: none;
 }
 .question-item--locked:hover .q-title { color: var(--app-text); }
+.question-item--locked:hover .q-score { color: var(--app-text-4); }
+.question-item--locked:hover .q-exam { color: var(--app-text-5); }
 /* 卡片底变成青底后,原本同底的序号块与单选 chip 会糊在一起,改用实底卡片色保住边界 */
 .question-item:hover .q-index,
 .question-item:hover .q-type-chip--single { background: var(--app-surface); }
+.question-item--locked:hover .q-index,
+.question-item--locked:hover .q-type-chip--single { background: var(--app-accent-soft); }
 
 .q-index {
   width: 26px;
