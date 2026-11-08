@@ -7,10 +7,12 @@ import java.security.SecureRandom;
 import java.time.Duration;
 import java.util.Base64;
 import java.util.HexFormat;
+import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataAccessException;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.stereotype.Component;
 
 /**
@@ -23,6 +25,11 @@ public class AuthTokenStore {
   private static final String BLACKLIST_PREFIX = "auth:blacklist:access:";
   private static final String REFRESH_PREFIX = "auth:refresh:";
   private static final SecureRandom RANDOM = new SecureRandom();
+
+  /** Redis < 6.2 没有 GETDEL，用 Lua 保证 GET+DEL 原子执行。 */
+  private static final DefaultRedisScript<String> CONSUME_SCRIPT = new DefaultRedisScript<>(
+      "local v = redis.call('GET', KEYS[1]); if v then redis.call('DEL', KEYS[1]) end; return v;",
+      String.class);
 
   private final StringRedisTemplate redis;
   private final AuthProperties properties;
@@ -54,11 +61,11 @@ public class AuthTokenStore {
     }
     String key = refreshKey(token);
     try {
-      String value = redis.opsForValue().get(key);
+      // Lua 脚本原子消费：并发重放同一刷新令牌时只有一个请求能拿到值。
+      String value = redis.execute(CONSUME_SCRIPT, List.of(key));
       if (value == null) {
         return null;
       }
-      redis.delete(key);
       String[] parts = value.split("\n", 2);
       if (parts.length != 2) {
         return null;
