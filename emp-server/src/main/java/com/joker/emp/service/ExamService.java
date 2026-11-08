@@ -19,6 +19,7 @@ import com.joker.emp.mapper.ExamAttemptMapper;
 import com.joker.emp.mapper.ExamMapper;
 import com.joker.emp.mapper.SysUserMapper;
 import java.math.BigDecimal;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -330,7 +331,12 @@ public class ExamService {
     item.put("statusLabel", attemptStatusText(attempt.getStatus()));
     item.put("startedAt", attempt.getStartedAt());
     item.put("submittedAt", attempt.getSubmittedAt());
-    item.put("remainingSeconds", attempt.getRemainingSeconds());
+    if (Integer.valueOf(1).equals(attempt.getStatus())) {
+      item.put("remainingSeconds",
+          remainingSeconds(attempt, exam, findAssignment(attempt.getExamId(), attempt.getUserId())));
+    } else {
+      item.put("remainingSeconds", attempt.getRemainingSeconds());
+    }
     item.put("objectiveScore", attempt.getObjectiveScore());
     item.put("subjectiveScore", attempt.getSubjectiveScore());
     item.put("totalScore", attempt.getTotalScore());
@@ -483,12 +489,19 @@ public class ExamService {
     if (!Integer.valueOf(3).equals(exam.getStatus())) {
       throw new BizException("该考试当前未开放");
     }
-    ExamAssignment assignment = assignmentMapper.selectOne(Wrappers.<ExamAssignment>lambdaQuery()
-        .eq(ExamAssignment::getExamId, examId)
-        .eq(ExamAssignment::getUserId, userId)
-        .last("LIMIT 1"));
+    LocalDateTime now = LocalDateTime.now();
+    if (exam.getStartAt() != null && now.isBefore(exam.getStartAt())) {
+      throw new BizException("考试尚未开始");
+    }
+    if (exam.getEndAt() != null && now.isAfter(exam.getEndAt())) {
+      throw new BizException("考试已结束");
+    }
+    ExamAssignment assignment = findAssignment(examId, userId);
     if (assignment == null) {
       throw BizException.forbidden("你没有被指派参加该考试");
+    }
+    if (assignment.getDeadlineAt() != null && now.isAfter(assignment.getDeadlineAt())) {
+      throw new BizException("已超过考试截止时间");
     }
     ExamAttempt inProgress = attemptMapper.selectOne(Wrappers.<ExamAttempt>lambdaQuery()
         .eq(ExamAttempt::getExamId, examId)
@@ -497,6 +510,13 @@ public class ExamService {
         .orderByDesc(ExamAttempt::getId)
         .last("LIMIT 1"));
     if (inProgress != null) {
+      int remaining = remainingSeconds(inProgress, exam, assignment);
+      if (!Integer.valueOf(remaining).equals(inProgress.getRemainingSeconds())) {
+        ExamAttempt update = new ExamAttempt();
+        update.setId(inProgress.getId());
+        update.setRemainingSeconds(remaining);
+        attemptMapper.updateById(update);
+      }
       return attemptPayload(inProgress, exam);
     }
     int allowed = assignment.getAttemptsAllowed() == null ? 1 : assignment.getAttemptsAllowed();
@@ -509,9 +529,12 @@ public class ExamService {
     attempt.setUserId(userId);
     attempt.setAttemptNo(used + 1);
     attempt.setStatus(1);
-    attempt.setStartedAt(LocalDateTime.now());
-    attempt.setRemainingSeconds(exam.getDurationMinutes() == null
-        ? 3600 : exam.getDurationMinutes() * 60);
+    attempt.setStartedAt(now);
+    int remaining = remainingSeconds(attempt, exam, assignment);
+    if (remaining <= 0) {
+      throw new BizException("考试时间已结束");
+    }
+    attempt.setRemainingSeconds(remaining);
     attempt.setPassScore(exam.getPassScore());
     attempt.setWrongCount(0);
     attempt.setSwitchCount(0);
@@ -525,6 +548,12 @@ public class ExamService {
     ExamAttempt attempt = requireOwnAttempt(attemptId, userId);
     if (!Integer.valueOf(1).equals(attempt.getStatus())) {
       throw new BizException("答卷已提交，无法继续作答");
+    }
+    Exam exam = requireExam(attempt.getExamId());
+    ExamAssignment assignment = findAssignment(attempt.getExamId(), userId);
+    int remaining = remainingSeconds(attempt, exam, assignment);
+    if (remaining <= 0) {
+      throw new BizException("考试时间已结束，请提交答卷");
     }
     ExamQuestion question = questionService.list(attempt.getExamId(), null, null, false).stream()
         .map(q -> (Long) q.get("id"))
@@ -561,16 +590,16 @@ public class ExamService {
       answer.setAnsweredAt(LocalDateTime.now());
       answerMapper.updateById(answer);
     }
-    if (request.remainingSeconds() != null) {
-      attempt.setRemainingSeconds(request.remainingSeconds());
-      attemptMapper.updateById(attempt);
-    }
+    ExamAttempt remainingUpdate = new ExamAttempt();
+    remainingUpdate.setId(attempt.getId());
+    remainingUpdate.setRemainingSeconds(remaining);
+    attemptMapper.updateById(remainingUpdate);
     Map<String, Object> result = new LinkedHashMap<>();
     result.put("answerId", answer.getId());
     result.put("questionId", answer.getQuestionId());
     result.put("selectedKeys", answer.getSelectedKeys());
     result.put("answerText", answer.getAnswerText());
-    result.put("remainingSeconds", attempt.getRemainingSeconds());
+    result.put("remainingSeconds", remaining);
     return result;
   }
 
@@ -682,7 +711,8 @@ public class ExamService {
     item.put("attemptNo", attempt.getAttemptNo());
     item.put("status", attempt.getStatus());
     item.put("startedAt", attempt.getStartedAt());
-    item.put("remainingSeconds", attempt.getRemainingSeconds());
+    item.put("remainingSeconds",
+        remainingSeconds(attempt, exam, findAssignment(attempt.getExamId(), attempt.getUserId())));
     item.put("durationMinutes", exam.getDurationMinutes());
     item.put("totalScore", exam.getTotalScore());
     item.put("passScore", exam.getPassScore());
@@ -694,6 +724,30 @@ public class ExamService {
           a.remove("analysis");
         }).toList());
     return item;
+  }
+
+  private ExamAssignment findAssignment(Long examId, Long userId) {
+    return assignmentMapper.selectOne(Wrappers.<ExamAssignment>lambdaQuery()
+        .eq(ExamAssignment::getExamId, examId)
+        .eq(ExamAssignment::getUserId, userId)
+        .last("LIMIT 1"));
+  }
+
+  /**
+   * 剩余作答时间完全由服务端计算：开考时间 + 试卷时长，并受指派截止时间约束。
+   */
+  private int remainingSeconds(ExamAttempt attempt, Exam exam, ExamAssignment assignment) {
+    LocalDateTime now = LocalDateTime.now();
+    LocalDateTime startedAt = attempt.getStartedAt() == null ? now : attempt.getStartedAt();
+    int durationMinutes = exam.getDurationMinutes() == null
+        ? 60 : Math.max(1, exam.getDurationMinutes());
+    LocalDateTime expiresAt = startedAt.plusSeconds(durationMinutes * 60L);
+    if (assignment != null && assignment.getDeadlineAt() != null
+        && assignment.getDeadlineAt().isBefore(expiresAt)) {
+      expiresAt = assignment.getDeadlineAt();
+    }
+    long seconds = Duration.between(now, expiresAt).getSeconds();
+    return (int) Math.max(0, Math.min(Integer.MAX_VALUE, seconds));
   }
 
   private ExamAttempt requireOwnAttempt(Long attemptId, Long userId) {

@@ -390,10 +390,12 @@ const applySession = (paper, session) => {
     (questionTypeOrder[a.type] ?? Number.MAX_SAFE_INTEGER)
       - (questionTypeOrder[b.type] ?? Number.MAX_SAFE_INTEGER)
   );
-  // 倒计时逻辑：优先使用后端返回的剩余时间，如果没有则使用考试设定的时长
-  const sessionRemaining = Number(session.remainingSeconds) || 0;
+  // 倒计时以服务端剩余时间为准；服务端明确返回 0 时立即自动交卷，不再回退到试卷时长
+  const sessionRemaining = session.remainingSeconds == null ? null : Number(session.remainingSeconds);
   const examDurationSeconds = Number(paper.durationMinutes || 60) * 60;
-  secondsLeft.value = sessionRemaining > 0 ? sessionRemaining : examDurationSeconds;
+  secondsLeft.value = sessionRemaining == null
+    ? examDurationSeconds
+    : Math.max(0, sessionRemaining);
   switchCount.value = Number(session.switchCount || 0);
 
   const nextAnswers = {};
