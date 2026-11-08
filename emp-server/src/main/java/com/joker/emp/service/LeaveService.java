@@ -9,6 +9,7 @@ import com.joker.emp.common.PageResult;
 import com.joker.emp.entity.LeaveRequest;
 import com.joker.emp.mapper.LeaveRequestMapper;
 import com.joker.emp.security.AuthContext;
+import com.joker.emp.security.AuthUser;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -50,6 +51,10 @@ public class LeaveService {
 
   public Map<String, Object> detail(Long id) {
     LeaveRequest leave = requireLeave(id);
+    AuthUser current = AuthContext.require();
+    if (!current.isAdmin() && !current.id().equals(leave.getUserId())) {
+      throw BizException.forbidden("无权查看该请假申请");
+    }
     Map<String, Object> item = new LinkedHashMap<>();
     item.put("id", leave.getId());
     item.put("flowNo", leave.getFlowNo());
