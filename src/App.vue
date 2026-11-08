@@ -348,7 +348,7 @@ watch(
           if (!track) showToast('未找到该研修通道。', 'error');
         }
       } catch (error) {
-        if (requestVersion === trackLoadVersion) {
+        if (requestVersion === trackLoadVersion && error?.status !== 401) {
           showToast(error?.message || '研修通道加载失败。', 'error');
         }
       }
@@ -593,7 +593,7 @@ const loadSearchData = async () => {
   if (results[2].status === 'fulfilled') {
     searchCertificates.value = results[2].value;
   }
-  if (results.some((result) => result.status === 'rejected')) {
+  if (results.some((result) => result.status === 'rejected' && result.reason?.status !== 401)) {
     showToast('部分搜索数据加载失败，相关内容暂不可搜索。', 'error');
   }
 };
@@ -669,6 +669,8 @@ const handlePasswordChanged = () => {
 onMounted(async () => {
   setUnauthorizedHandler(() => {
     clearLocalSession();
+    // 统一在全局登录态失效处提示一次，页面级请求不再各自弹窗。
+    showToast('登录状态已失效，请重新登录', 'error');
     router.replace({ name: 'login' });
   });
 

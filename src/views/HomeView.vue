@@ -498,12 +498,12 @@ onMounted(async () => {
   ]);
   if (examsResult.status === 'fulfilled') {
     examAssignments.value = examsResult.value.assignments || [];
-  } else {
+  } else if (examsResult.reason?.status !== 401) {
     showToast(examsResult.reason?.message || '考核数据加载失败。', 'error');
   }
   if (certificatesResult.status === 'fulfilled') {
     certificateCount.value = certificatesResult.value.length;
-  } else {
+  } else if (certificatesResult.reason?.status !== 401) {
     showToast(certificatesResult.reason?.message || '证书数据加载失败。', 'error');
   }
 });

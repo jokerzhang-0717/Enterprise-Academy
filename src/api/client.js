@@ -25,6 +25,8 @@ export class ApiError extends Error {
 }
 
 let unauthorizedHandler = null;
+// 并发请求可能同时收到 401，只让第一个触发全局登出与提示，避免重复弹窗。
+let sessionExpiredNotified = false;
 
 /** 注册 401 处理（由 App.vue 注入，避免 API 层直接依赖路由） */
 export const setUnauthorizedHandler = (handler) => {
@@ -41,8 +43,12 @@ export const getToken = () => {
 
 export const setToken = (token) => {
   try {
-    if (token) authStorage().setItem(TOKEN_KEY, token);
-    else authStorage().removeItem(TOKEN_KEY);
+    if (token) {
+      authStorage().setItem(TOKEN_KEY, token);
+      sessionExpiredNotified = false;
+    } else {
+      authStorage().removeItem(TOKEN_KEY);
+    }
   } catch {
     /* ignore */
   }
@@ -209,7 +215,10 @@ export const request = async (path, options = {}) => {
 
   if (response.status === 401) {
     clearAuth();
-    if (unauthorizedHandler) unauthorizedHandler();
+    if (!sessionExpiredNotified) {
+      sessionExpiredNotified = true;
+      if (unauthorizedHandler) unauthorizedHandler();
+    }
   }
 
   if (!response.ok) {
