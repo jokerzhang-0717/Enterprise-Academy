@@ -29,4 +29,10 @@ public class AuthProperties {
 
   /** 注册限流窗口（分钟）。 */
   private long registerWindowMinutes = 60;
+
+  /** 是否信任 X-Forwarded-For / X-Real-IP；仅当应用部署在可信反向代理之后才开启。 */
+  private boolean trustForwardedHeaders = false;
+
+  /** 演示模式：允许 password_hash 为空的种子账号使用演示口令登录，生产环境应关闭。 */
+  private boolean demoMode = true;
 }

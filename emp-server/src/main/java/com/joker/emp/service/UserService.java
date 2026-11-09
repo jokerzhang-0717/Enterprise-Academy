@@ -11,6 +11,7 @@ import com.joker.emp.entity.SysUser;
 import com.joker.emp.mapper.DepartmentMapper;
 import com.joker.emp.mapper.SysUserMapper;
 import com.joker.emp.security.AuthContext;
+import com.joker.emp.security.AuthProperties;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -30,13 +31,16 @@ public class UserService {
   private final DepartmentMapper departmentMapper;
   private final PasswordEncoder passwordEncoder;
   private final OperationLogService logService;
+  private final AuthProperties authProperties;
 
   public UserService(SysUserMapper userMapper, DepartmentMapper departmentMapper,
-      PasswordEncoder passwordEncoder, OperationLogService logService) {
+      PasswordEncoder passwordEncoder, OperationLogService logService,
+      AuthProperties authProperties) {
     this.userMapper = userMapper;
     this.departmentMapper = departmentMapper;
     this.passwordEncoder = passwordEncoder;
     this.logService = logService;
+    this.authProperties = authProperties;
   }
 
   public PageResult<Map<String, Object>> page(long page, long size, String keyword,
@@ -142,8 +146,8 @@ public class UserService {
     }
     request.setId(null);
     request.setEmployeeNo(request.getEmployeeNo().trim());
-    request.setPasswordHash(passwordEncoder.encode(
-        rawPassword == null || rawPassword.isBlank() ? AuthService.DEMO_PASSWORD : rawPassword));
+    String initialPassword = resolvePassword(rawPassword, "请设置初始密码");
+    request.setPasswordHash(passwordEncoder.encode(initialPassword));
     request.setRole(request.getRole() == null ? 1 : request.getRole());
     request.setAccountStatus(request.getAccountStatus() == null ? 1 : request.getAccountStatus());
     if (request.getLastActiveAt() == null) {
@@ -221,7 +225,7 @@ public class UserService {
     if (exists == null) {
       throw BizException.notFound("用户不存在");
     }
-    String raw = newPassword == null || newPassword.isBlank() ? AuthService.DEMO_PASSWORD : newPassword;
+    String raw = resolvePassword(newPassword, "请设置新密码");
     if (raw.length() < 6) {
       throw new BizException("密码至少需要 6 位");
     }
@@ -230,6 +234,17 @@ public class UserService {
     update.setPasswordHash(passwordEncoder.encode(raw));
     userMapper.updateById(update);
     logService.record("user", "重置用户 " + exists.getName() + " 的密码", "user", id);
+  }
+
+  /** 演示模式下未填写密码时沿用 123456；生产环境必须显式传入密码。 */
+  private String resolvePassword(String rawPassword, String missingMessage) {
+    if (rawPassword != null && !rawPassword.isBlank()) {
+      return rawPassword;
+    }
+    if (authProperties.isDemoMode()) {
+      return AuthService.DEMO_PASSWORD;
+    }
+    throw new BizException(missingMessage);
   }
 
   public List<Map<String, Object>> options(String keyword) {

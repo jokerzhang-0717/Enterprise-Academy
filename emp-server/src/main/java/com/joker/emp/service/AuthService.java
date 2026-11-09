@@ -7,6 +7,7 @@ import com.joker.emp.entity.SysUser;
 import com.joker.emp.mapper.DepartmentMapper;
 import com.joker.emp.mapper.SysUserMapper;
 import com.joker.emp.security.AuthContext;
+import com.joker.emp.security.AuthProperties;
 import com.joker.emp.security.AuthTokenStore;
 import com.joker.emp.security.AuthUser;
 import com.joker.emp.security.CredentialFingerprint;
@@ -32,16 +33,18 @@ public class AuthService {
   private final JwtService jwtService;
   private final AuthTokenStore tokenStore;
   private final LoginRateLimiter rateLimiter;
+  private final AuthProperties authProperties;
 
   public AuthService(SysUserMapper userMapper, DepartmentMapper departmentMapper,
       PasswordEncoder passwordEncoder, JwtService jwtService, AuthTokenStore tokenStore,
-      LoginRateLimiter rateLimiter) {
+      LoginRateLimiter rateLimiter, AuthProperties authProperties) {
     this.userMapper = userMapper;
     this.departmentMapper = departmentMapper;
     this.passwordEncoder = passwordEncoder;
     this.jwtService = jwtService;
     this.tokenStore = tokenStore;
     this.rateLimiter = rateLimiter;
+    this.authProperties = authProperties;
   }
 
   public Map<String, Object> login(String employeeNo, String password, String ip) {
@@ -176,7 +179,8 @@ public class AuthService {
     }
     String hash = user.getPasswordHash();
     if (hash == null || hash.isBlank()) {
-      return DEMO_PASSWORD.equals(rawPassword);
+      // 仅演示模式允许种子账号使用空哈希 + 演示口令登录，生产环境必须关闭。
+      return authProperties.isDemoMode() && DEMO_PASSWORD.equals(rawPassword);
     }
     return passwordEncoder.matches(rawPassword, hash);
   }

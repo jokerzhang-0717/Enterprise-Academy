@@ -1,6 +1,7 @@
 package com.joker.emp.controller;
 
 import com.joker.emp.common.ApiResponse;
+import com.joker.emp.security.AuthProperties;
 import com.joker.emp.service.AuthService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -20,9 +21,11 @@ import org.springframework.web.bind.annotation.RestController;
 public class AuthController {
 
   private final AuthService authService;
+  private final AuthProperties authProperties;
 
-  public AuthController(AuthService authService) {
+  public AuthController(AuthService authService, AuthProperties authProperties) {
     this.authService = authService;
+    this.authProperties = authProperties;
   }
 
   @PostMapping("/login")
@@ -74,14 +77,20 @@ public class AuthController {
     return null;
   }
 
+  /**
+   * 默认只使用 TCP 连接的对端地址。只有部署在可信反向代理之后并显式开启配置时，
+   * 才解析转发头，防止攻击者伪造 X-Forwarded-For 绕过登录限流。
+   */
   private String clientIp(HttpServletRequest request) {
-    String forwarded = request.getHeader("X-Forwarded-For");
-    if (forwarded != null && !forwarded.isBlank()) {
-      return forwarded.split(",")[0].trim();
-    }
-    String realIp = request.getHeader("X-Real-IP");
-    if (realIp != null && !realIp.isBlank()) {
-      return realIp.trim();
+    if (authProperties.isTrustForwardedHeaders()) {
+      String forwarded = request.getHeader("X-Forwarded-For");
+      if (forwarded != null && !forwarded.isBlank()) {
+        return forwarded.split(",")[0].trim();
+      }
+      String realIp = request.getHeader("X-Real-IP");
+      if (realIp != null && !realIp.isBlank()) {
+        return realIp.trim();
+      }
     }
     return request.getRemoteAddr();
   }

@@ -9,19 +9,30 @@ import java.time.Instant;
 import java.util.Date;
 import java.util.UUID;
 import javax.crypto.SecretKey;
+import org.springframework.core.env.Environment;
+import org.springframework.core.env.Profiles;
 import org.springframework.stereotype.Component;
 
 @Component
 public class JwtService {
 
   private static final String TOKEN_TYPE = "access";
+  private static final String PROD_PROFILE = "prod";
 
   private final JwtProperties properties;
   private final SecretKey key;
 
-  public JwtService(JwtProperties properties) {
+  public JwtService(JwtProperties properties, Environment environment) {
     this.properties = properties;
-    byte[] bytes = properties.getSecret().getBytes(StandardCharsets.UTF_8);
+    String secret = properties.getSecret();
+    if (secret == null || secret.isBlank()) {
+      throw new IllegalStateException("emp.jwt.secret 不能为空");
+    }
+    if (environment.acceptsProfiles(Profiles.of(PROD_PROFILE))
+        && JwtProperties.DEFAULT_SECRET.equals(secret)) {
+      throw new IllegalStateException("生产环境必须通过 EMP_JWT_SECRET 配置独立的 JWT 密钥");
+    }
+    byte[] bytes = secret.getBytes(StandardCharsets.UTF_8);
     if (bytes.length < 32) {
       throw new IllegalStateException("emp.jwt.secret 至少需要 32 字节");
     }

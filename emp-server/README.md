@@ -73,6 +73,8 @@ mysql -uroot -p enterprise_academy < ../sql/migrate_exam_question_metadata.sql
 | `EMP_JWT_SECRET` | 内置开发密钥 | JWT 签名密钥，生产必须覆盖（≥32 字节） |
 | `EMP_JWT_EXPIRE_MINUTES` | `15` | 访问令牌有效期（分钟） |
 | `EMP_ALLOWED_ORIGINS` | 空（仅本机 3000/5173） | 允许跨域的前端地址，逗号分隔；生产按实际域名配置 |
+| `AUTH_TRUST_FORWARDED_HEADERS` | `false` | 仅在可信反向代理之后设为 `true`；开启后才采信 `X-Forwarded-For` / `X-Real-IP` 作为限流来源 IP |
+| `EMP_DEMO_MODE` | `true` | 演示模式：允许密码哈希为空的种子账号使用 `123456` 登录，创建/重置用户时可省略密码；生产必须设为 `false` |
 | `MINIO_ENDPOINT` | `http://127.0.0.1:9000` | MinIO 地址 |
 | `MINIO_ACCESS_KEY` | `zhang` | MinIO Access Key |
 | `MINIO_SECRET_KEY` | `12345678` | MinIO Secret Key |
