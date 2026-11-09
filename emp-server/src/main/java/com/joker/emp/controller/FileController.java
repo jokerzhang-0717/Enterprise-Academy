@@ -32,6 +32,8 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 public class FileController {
 
   private static final Set<String> ADMIN_FOLDERS = Set.of("video", "cover", "courseware");
+  /** 服务端转发上传只面向头像、图片、PDF 等小文件；大文件请走预签名直传。 */
+  private static final long MAX_UPLOAD_BYTES = 50L * 1024 * 1024;
 
   private final StorageService storageService;
 
@@ -47,6 +49,12 @@ public class FileController {
     if (folder != null && ADMIN_FOLDERS.contains(folder.trim().toLowerCase())
         && !AuthContext.require().isAdmin()) {
       throw BizException.forbidden("需要管理员权限");
+    }
+    if (file == null || file.isEmpty()) {
+      throw new BizException("请选择要上传的文件");
+    }
+    if (file.getSize() > MAX_UPLOAD_BYTES) {
+      throw new BizException("文件不能超过 50MB，请使用直传上传大文件");
     }
     String baseUrl = ServletUriComponentsBuilder.fromCurrentContextPath().build().toUriString();
     return ApiResponse.ok(storageService.upload(file, folder, baseUrl));
