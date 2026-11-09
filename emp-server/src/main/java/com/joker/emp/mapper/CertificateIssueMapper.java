@@ -89,7 +89,7 @@ public interface CertificateIssueMapper extends BaseMapper<CertificateIssue> {
       JOIN certificate_template ct ON ct.id = ci.template_id
       JOIN sys_user u ON u.id = ci.user_id
       LEFT JOIN department d ON d.id = u.department_id
-      WHERE ci.serial_number = #{serial}
+      WHERE ci.serial_number = #{serial} AND ci.deleted_at IS NULL
       LIMIT 1
       """)
   Map<String, Object> selectBySerial(@Param("serial") String serial);

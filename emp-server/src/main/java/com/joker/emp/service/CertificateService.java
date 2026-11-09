@@ -175,8 +175,30 @@ public class CertificateService {
 
   public Map<String, Object> verify(String serial) {
     Map<String, Object> certificate = issueMapper.selectBySerial(serial);
+    boolean found = certificate != null;
+    boolean issued = found && Integer.valueOf(2).equals(certificate.get("status"));
+    LocalDate expireDate = found ? toLocalDate(certificate.get("expireDate")) : null;
+    boolean expired = issued && expireDate != null && expireDate.isBefore(LocalDate.now());
+    boolean valid = issued && !expired;
+
+    String message;
+    if (!found) {
+      message = "未查询到该证书";
+    } else if (Integer.valueOf(3).equals(certificate.get("status"))) {
+      message = "证书已撤销";
+    } else if (!issued) {
+      message = "证书尚未发放";
+    } else if (expired) {
+      message = "证书已过期（有效期至 " + expireDate + "）";
+    } else {
+      message = "证书有效";
+    }
+
     Map<String, Object> result = new LinkedHashMap<>();
-    result.put("valid", certificate != null && Integer.valueOf(2).equals(certificate.get("status")));
+    result.put("valid", valid);
+    result.put("issued", issued);
+    result.put("expired", expired);
+    result.put("message", message);
     result.put("certificate", certificate);
     return result;
   }
@@ -253,6 +275,23 @@ public class CertificateService {
       return null;
     }
     return issueDate.plusMonths(months);
+  }
+
+  private LocalDate toLocalDate(Object value) {
+    if (value == null) {
+      return null;
+    }
+    if (value instanceof LocalDate localDate) {
+      return localDate;
+    }
+    if (value instanceof java.sql.Date sqlDate) {
+      return sqlDate.toLocalDate();
+    }
+    if (value instanceof java.util.Date date) {
+      return date.toInstant().atZone(java.time.ZoneId.systemDefault()).toLocalDate();
+    }
+    String text = String.valueOf(value);
+    return LocalDate.parse(text.length() >= 10 ? text.substring(0, 10) : text);
   }
 
   private String validityLabel(LocalDate issueDate, Integer months) {
