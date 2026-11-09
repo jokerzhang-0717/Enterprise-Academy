@@ -15,6 +15,7 @@ import com.joker.emp.mapper.SysUserMapper;
 import com.joker.emp.security.AuthContext;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -110,7 +111,7 @@ public class CertificateService {
     issue.setExpireDate(request.expireDate() == null
         ? expireDate(issue.getIssueDate(), template.getValidityMonths()) : request.expireDate());
     issue.setValidityLabel(request.validityLabel() == null
-        ? validityLabel(issue.getIssueDate(), template.getValidityMonths()) : request.validityLabel());
+        ? validityLabel(issue.getIssueDate(), issue.getExpireDate()) : request.validityLabel());
     issue.setRankingScore(request.rankingScore());
     issue.setBlockchainHash(request.blockchainHash() == null
         ? randomHash() : request.blockchainHash());
@@ -130,7 +131,12 @@ public class CertificateService {
     }
     if (request.issueDate() != null) issue.setIssueDate(request.issueDate());
     if (request.expireDate() != null) issue.setExpireDate(request.expireDate());
-    if (request.validityLabel() != null) issue.setValidityLabel(request.validityLabel());
+    if (request.validityLabel() != null) {
+      issue.setValidityLabel(request.validityLabel());
+    } else if (request.expireDate() != null || request.issueDate() != null) {
+      // 有效期或签发日期变化后同步展示文案，避免出现“已过期但仍显示长期有效”。
+      issue.setValidityLabel(validityLabel(issue.getIssueDate(), issue.getExpireDate()));
+    }
     if (request.rankingScore() != null) issue.setRankingScore(request.rankingScore());
     if (request.status() != null) issue.setStatus(request.status());
     if (request.blockchainHash() != null) issue.setBlockchainHash(request.blockchainHash());
@@ -152,7 +158,9 @@ public class CertificateService {
       }
       if (issue.getExpireDate() == null && template != null) {
         issue.setExpireDate(expireDate(issue.getIssueDate(), template.getValidityMonths()));
-        issue.setValidityLabel(validityLabel(issue.getIssueDate(), template.getValidityMonths()));
+      }
+      if (issue.getExpireDate() != null && issue.getValidityLabel() == null) {
+        issue.setValidityLabel(validityLabel(issue.getIssueDate(), issue.getExpireDate()));
       }
       issue.setIssuedBy(AuthContext.userId());
       if (issue.getBlockchainHash() == null) {
@@ -178,7 +186,8 @@ public class CertificateService {
     boolean found = certificate != null;
     boolean issued = found && Integer.valueOf(2).equals(certificate.get("status"));
     LocalDate expireDate = found ? toLocalDate(certificate.get("expireDate")) : null;
-    boolean expired = issued && expireDate != null && expireDate.isBefore(LocalDate.now());
+    // 有效期至 expireDate 当天仍然有效，因此只在“今天晚于到期日”时判定过期。
+    boolean expired = issued && expireDate != null && LocalDate.now().isAfter(expireDate);
     boolean valid = issued && !expired;
 
     String message;
@@ -294,11 +303,18 @@ public class CertificateService {
     return LocalDate.parse(text.length() >= 10 ? text.substring(0, 10) : text);
   }
 
-  private String validityLabel(LocalDate issueDate, Integer months) {
-    if (months == null || months <= 0) {
+  private String validityLabel(LocalDate issueDate, LocalDate expireDate) {
+    if (expireDate == null) {
       return "长期有效";
     }
-    return months + " 个月 (" + issueDate.plusMonths(months).getYear() + "年到期)";
+    if (issueDate == null) {
+      return "至 " + expireDate + " 到期";
+    }
+    long months = ChronoUnit.MONTHS.between(issueDate, expireDate);
+    if (months > 0) {
+      return months + " 个月 (" + expireDate.getYear() + "年到期)";
+    }
+    return "至 " + expireDate + " 到期";
   }
 
   private String statusText(Object rawStatus) {
