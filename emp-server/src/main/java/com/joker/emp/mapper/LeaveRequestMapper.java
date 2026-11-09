@@ -62,4 +62,17 @@ public interface LeaveRequestMapper extends BaseMapper<LeaveRequest> {
       GROUP BY status
       """)
   List<Map<String, Object>> selectStatusStats();
+
+  /**
+   * 当天最新的请假流水号，包含已逻辑删除的记录。
+   * flow_no 有唯一约束，若只统计未删除记录会导致撤销后再次提交时流水号冲突。
+   */
+  @Select("""
+      SELECT flow_no
+      FROM leave_request
+      WHERE flow_no LIKE CONCAT('LV-', #{date}, '-%')
+      ORDER BY flow_no DESC
+      LIMIT 1
+      """)
+  String selectLatestFlowNo(@Param("date") String date);
 }

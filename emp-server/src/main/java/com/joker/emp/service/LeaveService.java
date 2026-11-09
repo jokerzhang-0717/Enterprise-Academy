@@ -1,7 +1,6 @@
 package com.joker.emp.service;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
-import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.joker.emp.common.BizException;
 import com.joker.emp.common.Numbers;
@@ -10,9 +9,11 @@ import com.joker.emp.entity.LeaveRequest;
 import com.joker.emp.mapper.LeaveRequestMapper;
 import com.joker.emp.security.AuthContext;
 import com.joker.emp.security.AuthUser;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -93,15 +94,11 @@ public class LeaveService {
     leave.setLeaveType(request.leaveType());
     leave.setTrainingTitle(request.trainingTitle());
     leave.setCourseId(request.courseId());
-    leave.setStartDate(request.startDate());
-    leave.setEndDate(request.endDate() == null ? request.startDate() : request.endDate());
-    if (request.leaveDays() == null) {
-      long days = java.time.temporal.ChronoUnit.DAYS.between(
-          leave.getStartDate(), leave.getEndDate()) + 1;
-      leave.setLeaveDays(java.math.BigDecimal.valueOf(Math.max(0.5, days)));
-    } else {
-      leave.setLeaveDays(request.leaveDays());
-    }
+    LocalDate start = request.startDate();
+    LocalDate end = request.endDate() == null ? start : request.endDate();
+    leave.setStartDate(start);
+    leave.setEndDate(end);
+    leave.setLeaveDays(resolveLeaveDays(start, end, request.leaveDays()));
     leave.setReason(request.reason());
     leave.setStatus(1);
     leave.setAttachmentUrl(request.attachmentUrl());
@@ -123,9 +120,20 @@ public class LeaveService {
     if (request.leaveType() != null) leave.setLeaveType(request.leaveType());
     if (request.trainingTitle() != null) leave.setTrainingTitle(request.trainingTitle());
     if (request.courseId() != null) leave.setCourseId(request.courseId());
-    if (request.startDate() != null) leave.setStartDate(request.startDate());
-    if (request.endDate() != null) leave.setEndDate(request.endDate());
-    if (request.leaveDays() != null) leave.setLeaveDays(request.leaveDays());
+    LocalDate start = request.startDate() != null ? request.startDate() : leave.getStartDate();
+    LocalDate end = request.endDate() != null ? request.endDate() : leave.getEndDate();
+    boolean datesChanged = request.startDate() != null || request.endDate() != null;
+    BigDecimal leaveDays;
+    if (request.leaveDays() != null || datesChanged) {
+      // 日期变化但未显式传入天数时，按新的日期范围重新计算，避免保留过期天数。
+      leaveDays = resolveLeaveDays(start, end, request.leaveDays());
+    } else {
+      // 仅修改其它字段时保留原天数，但仍校验既有区间合法。
+      leaveDays = resolveLeaveDays(start, end, leave.getLeaveDays());
+    }
+    leave.setStartDate(start);
+    leave.setEndDate(end);
+    leave.setLeaveDays(leaveDays);
     if (request.reason() != null) leave.setReason(request.reason());
     if (request.attachmentUrl() != null) leave.setAttachmentUrl(request.attachmentUrl());
     leaveMapper.updateById(leave);
@@ -187,11 +195,47 @@ public class LeaveService {
     return leave;
   }
 
+  /**
+   * 校验请假区间并按区间兜底计算天数：结束日期不得早于开始日期，
+   * 天数必须大于 0 且不能超过日期跨度，避免客户端传入负数 / 超大值。
+   */
+  private BigDecimal resolveLeaveDays(LocalDate start, LocalDate end, BigDecimal requested) {
+    if (start == null) {
+      throw new BizException("请选择请假开始日期");
+    }
+    LocalDate resolvedEnd = end == null ? start : end;
+    if (resolvedEnd.isBefore(start)) {
+      throw new BizException("请假结束日期不能早于开始日期");
+    }
+    long span = ChronoUnit.DAYS.between(start, resolvedEnd) + 1;
+    if (span > 365) {
+      throw new BizException("单次请假不能超过 365 天");
+    }
+    BigDecimal days = requested == null ? BigDecimal.valueOf(Math.max(0.5, span)) : requested;
+    if (days.compareTo(BigDecimal.ZERO) <= 0) {
+      throw new BizException("请假天数必须大于 0");
+    }
+    if (days.compareTo(BigDecimal.valueOf(span)) > 0) {
+      throw new BizException("请假天数不能超过所选日期范围");
+    }
+    return days;
+  }
+
   private String nextFlowNo() {
     String date = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
-    long todayCount = leaveMapper.selectCount(Wrappers.<LeaveRequest>lambdaQuery()
-        .likeRight(LeaveRequest::getFlowNo, "LV-" + date));
-    return "LV-" + date + "-" + String.format("%03d", todayCount + 1);
+    String latest = leaveMapper.selectLatestFlowNo(date);
+    int next = 1;
+    if (latest != null) {
+      int dash = latest.lastIndexOf('-');
+      if (dash > -1) {
+        try {
+          next = Integer.parseInt(latest.substring(dash + 1)) + 1;
+        } catch (NumberFormatException ignored) {
+          next = 1;
+        }
+      }
+    }
+    return "LV-" + date + "-" + String.format("%03d", next);
   }
 
   private String statusText(Object rawStatus) {
