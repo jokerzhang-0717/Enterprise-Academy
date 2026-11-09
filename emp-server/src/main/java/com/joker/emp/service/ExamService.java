@@ -556,15 +556,7 @@ public class ExamService {
     if (remaining <= 0) {
       throw new BizException("考试时间已结束，请提交答卷");
     }
-    ExamQuestion question = questionService.list(attempt.getExamId(), null, null, false).stream()
-        .map(q -> (Long) q.get("id"))
-        .filter(id -> id.equals(request.questionId()))
-        .findFirst().map(id -> {
-          ExamQuestion q = new ExamQuestion();
-          q.setId(id);
-          return q;
-        }).orElse(null);
-    if (question == null) {
+    if (!questionService.existsInExam(attempt.getExamId(), request.questionId())) {
       throw BizException.notFound("题目不属于该考试");
     }
     AttemptAnswer answer = answerMapper.selectOne(Wrappers.<AttemptAnswer>lambdaQuery()

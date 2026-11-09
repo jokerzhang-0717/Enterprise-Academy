@@ -16,6 +16,8 @@ import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -89,8 +91,9 @@ public class AnnouncementService {
             .orderByDesc(Announcement::getPublishAt)
             .orderByDesc(Announcement::getId));
     Long userId = AuthContext.userId();
+    Set<Long> readIds = readIds(userId, result.getRecords().stream().map(Announcement::getId).toList());
     List<Map<String, Object>> records = result.getRecords().stream()
-        .map(a -> toItem(a, userId)).toList();
+        .map(a -> toItem(a, userId, readIds)).toList();
     return PageResult.of(result.getTotal(), result.getCurrent(), result.getSize(), records);
   }
 
@@ -102,24 +105,31 @@ public class AnnouncementService {
   @Transactional
   public int markAllRead() {
     Long userId = AuthContext.userId();
-    List<Announcement> published = announcementMapper.selectList(
-        Wrappers.<Announcement>lambdaQuery().eq(Announcement::getStatus, 2));
-    int count = 0;
-    for (Announcement announcement : published) {
-      long read = readMapper.selectCount(Wrappers.<AnnouncementRead>lambdaQuery()
-          .eq(AnnouncementRead::getAnnouncementId, announcement.getId())
-          .eq(AnnouncementRead::getUserId, userId));
-      if (read > 0) {
-        continue;
-      }
-      AnnouncementRead record = new AnnouncementRead();
-      record.setAnnouncementId(announcement.getId());
-      record.setUserId(userId);
-      record.setReadAt(LocalDateTime.now());
-      readMapper.insert(record);
-      count++;
+    List<Long> ids = announcementMapper.selectList(
+            Wrappers.<Announcement>lambdaQuery()
+                .select(Announcement::getId)
+                .eq(Announcement::getStatus, 2))
+        .stream().map(Announcement::getId).toList();
+    if (ids.isEmpty()) {
+      return 0;
     }
-    return count;
+    Set<Long> readIds = readIds(userId, ids);
+    LocalDateTime now = LocalDateTime.now();
+    List<AnnouncementRead> pending = ids.stream()
+        .filter(id -> !readIds.contains(id))
+        .map(id -> {
+          AnnouncementRead record = new AnnouncementRead();
+          record.setAnnouncementId(id);
+          record.setUserId(userId);
+          record.setReadAt(now);
+          return record;
+        })
+        .toList();
+    if (pending.isEmpty()) {
+      return 0;
+    }
+    readMapper.insertBatch(pending);
+    return pending.size();
   }
 
   @Transactional
@@ -220,6 +230,14 @@ public class AnnouncementService {
   }
 
   private Map<String, Object> toItem(Announcement announcement, Long userId) {
+    if (userId == null) {
+      return toItem(announcement, null, Set.of());
+    }
+    return toItem(announcement, userId,
+        readIds(userId, List.of(announcement.getId())));
+  }
+
+  private Map<String, Object> toItem(Announcement announcement, Long userId, Set<Long> readIds) {
     Map<String, Object> item = new LinkedHashMap<>();
     item.put("id", announcement.getId());
     item.put("extId", announcement.getExtId());
@@ -236,12 +254,19 @@ public class AnnouncementService {
     item.put("createdAt", announcement.getCreatedAt());
     item.put("updatedAt", announcement.getUpdatedAt());
     if (userId != null) {
-      long read = readMapper.selectCount(Wrappers.<AnnouncementRead>lambdaQuery()
-          .eq(AnnouncementRead::getAnnouncementId, announcement.getId())
-          .eq(AnnouncementRead::getUserId, userId));
-      item.put("isRead", read > 0);
+      item.put("isRead", readIds.contains(announcement.getId()));
     }
     return item;
+  }
+
+  private Set<Long> readIds(Long userId, List<Long> announcementIds) {
+    if (userId == null || announcementIds.isEmpty()) {
+      return Set.of();
+    }
+    return readMapper.selectList(Wrappers.<AnnouncementRead>lambdaQuery()
+            .eq(AnnouncementRead::getUserId, userId)
+            .in(AnnouncementRead::getAnnouncementId, announcementIds))
+        .stream().map(AnnouncementRead::getAnnouncementId).collect(Collectors.toSet());
   }
 
   public record AnnouncementSaveRequest(String title, String content, Boolean isTop,

@@ -278,6 +278,7 @@ CREATE TABLE study_session (
   created_at       DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   PRIMARY KEY (id),
   KEY idx_session_user_time (user_id, started_at),
+  KEY idx_session_user_lesson (user_id, lesson_id),
   CONSTRAINT fk_session_user FOREIGN KEY (user_id) REFERENCES sys_user (id) ON DELETE CASCADE,
   CONSTRAINT fk_session_course FOREIGN KEY (course_id) REFERENCES course (id) ON DELETE SET NULL
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '学时流水（个人看板月度趋势的数据源）';

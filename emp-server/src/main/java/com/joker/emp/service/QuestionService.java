@@ -74,6 +74,17 @@ public class QuestionService {
     return toItem(question, optionsOf(List.of(id)).getOrDefault(id, List.of()), true);
   }
 
+  /** 轻量校验题目是否属于指定考试，避免每次保存答案都加载整套题目与选项。 */
+  public boolean existsInExam(Long examId, Long questionId) {
+    if (examId == null || questionId == null) {
+      return false;
+    }
+    Long count = questionMapper.selectCount(Wrappers.<ExamQuestion>lambdaQuery()
+        .eq(ExamQuestion::getId, questionId)
+        .eq(ExamQuestion::getExamId, examId));
+    return count != null && count > 0;
+  }
+
   @Transactional
   public Map<String, Object> create(QuestionSaveRequest request) {
     validate(request);

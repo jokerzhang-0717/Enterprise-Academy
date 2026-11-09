@@ -83,14 +83,12 @@ public class NotificationService {
 
   @Transactional
   public void markAllRead() {
-    List<Notification> unread = notificationMapper.selectList(Wrappers.<Notification>lambdaQuery()
+    Notification update = new Notification();
+    update.setIsRead(true);
+    update.setReadAt(LocalDateTime.now());
+    notificationMapper.update(update, Wrappers.<Notification>lambdaQuery()
         .eq(Notification::getUserId, AuthContext.userId())
         .eq(Notification::getIsRead, false));
-    for (Notification notification : unread) {
-      notification.setIsRead(true);
-      notification.setReadAt(LocalDateTime.now());
-      notificationMapper.updateById(notification);
-    }
   }
 
   @Transactional

@@ -109,13 +109,13 @@ public class CourseService {
         .eq(CourseChapter::getCourseId, id)
         .orderByAsc(CourseChapter::getSortNo)
         .orderByAsc(CourseChapter::getId));
-    List<CourseLesson> lessons = new ArrayList<>();
-    for (CourseChapter chapter : chapters) {
-      lessons.addAll(lessonMapper.selectList(Wrappers.<CourseLesson>lambdaQuery()
-          .eq(CourseLesson::getChapterId, chapter.getId())
-          .orderByAsc(CourseLesson::getSortNo)
-          .orderByAsc(CourseLesson::getId)));
-    }
+    List<CourseLesson> lessons = chapters.isEmpty() ? List.of()
+        : lessonMapper.selectList(Wrappers.<CourseLesson>lambdaQuery()
+            .in(CourseLesson::getChapterId,
+                chapters.stream().map(CourseChapter::getId).toList())
+            .orderByAsc(CourseLesson::getChapterId)
+            .orderByAsc(CourseLesson::getSortNo)
+            .orderByAsc(CourseLesson::getId));
     Map<Long, LessonProgress> progress = new LinkedHashMap<>();
     Enrollment enrollment = null;
     if (userId != null) {
