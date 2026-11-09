@@ -5,6 +5,7 @@ import com.joker.emp.common.PageResult;
 import com.joker.emp.security.AdminOnly;
 import com.joker.emp.service.NotificationService;
 import com.joker.emp.service.NotificationService.SendRequest;
+import jakarta.validation.Valid;
 import java.util.List;
 import java.util.Map;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -54,7 +55,7 @@ public class NotificationController {
 
   @PutMapping("/{id}/read")
   public ApiResponse<Void> markRead(@PathVariable Long id,
-      @RequestBody(required = false) ReadRequest request) {
+      @Valid @RequestBody(required = false) ReadRequest request) {
     notificationService.markRead(id, request == null ? true : request.isRead());
     return ApiResponse.ok();
   }
@@ -73,7 +74,7 @@ public class NotificationController {
 
   @AdminOnly
   @PostMapping("/send")
-  public ApiResponse<Map<String, Object>> send(@RequestBody SendRequest request) {
+  public ApiResponse<Map<String, Object>> send(@Valid @RequestBody SendRequest request) {
     return ApiResponse.ok(Map.of("sent", notificationService.send(request)));
   }
 

@@ -3,6 +3,7 @@ package com.joker.emp.controller;
 import com.joker.emp.common.ApiResponse;
 import com.joker.emp.service.ExamService;
 import com.joker.emp.service.ExamService.AnswerSaveRequest;
+import jakarta.validation.Valid;
 import java.util.Map;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -54,7 +55,7 @@ public class ExamController {
 
   @PostMapping("/attempts/{attemptId}/answers")
   public ApiResponse<Map<String, Object>> answer(@PathVariable Long attemptId,
-      @RequestBody AnswerSaveRequest request) {
+      @Valid @RequestBody AnswerSaveRequest request) {
     return ApiResponse.ok(examService.saveAnswer(attemptId, request));
   }
 

@@ -4,6 +4,7 @@ import com.joker.emp.common.ApiResponse;
 import com.joker.emp.security.AdminOnly;
 import com.joker.emp.service.QuestionService;
 import com.joker.emp.service.QuestionService.QuestionSaveRequest;
+import jakarta.validation.Valid;
 import java.util.List;
 import java.util.Map;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -45,13 +46,13 @@ public class AdminQuestionController {
   }
 
   @PostMapping
-  public ApiResponse<Map<String, Object>> create(@RequestBody QuestionSaveRequest request) {
+  public ApiResponse<Map<String, Object>> create(@Valid @RequestBody QuestionSaveRequest request) {
     return ApiResponse.ok(questionService.create(request));
   }
 
   @PutMapping("/{id}")
   public ApiResponse<Map<String, Object>> update(@PathVariable Long id,
-      @RequestBody QuestionSaveRequest request) {
+      @Valid @RequestBody QuestionSaveRequest request) {
     return ApiResponse.ok(questionService.update(id, request));
   }
 

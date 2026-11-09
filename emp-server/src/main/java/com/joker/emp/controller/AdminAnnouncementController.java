@@ -5,6 +5,8 @@ import com.joker.emp.common.PageResult;
 import com.joker.emp.security.AdminOnly;
 import com.joker.emp.service.AnnouncementService;
 import com.joker.emp.service.AnnouncementService.AnnouncementSaveRequest;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
 import java.util.Map;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -42,25 +44,25 @@ public class AdminAnnouncementController {
   }
 
   @PostMapping
-  public ApiResponse<Map<String, Object>> create(@RequestBody AnnouncementSaveRequest request) {
+  public ApiResponse<Map<String, Object>> create(@Valid @RequestBody AnnouncementSaveRequest request) {
     return ApiResponse.ok(announcementService.create(request));
   }
 
   @PutMapping("/{id}")
   public ApiResponse<Map<String, Object>> update(@PathVariable Long id,
-      @RequestBody AnnouncementSaveRequest request) {
+      @Valid @RequestBody AnnouncementSaveRequest request) {
     return ApiResponse.ok(announcementService.update(id, request));
   }
 
   @PutMapping("/{id}/status")
   public ApiResponse<Map<String, Object>> updateStatus(@PathVariable Long id,
-      @RequestBody StatusRequest request) {
+      @Valid @RequestBody StatusRequest request) {
     return ApiResponse.ok(announcementService.updateStatus(id, request.status()));
   }
 
   @PutMapping("/{id}/top")
   public ApiResponse<Map<String, Object>> toggleTop(@PathVariable Long id,
-      @RequestBody TopRequest request) {
+      @Valid @RequestBody TopRequest request) {
     return ApiResponse.ok(announcementService.toggleTop(id, request.isTop()));
   }
 
@@ -70,9 +72,9 @@ public class AdminAnnouncementController {
     return ApiResponse.ok();
   }
 
-  public record StatusRequest(Integer status) {
+  public record StatusRequest(@NotNull(message = "请选择公告状态") Integer status) {
   }
 
-  public record TopRequest(Boolean isTop) {
+  public record TopRequest(@NotNull(message = "请选择是否置顶") Boolean isTop) {
   }
 }

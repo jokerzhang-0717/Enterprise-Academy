@@ -4,6 +4,7 @@ import jakarta.validation.ConstraintViolationException;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -81,6 +82,13 @@ public class GlobalExceptionHandler {
       HttpMessageNotReadableException.class, MissingServletRequestPartException.class})
   public ResponseEntity<ApiResponse<Void>> handleBadRequest(Exception ex) {
     return ResponseEntity.badRequest().body(ApiResponse.fail(400, "请求参数格式不正确"));
+  }
+
+  @ExceptionHandler(DataIntegrityViolationException.class)
+  public ResponseEntity<ApiResponse<Void>> handleDataIntegrity(DataIntegrityViolationException ex) {
+    log.warn("Data integrity violation: {}", ex.getMostSpecificCause().getMessage());
+    return ResponseEntity.badRequest()
+        .body(ApiResponse.fail(400, "数据约束校验失败，请检查关联数据或重复项"));
   }
 
   @ExceptionHandler(Exception.class)

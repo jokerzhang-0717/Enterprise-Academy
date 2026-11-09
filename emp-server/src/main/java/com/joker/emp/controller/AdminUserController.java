@@ -5,7 +5,9 @@ import com.joker.emp.common.PageResult;
 import com.joker.emp.entity.SysUser;
 import com.joker.emp.security.AdminOnly;
 import com.joker.emp.service.UserService;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import java.util.List;
 import java.util.Map;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -52,13 +54,13 @@ public class AdminUserController {
   }
 
   @PostMapping
-  public ApiResponse<Map<String, Object>> create(@RequestBody UserSaveRequest request) {
+  public ApiResponse<Map<String, Object>> create(@Valid @RequestBody UserSaveRequest request) {
     return ApiResponse.ok(userService.create(request.toEntity(), request.password()));
   }
 
   @PutMapping("/{id}")
   public ApiResponse<Map<String, Object>> update(@PathVariable Long id,
-      @RequestBody UserSaveRequest request) {
+      @Valid @RequestBody UserSaveRequest request) {
     return ApiResponse.ok(userService.update(id, request.toEntity()));
   }
 
@@ -70,14 +72,14 @@ public class AdminUserController {
 
   @PutMapping("/{id}/status")
   public ApiResponse<Void> updateStatus(@PathVariable Long id,
-      @RequestBody StatusRequest request) {
+      @Valid @RequestBody StatusRequest request) {
     userService.updateStatus(id, request.accountStatus());
     return ApiResponse.ok();
   }
 
   @PostMapping("/{id}/reset-password")
   public ApiResponse<Void> resetPassword(@PathVariable Long id,
-      @RequestBody(required = false) ResetPasswordRequest request) {
+      @Valid @RequestBody(required = false) ResetPasswordRequest request) {
     userService.resetPassword(id, request == null ? null : request.newPassword());
     return ApiResponse.ok();
   }
@@ -113,7 +115,7 @@ public class AdminUserController {
     }
   }
 
-  public record StatusRequest(Integer accountStatus) {
+  public record StatusRequest(@NotNull(message = "请选择账号状态") Integer accountStatus) {
   }
 
   public record ResetPasswordRequest(String newPassword) {

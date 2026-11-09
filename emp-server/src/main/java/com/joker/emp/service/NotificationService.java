@@ -14,6 +14,7 @@ import com.joker.emp.mapper.NotificationAttachmentMapper;
 import com.joker.emp.mapper.NotificationMapper;
 import com.joker.emp.mapper.SysUserMapper;
 import com.joker.emp.security.AuthContext;
+import jakarta.validation.constraints.NotBlank;
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -205,8 +206,8 @@ public class NotificationService {
   }
 
   public record SendRequest(List<Long> userIds, Integer type, String typeLabel, Integer priority,
-      String title, String summary, String content, List<String> bulletPoints,
-      String senderName, String officialRefNo, String refType, Long refId,
+      @NotBlank(message = "通知标题不能为空") String title, String summary, String content,
+      List<String> bulletPoints, String senderName, String officialRefNo, String refType, Long refId,
       String durationLabel, String passingScoreLabel) {
   }
 }

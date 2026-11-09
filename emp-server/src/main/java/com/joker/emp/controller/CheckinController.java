@@ -2,6 +2,7 @@ package com.joker.emp.controller;
 
 import com.joker.emp.common.ApiResponse;
 import com.joker.emp.service.CheckinService;
+import jakarta.validation.Valid;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
@@ -36,7 +37,7 @@ public class CheckinController {
   }
 
   @PostMapping("/check-in")
-  public ApiResponse<Map<String, Object>> checkIn(@RequestBody(required = false) CheckinAction request) {
+  public ApiResponse<Map<String, Object>> checkIn(@Valid @RequestBody(required = false) CheckinAction request) {
     return ApiResponse.ok(checkinService.checkIn(request == null ? null : request.method()));
   }
 

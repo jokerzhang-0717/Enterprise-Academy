@@ -7,6 +7,8 @@ import com.joker.emp.security.AuthContext;
 import com.joker.emp.storage.StorageService;
 import io.minio.StatObjectResponse;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
@@ -53,7 +55,7 @@ public class FileController {
   /** 大文件（课程视频）直传：服务端只签发预签名 PUT 地址，仅管理员可用。 */
   @AdminOnly
   @PostMapping("/presign-upload")
-  public ApiResponse<Map<String, Object>> presignUpload(@RequestBody PresignUploadRequest request) {
+  public ApiResponse<Map<String, Object>> presignUpload(@Valid @RequestBody PresignUploadRequest request) {
     String baseUrl = ServletUriComponentsBuilder.fromCurrentContextPath().build().toUriString();
     return ApiResponse.ok(storageService.presignUpload(
         request.fileName(), request.contentType(), request.folder(), baseUrl));
@@ -163,6 +165,8 @@ public class FileController {
 
   private record ByteRange(long start, long end) {}
 
-  public record PresignUploadRequest(String fileName, String contentType, String folder) {
+  public record PresignUploadRequest(@NotBlank(message = "缺少文件名") String fileName,
+                                     @NotBlank(message = "缺少文件类型") String contentType,
+                                     String folder) {
   }
 }

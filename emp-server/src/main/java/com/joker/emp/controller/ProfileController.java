@@ -3,6 +3,7 @@ package com.joker.emp.controller;
 import com.joker.emp.common.ApiResponse;
 import com.joker.emp.service.AuthService;
 import com.joker.emp.service.UserService;
+import jakarta.validation.Valid;
 import java.util.Map;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -28,7 +29,7 @@ public class ProfileController {
   }
 
   @PutMapping
-  public ApiResponse<Map<String, Object>> update(@RequestBody ProfileRequest request) {
+  public ApiResponse<Map<String, Object>> update(@Valid @RequestBody ProfileRequest request) {
     return ApiResponse.ok(userService.updateProfile(request.name(), request.gender(),
         request.age(), request.phone(), request.email(), request.jobTitle(),
         request.specialty(), request.grade(), request.avatarUrl()));

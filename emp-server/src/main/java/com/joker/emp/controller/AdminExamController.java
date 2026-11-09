@@ -8,6 +8,8 @@ import com.joker.emp.service.ExamService.AnswerGrade;
 import com.joker.emp.service.ExamService.AssignRequest;
 import com.joker.emp.service.ExamService.ExamSaveRequest;
 import com.joker.emp.service.ExamService.GradeRequest;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
 import java.util.Map;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -45,13 +47,13 @@ public class AdminExamController {
   }
 
   @PostMapping("/exams")
-  public ApiResponse<Map<String, Object>> create(@RequestBody ExamSaveRequest request) {
+  public ApiResponse<Map<String, Object>> create(@Valid @RequestBody ExamSaveRequest request) {
     return ApiResponse.ok(examService.create(request));
   }
 
   @PutMapping("/exams/{id}")
   public ApiResponse<Map<String, Object>> update(@PathVariable Long id,
-      @RequestBody ExamSaveRequest request) {
+      @Valid @RequestBody ExamSaveRequest request) {
     return ApiResponse.ok(examService.update(id, request));
   }
 
@@ -63,7 +65,7 @@ public class AdminExamController {
 
   @PutMapping("/exams/{id}/status")
   public ApiResponse<Void> updateStatus(@PathVariable Long id,
-      @RequestBody StatusRequest request) {
+      @Valid @RequestBody StatusRequest request) {
     examService.updateStatus(id, request.status());
     return ApiResponse.ok();
   }
@@ -78,7 +80,7 @@ public class AdminExamController {
 
   @PostMapping("/exams/{id}/assignments")
   public ApiResponse<Map<String, Object>> assign(@PathVariable Long id,
-      @RequestBody AssignRequest request) {
+      @Valid @RequestBody AssignRequest request) {
     int created = examService.assign(id, request);
     return ApiResponse.ok(Map.of("created", created));
   }
@@ -106,11 +108,11 @@ public class AdminExamController {
 
   @PostMapping("/exam-attempts/{id}/grade")
   public ApiResponse<Map<String, Object>> grade(@PathVariable Long id,
-      @RequestBody GradeRequest request) {
+      @Valid @RequestBody GradeRequest request) {
     return ApiResponse.ok(examService.grade(id, request));
   }
 
-  public record StatusRequest(Integer status) {
+  public record StatusRequest(@NotNull(message = "请选择考试状态") Integer status) {
   }
 
   public record SingleGrade(Long answerId, java.math.BigDecimal scoreGained) {

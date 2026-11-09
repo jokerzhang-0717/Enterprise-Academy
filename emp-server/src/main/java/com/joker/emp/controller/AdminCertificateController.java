@@ -6,6 +6,8 @@ import com.joker.emp.entity.CertificateTemplate;
 import com.joker.emp.security.AdminOnly;
 import com.joker.emp.service.CertificateService;
 import com.joker.emp.service.CertificateService.IssueSaveRequest;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
 import java.util.List;
 import java.util.Map;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -44,19 +46,19 @@ public class AdminCertificateController {
   }
 
   @PostMapping
-  public ApiResponse<Map<String, Object>> create(@RequestBody IssueSaveRequest request) {
+  public ApiResponse<Map<String, Object>> create(@Valid @RequestBody IssueSaveRequest request) {
     return ApiResponse.ok(certificateService.createIssue(request));
   }
 
   @PutMapping("/{id}")
   public ApiResponse<Map<String, Object>> update(@PathVariable Long id,
-      @RequestBody IssueSaveRequest request) {
+      @Valid @RequestBody IssueSaveRequest request) {
     return ApiResponse.ok(certificateService.updateIssue(id, request));
   }
 
   @PutMapping("/{id}/status")
   public ApiResponse<Map<String, Object>> updateStatus(@PathVariable Long id,
-      @RequestBody StatusRequest request) {
+      @Valid @RequestBody StatusRequest request) {
     return ApiResponse.ok(certificateService.updateStatus(id, request.status()));
   }
 
@@ -72,13 +74,13 @@ public class AdminCertificateController {
   }
 
   @PostMapping("/templates")
-  public ApiResponse<Map<String, Object>> createTemplate(@RequestBody CertificateTemplate request) {
+  public ApiResponse<Map<String, Object>> createTemplate(@Valid @RequestBody CertificateTemplate request) {
     return ApiResponse.ok(certificateService.createTemplate(request));
   }
 
   @PutMapping("/templates/{id}")
   public ApiResponse<Map<String, Object>> updateTemplate(@PathVariable Long id,
-      @RequestBody CertificateTemplate request) {
+      @Valid @RequestBody CertificateTemplate request) {
     return ApiResponse.ok(certificateService.updateTemplate(id, request));
   }
 
@@ -88,6 +90,6 @@ public class AdminCertificateController {
     return ApiResponse.ok();
   }
 
-  public record StatusRequest(Integer status) {
+  public record StatusRequest(@NotNull(message = "请选择证书状态") Integer status) {
   }
 }

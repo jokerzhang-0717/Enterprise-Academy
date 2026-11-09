@@ -13,6 +13,7 @@ import com.joker.emp.mapper.CheckinRecordMapper;
 import com.joker.emp.mapper.CourseMapper;
 import com.joker.emp.mapper.SysUserMapper;
 import com.joker.emp.security.AuthContext;
+import jakarta.validation.constraints.NotNull;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.format.DateTimeParseException;
@@ -263,8 +264,10 @@ public class CheckinService {
     };
   }
 
-  public record CheckinSaveRequest(Long userId, Long courseId, LocalDate checkinDate,
-      LocalTime checkInTime, LocalTime checkOutTime, Integer method, Integer status) {
+  public record CheckinSaveRequest(@NotNull(message = "请选择学员") Long userId,
+                                   @NotNull(message = "请选择签到日期") LocalDate checkinDate,
+                                   Long courseId, LocalTime checkInTime, LocalTime checkOutTime,
+                                   Integer method, Integer status) {
   }
 
   public record CheckinUpdateRequest(Long courseId, LocalDate checkinDate,

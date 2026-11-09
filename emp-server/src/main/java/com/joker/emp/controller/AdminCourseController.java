@@ -8,6 +8,9 @@ import com.joker.emp.service.CourseService;
 import com.joker.emp.service.CourseService.ChapterSaveRequest;
 import com.joker.emp.service.CourseService.CourseSaveRequest;
 import com.joker.emp.service.CourseService.LessonSaveRequest;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import java.util.List;
 import java.util.Map;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -59,13 +62,13 @@ public class AdminCourseController {
   }
 
   @PostMapping("/courses")
-  public ApiResponse<Map<String, Object>> create(@RequestBody CourseSaveRequest request) {
+  public ApiResponse<Map<String, Object>> create(@Valid @RequestBody CourseSaveRequest request) {
     return ApiResponse.ok(courseService.create(request));
   }
 
   @PutMapping("/courses/{id}")
   public ApiResponse<Map<String, Object>> update(@PathVariable Long id,
-      @RequestBody CourseSaveRequest request) {
+      @Valid @RequestBody CourseSaveRequest request) {
     return ApiResponse.ok(courseService.update(id, request));
   }
 
@@ -77,20 +80,20 @@ public class AdminCourseController {
 
   @PutMapping("/courses/{id}/status")
   public ApiResponse<Void> updateStatus(@PathVariable Long id,
-      @RequestBody StatusRequest request) {
+      @Valid @RequestBody StatusRequest request) {
     courseService.updateStatus(id, request.status());
     return ApiResponse.ok();
   }
 
   @PostMapping("/courses/{id}/chapters")
   public ApiResponse<Map<String, Object>> createChapter(@PathVariable Long id,
-      @RequestBody ChapterSaveRequest request) {
+      @Valid @RequestBody ChapterSaveRequest request) {
     return ApiResponse.ok(courseService.saveChapter(id, null, request));
   }
 
   @PutMapping("/courses/{id}/chapters/{chapterId}")
   public ApiResponse<Map<String, Object>> updateChapter(@PathVariable Long id,
-      @PathVariable Long chapterId, @RequestBody ChapterSaveRequest request) {
+      @PathVariable Long chapterId, @Valid @RequestBody ChapterSaveRequest request) {
     return ApiResponse.ok(courseService.saveChapter(id, chapterId, request));
   }
 
@@ -102,14 +105,14 @@ public class AdminCourseController {
 
   @PostMapping("/courses/{id}/chapters/{chapterId}/lessons")
   public ApiResponse<Map<String, Object>> createLesson(@PathVariable Long id,
-      @PathVariable Long chapterId, @RequestBody LessonSaveRequest request) {
+      @PathVariable Long chapterId, @Valid @RequestBody LessonSaveRequest request) {
     return ApiResponse.ok(courseService.saveLesson(id, chapterId, null, request));
   }
 
   @PutMapping("/courses/{id}/chapters/{chapterId}/lessons/{lessonId}")
   public ApiResponse<Map<String, Object>> updateLesson(@PathVariable Long id,
       @PathVariable Long chapterId, @PathVariable Long lessonId,
-      @RequestBody LessonSaveRequest request) {
+      @Valid @RequestBody LessonSaveRequest request) {
     return ApiResponse.ok(courseService.saveLesson(id, chapterId, lessonId, request));
   }
 
@@ -131,7 +134,7 @@ public class AdminCourseController {
   }
 
   @PostMapping("/course-tags")
-  public ApiResponse<Map<String, Object>> createTag(@RequestBody NameRequest request) {
+  public ApiResponse<Map<String, Object>> createTag(@Valid @RequestBody NameRequest request) {
     return ApiResponse.ok(courseService.createTag(request.name()));
   }
 
@@ -141,13 +144,13 @@ public class AdminCourseController {
   }
 
   @PostMapping("/instructors")
-  public ApiResponse<Map<String, Object>> createInstructor(@RequestBody Instructor request) {
+  public ApiResponse<Map<String, Object>> createInstructor(@Valid @RequestBody Instructor request) {
     return ApiResponse.ok(courseService.createInstructor(request));
   }
 
   @PutMapping("/instructors/{id}")
   public ApiResponse<Map<String, Object>> updateInstructor(@PathVariable Long id,
-      @RequestBody Instructor request) {
+      @Valid @RequestBody Instructor request) {
     return ApiResponse.ok(courseService.updateInstructor(id, request));
   }
 
@@ -157,9 +160,9 @@ public class AdminCourseController {
     return ApiResponse.ok();
   }
 
-  public record StatusRequest(Integer status) {
+  public record StatusRequest(@NotNull(message = "请选择课程状态") Integer status) {
   }
 
-  public record NameRequest(String name) {
+  public record NameRequest(@NotBlank(message = "请输入标签名") String name) {
   }
 }

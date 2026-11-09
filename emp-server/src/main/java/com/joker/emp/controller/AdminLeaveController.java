@@ -5,6 +5,8 @@ import com.joker.emp.common.PageResult;
 import com.joker.emp.security.AdminOnly;
 import com.joker.emp.service.LeaveService;
 import com.joker.emp.service.LeaveService.LeaveSaveRequest;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
 import java.util.List;
 import java.util.Map;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -49,7 +51,7 @@ public class AdminLeaveController {
 
   @PutMapping("/{id}/approve")
   public ApiResponse<Map<String, Object>> approve(@PathVariable Long id,
-      @RequestBody ApproveRequest request) {
+      @Valid @RequestBody ApproveRequest request) {
     return ApiResponse.ok(leaveService.approve(id, request.status(), request.remark()));
   }
 
@@ -59,6 +61,6 @@ public class AdminLeaveController {
     return ApiResponse.ok();
   }
 
-  public record ApproveRequest(Integer status, String remark) {
+  public record ApproveRequest(@NotNull(message = "请选择审批结果") Integer status, String remark) {
   }
 }

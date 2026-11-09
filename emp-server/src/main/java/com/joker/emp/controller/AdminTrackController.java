@@ -5,6 +5,8 @@ import com.joker.emp.common.PageResult;
 import com.joker.emp.security.AdminOnly;
 import com.joker.emp.service.TrackService;
 import com.joker.emp.service.TrackService.TrackSaveRequest;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
 import java.util.List;
 import java.util.Map;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -44,13 +46,13 @@ public class AdminTrackController {
   }
 
   @PostMapping
-  public ApiResponse<Map<String, Object>> create(@RequestBody TrackSaveRequest request) {
+  public ApiResponse<Map<String, Object>> create(@Valid @RequestBody TrackSaveRequest request) {
     return ApiResponse.ok(trackService.create(request));
   }
 
   @PutMapping("/{id}")
   public ApiResponse<Map<String, Object>> update(@PathVariable Long id,
-      @RequestBody TrackSaveRequest request) {
+      @Valid @RequestBody TrackSaveRequest request) {
     return ApiResponse.ok(trackService.update(id, request));
   }
 
@@ -62,11 +64,11 @@ public class AdminTrackController {
 
   @PutMapping("/{id}/status")
   public ApiResponse<Void> updateStatus(@PathVariable Long id,
-      @RequestBody StatusRequest request) {
+      @Valid @RequestBody StatusRequest request) {
     trackService.updateStatus(id, request.status());
     return ApiResponse.ok();
   }
 
-  public record StatusRequest(Integer status) {
+  public record StatusRequest(@NotNull(message = "请选择通道状态") Integer status) {
   }
 }

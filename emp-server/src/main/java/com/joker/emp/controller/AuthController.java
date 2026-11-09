@@ -3,6 +3,7 @@ package com.joker.emp.controller;
 import com.joker.emp.common.ApiResponse;
 import com.joker.emp.service.AuthService;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import java.util.Map;
 import org.springframework.validation.annotation.Validated;
@@ -25,14 +26,14 @@ public class AuthController {
   }
 
   @PostMapping("/login")
-  public ApiResponse<Map<String, Object>> login(@RequestBody LoginRequest request,
+  public ApiResponse<Map<String, Object>> login(@Valid @RequestBody LoginRequest request,
       HttpServletRequest servletRequest) {
     return ApiResponse.ok(authService.login(request.employeeNo(), request.password(),
         clientIp(servletRequest)));
   }
 
   @PostMapping("/register")
-  public ApiResponse<Map<String, Object>> register(@RequestBody RegisterRequest request,
+  public ApiResponse<Map<String, Object>> register(@Valid @RequestBody RegisterRequest request,
       HttpServletRequest servletRequest) {
     return ApiResponse.ok(authService.register(request.name(), request.employeeNo(),
         request.password(), request.departmentId(), request.jobTitle(), request.email(),
@@ -41,7 +42,7 @@ public class AuthController {
 
   /** 无需携带访问令牌；使用一次性刷新令牌换发新会话。 */
   @PostMapping("/refresh")
-  public ApiResponse<Map<String, Object>> refresh(@RequestBody RefreshTokenRequest request) {
+  public ApiResponse<Map<String, Object>> refresh(@Valid @RequestBody RefreshTokenRequest request) {
     return ApiResponse.ok(authService.refresh(request.refreshToken()));
   }
 
@@ -51,7 +52,7 @@ public class AuthController {
   }
 
   @PutMapping("/password")
-  public ApiResponse<Void> changePassword(@RequestBody ChangePasswordRequest request) {
+  public ApiResponse<Void> changePassword(@Valid @RequestBody ChangePasswordRequest request) {
     authService.changePassword(request.oldPassword(), request.newPassword());
     return ApiResponse.ok();
   }
@@ -59,7 +60,7 @@ public class AuthController {
   /** 无需访问令牌即可调用；同时吊销访问令牌与刷新令牌。 */
   @PostMapping("/logout")
   public ApiResponse<Void> logout(HttpServletRequest servletRequest,
-      @RequestBody(required = false) LogoutRequest request) {
+      @Valid @RequestBody(required = false) LogoutRequest request) {
     authService.logout(bearerToken(servletRequest),
         request == null ? null : request.refreshToken());
     return ApiResponse.ok();

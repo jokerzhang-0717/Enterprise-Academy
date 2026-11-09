@@ -6,6 +6,7 @@ import com.joker.emp.security.AdminOnly;
 import com.joker.emp.service.CheckinService;
 import com.joker.emp.service.CheckinService.CheckinSaveRequest;
 import com.joker.emp.service.CheckinService.CheckinUpdateRequest;
+import jakarta.validation.Valid;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
@@ -49,13 +50,13 @@ public class AdminCheckinController {
   }
 
   @PostMapping
-  public ApiResponse<Map<String, Object>> create(@RequestBody CheckinSaveRequest request) {
+  public ApiResponse<Map<String, Object>> create(@Valid @RequestBody CheckinSaveRequest request) {
     return ApiResponse.ok(checkinService.create(request));
   }
 
   @PutMapping("/{id}")
   public ApiResponse<Map<String, Object>> update(@PathVariable Long id,
-      @RequestBody CheckinUpdateRequest request) {
+      @Valid @RequestBody CheckinUpdateRequest request) {
     return ApiResponse.ok(checkinService.update(id, request));
   }
 

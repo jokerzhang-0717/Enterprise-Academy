@@ -3,6 +3,7 @@ package com.joker.emp.controller;
 import com.joker.emp.common.ApiResponse;
 import com.joker.emp.service.LeaveService;
 import com.joker.emp.service.LeaveService.LeaveSaveRequest;
+import jakarta.validation.Valid;
 import java.util.List;
 import java.util.Map;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -37,13 +38,13 @@ public class LeaveController {
   }
 
   @PostMapping
-  public ApiResponse<Map<String, Object>> submit(@RequestBody LeaveSaveRequest request) {
+  public ApiResponse<Map<String, Object>> submit(@Valid @RequestBody LeaveSaveRequest request) {
     return ApiResponse.ok(leaveService.submit(request));
   }
 
   @PutMapping("/{id}")
   public ApiResponse<Map<String, Object>> update(@PathVariable Long id,
-      @RequestBody LeaveSaveRequest request) {
+      @Valid @RequestBody LeaveSaveRequest request) {
     return ApiResponse.ok(leaveService.update(id, request));
   }
 

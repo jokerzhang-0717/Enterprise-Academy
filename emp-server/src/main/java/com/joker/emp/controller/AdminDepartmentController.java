@@ -5,6 +5,8 @@ import com.joker.emp.common.PageResult;
 import com.joker.emp.entity.Department;
 import com.joker.emp.security.AdminOnly;
 import com.joker.emp.service.DepartmentService;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
 import java.util.List;
 import java.util.Map;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -48,13 +50,13 @@ public class AdminDepartmentController {
   }
 
   @PostMapping
-  public ApiResponse<Map<String, Object>> create(@RequestBody Department request) {
+  public ApiResponse<Map<String, Object>> create(@Valid @RequestBody Department request) {
     return ApiResponse.ok(departmentService.create(request));
   }
 
   @PutMapping("/{id}")
   public ApiResponse<Map<String, Object>> update(@PathVariable Long id,
-      @RequestBody Department request) {
+      @Valid @RequestBody Department request) {
     return ApiResponse.ok(departmentService.update(id, request));
   }
 
@@ -66,11 +68,11 @@ public class AdminDepartmentController {
 
   @PutMapping("/{id}/status")
   public ApiResponse<Void> updateStatus(@PathVariable Long id,
-      @RequestBody StatusRequest request) {
+      @Valid @RequestBody StatusRequest request) {
     departmentService.updateStatus(id, request.status());
     return ApiResponse.ok();
   }
 
-  public record StatusRequest(Integer status) {
+  public record StatusRequest(@NotNull(message = "请选择部门状态") Integer status) {
   }
 }

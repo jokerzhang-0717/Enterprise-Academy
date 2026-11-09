@@ -18,6 +18,7 @@ import com.joker.emp.mapper.ExamAssignmentMapper;
 import com.joker.emp.mapper.ExamAttemptMapper;
 import com.joker.emp.mapper.ExamMapper;
 import com.joker.emp.mapper.SysUserMapper;
+import jakarta.validation.constraints.NotNull;
 import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -914,7 +915,7 @@ public class ExamService {
   public record AnswerGrade(Long answerId, BigDecimal scoreGained) {
   }
 
-  public record AnswerSaveRequest(Long questionId, String selectedKeys, String answerText,
-      Boolean flagged, Integer remainingSeconds) {
+  public record AnswerSaveRequest(@NotNull(message = "缺少题目ID") Long questionId,
+      String selectedKeys, String answerText, Boolean flagged, Integer remainingSeconds) {
   }
 }
