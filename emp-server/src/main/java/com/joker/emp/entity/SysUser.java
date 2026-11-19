@@ -20,9 +20,6 @@ public class SysUser {
   @TableId(type = IdType.AUTO)
   private Long id;
 
-  /** mock 原始 id，如 u-1 / admin */
-  private String extId;
-
   /** 工号，登录账号 */
   private String employeeNo;
 
@@ -36,12 +33,6 @@ public class SysUser {
 
   /** 职位，如 高级研发工程师 */
   private String jobTitle;
-
-  /** 职级/专班，如 P6 高级研发 */
-  private String grade;
-
-  /** 专长方向，如 云原生与微服务核心骨干 */
-  private String specialty;
 
   private String avatarUrl;
 
@@ -62,6 +53,9 @@ public class SysUser {
 
   /** 最近活跃时间 */
   private LocalDateTime lastActiveAt;
+
+  /** 新员工入职手册阅读完成时间；NULL 表示尚未完成 */
+  private LocalDateTime onboardingCompletedAt;
 
   @TableField(fill = FieldFill.INSERT)
   private LocalDateTime createdAt;

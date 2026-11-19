@@ -5,7 +5,7 @@
       <div v-if="!detailMode">
         <div class="flex items-center gap-2">
           <h1 class="text-2xl font-extrabold text-[color:var(--app-text)] tracking-tight">
-            消息与站内信中心
+            消息中心
           </h1>
           <span class="px-2 py-0.5 rounded-full bg-[color:var(--app-accent-soft)] text-[color:var(--app-text)] text-xs font-semibold">
             实时推送已开启

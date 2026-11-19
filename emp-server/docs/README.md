@@ -1,6 +1,6 @@
 # 企业学堂 API 文档（Apifox 导入说明）
 
-本目录下的 OpenAPI 文档覆盖了当前 `emp-server` 的 **147 个接口**（学员端 + 管理端 + 文件），已与 Controller 注解逐条比对，可直接导入 Apifox。
+本目录下的 OpenAPI 文档覆盖了当前 `emp-server` 的 **118 个接口**（学员端 + 管理端 + 文件），已与 Controller 注解逐条比对，可直接导入 Apifox。
 
 | 文件 | 用途 |
 | --- | --- |
@@ -93,17 +93,16 @@ Authorization: Bearer {{token}}
 4. `GET /courses?page=1&size=12` → 课程列表。
 5. `GET /courses/{id}` → 课程详情（章节、课时）。
 6. `POST /courses/{id}/enroll` → 报名课程。
-7. `GET /tracks?page=1&size=12` → 研修通道。
-8. `GET /exams` → 我的考试。
-9. `POST /exams/{examId}/start` → 开始考试，返回 `attemptId` 和题目。
-10. `POST /exams/attempts/{attemptId}/answers` → 逐题保存答案。
-11. `POST /exams/attempts/{attemptId}/switch` → 记录切屏。
-12. `POST /exams/attempts/{attemptId}/submit` → 交卷。
-13. `GET /leaves`、`POST /leaves` → 请假。
-14. `GET /checkins/today`、`POST /checkins/check-in`、`POST /checkins/check-out` → 签到。
-15. `GET /certificates` → 我的证书。
-16. `GET /announcements`、`GET /notifications` → 公告与通知。
-17. `POST /files/upload`（multipart，字段 `file`）→ 文件上传。
+7. `GET /exams` → 我的考试。
+8. `POST /exams/{examId}/start` → 开始考试，返回 `attemptId` 和题目。
+9. `POST /exams/attempts/{attemptId}/answers` → 逐题保存答案。
+10. `POST /exams/attempts/{attemptId}/switch` → 记录切屏。
+11. `POST /exams/attempts/{attemptId}/submit` → 交卷。
+12. `GET /leaves`、`POST /leaves` → 请假。
+13. `GET /checkins/today`、`POST /checkins/check-in`、`POST /checkins/check-out` → 签到。
+14. `GET /certificates` → 我的证书。
+15. `GET /announcements` → 已发布公告。
+16. `POST /files/upload`（multipart，字段 `file`）→ 文件上传。
 
 > 开始考试会真实创建答卷，建议用演示学员账号测试，避免污染正式数据。
 

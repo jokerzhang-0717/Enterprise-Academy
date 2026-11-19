@@ -11,7 +11,6 @@ import com.joker.emp.entity.Exam;
 import com.joker.emp.entity.ExamAssignment;
 import com.joker.emp.entity.ExamAttempt;
 import com.joker.emp.entity.ExamQuestion;
-import com.joker.emp.entity.QuestionOption;
 import com.joker.emp.entity.SysUser;
 import com.joker.emp.mapper.AttemptAnswerMapper;
 import com.joker.emp.mapper.ExamAssignmentMapper;
@@ -22,8 +21,8 @@ import jakarta.validation.constraints.NotNull;
 import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.time.Year;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -68,18 +67,11 @@ public class ExamService {
       Long id = (long) Numbers.toInt(row.get("id"), 0);
       Exam exam = examMapper.selectById(id);
       if (exam != null) {
-        item.put("extId", exam.getExtId());
         item.put("organizer", exam.getOrganizer());
-        item.put("examType", exam.getExamType());
-        item.put("location", exam.getLocation());
         item.put("startAt", exam.getStartAt());
         item.put("endAt", exam.getEndAt());
         item.put("durationMinutes", exam.getDurationMinutes());
         item.put("totalScore", exam.getTotalScore());
-        item.put("isDoubleCamera", exam.getIsDoubleCamera());
-        item.put("relatedCourseId", exam.getRelatedCourseId());
-        item.put("relatedCourseText", exam.getRelatedCourseText());
-        item.put("remainingChanceCached", exam.getRemainingChanceCached());
       }
       item.put("statusCode", row.get("status"));
       item.put("status", statusText(row.get("status")));
@@ -111,12 +103,13 @@ public class ExamService {
     }
     Exam exam = new Exam();
     apply(exam, request);
+    if (exam.getCode() == null || exam.getCode().isBlank()) {
+      exam.setCode(generateExamCode());
+    }
     exam.setStatus(request.status() == null ? 1 : request.status());
     exam.setDurationMinutes(request.durationMinutes() == null ? 60 : request.durationMinutes());
     exam.setTotalScore(request.totalScore() == null ? BigDecimal.valueOf(100) : request.totalScore());
     exam.setPassScore(request.passScore() == null ? BigDecimal.valueOf(60) : request.passScore());
-    exam.setQuestionCountCached(0);
-    exam.setParticipantCountCached(0);
     exam.setCreatedBy(com.joker.emp.security.AuthContext.userId());
     examMapper.insert(exam);
     if (request.questionIds() != null) {
@@ -139,7 +132,6 @@ public class ExamService {
     if (request.passScore() != null) exam.setPassScore(request.passScore());
     if (request.questionIds() != null) {
       exam.setTotalScore(totalQuestionScore(id));
-      exam.setQuestionCountCached((int) questionService.countByExam(id));
       if (exam.getPassScore() != null && exam.getPassScore().compareTo(exam.getTotalScore()) > 0) {
         throw new BizException("及格分不能超过试卷总分");
       }
@@ -150,7 +142,6 @@ public class ExamService {
     examMapper.updateById(exam);
     if (request.status() != null && isPublished(request.status())) {
       assignToActiveLearners(id);
-      refreshParticipantCount(id);
     }
     logService.record("exam", "更新考试 " + exam.getTitle(), "exam", id);
     return detail(id);
@@ -162,7 +153,6 @@ public class ExamService {
     if (exam.getPassScore() != null && exam.getPassScore().compareTo(exam.getTotalScore()) > 0) {
       throw new BizException("及格分不能超过试卷总分");
     }
-    exam.setQuestionCountCached((int) questionService.countByExam(exam.getId()));
     examMapper.updateById(exam);
   }
 
@@ -186,11 +176,9 @@ public class ExamService {
     Exam update = new Exam();
     update.setId(id);
     update.setStatus(status);
-    update.setQuestionCountCached((int) questionService.countByExam(id));
     examMapper.updateById(update);
     if (isPublished(status)) {
       assignToActiveLearners(id);
-      refreshParticipantCount(id);
     }
     logService.record("exam", statusText(status) + "考试 " + exam.getTitle(), "exam", id);
   }
@@ -283,7 +271,6 @@ public class ExamService {
         created++;
       }
     }
-    refreshParticipantCount(examId);
     logService.record("exam", "指派考试，新增 " + created + " 人", "exam", examId);
     return created;
   }
@@ -295,7 +282,6 @@ public class ExamService {
       throw BizException.notFound("指派记录不存在");
     }
     assignmentMapper.deleteById(assignmentId);
-    refreshParticipantCount(examId);
   }
 
   public PageResult<Map<String, Object>> attempts(long page, long size, Long examId,
@@ -317,7 +303,11 @@ public class ExamService {
     if (userId != null && !userId.equals(attempt.getUserId())) {
       throw BizException.forbidden("无权查看该答卷");
     }
-    Exam exam = requireExam(attempt.getExamId());
+    // 历史答卷关联的考试可能已归档，读取详情时允许看到软删除的考试
+    Exam exam = examMapper.selectByIdIncludingDeleted(attempt.getExamId());
+    if (exam == null) {
+      throw BizException.notFound("考试不存在");
+    }
     Map<String, Object> item = new LinkedHashMap<>();
     item.put("id", attempt.getId());
     item.put("examId", attempt.getExamId());
@@ -344,7 +334,6 @@ public class ExamService {
     item.put("passScore", attempt.getPassScore());
     item.put("isPassed", attempt.getIsPassed());
     item.put("wrongCount", attempt.getWrongCount());
-    item.put("switchCount", attempt.getSwitchCount());
     item.put("gradedAt", attempt.getGradedAt());
 
     List<Map<String, Object>> answers = answerMapper.selectDetail(attemptId);
@@ -371,13 +360,33 @@ public class ExamService {
     BigDecimal subjective = BigDecimal.ZERO;
     if (request.answers() != null) {
       for (AnswerGrade grade : request.answers()) {
-        AttemptAnswer answer = answerMapper.selectById(grade.answerId());
-        if (answer == null || !attemptId.equals(answer.getAttemptId())) {
+        AttemptAnswer answer = null;
+        if (grade.answerId() != null) {
+          answer = answerMapper.selectById(grade.answerId());
+          if (answer != null && !attemptId.equals(answer.getAttemptId())) {
+            answer = null;
+          }
+        }
+        // 学员未作答的主观题没有 attempt_answer 行，阅卷时按 questionId 补建后再计分
+        if (answer == null && grade.questionId() != null
+            && questionService.existsInExam(attempt.getExamId(), grade.questionId())) {
+          answer = answerMapper.selectOne(Wrappers.<AttemptAnswer>lambdaQuery()
+              .eq(AttemptAnswer::getAttemptId, attemptId)
+              .eq(AttemptAnswer::getQuestionId, grade.questionId())
+              .last("LIMIT 1"));
+          if (answer == null) {
+            answer = new AttemptAnswer();
+            answer.setAttemptId(attemptId);
+            answer.setQuestionId(grade.questionId());
+            answer.setAnsweredAt(LocalDateTime.now());
+            answerMapper.insert(answer);
+          }
+        }
+        if (answer == null) {
           continue;
         }
         BigDecimal score = grade.scoreGained() == null ? BigDecimal.ZERO : grade.scoreGained();
         answer.setScoreGained(score);
-        answer.setIsCorrect(score.compareTo(BigDecimal.ZERO) > 0);
         answerMapper.updateById(answer);
         subjective = subjective.add(score);
       }
@@ -426,8 +435,6 @@ public class ExamService {
       item.put("status", assignmentStatusText(assignmentStatus));
       item.put("statusLabel", assignmentStatusText(assignmentStatus));
       item.put("timeWindow", timeWindow(item.get("startAt"), item.get("endAt")));
-      item.put("isDoubleCameraProctored", item.get("isDoubleCamera"));
-      item.put("category", item.get("organizer"));
     }
     Map<String, Object> result = new LinkedHashMap<>();
     result.put("assignments", assignments);
@@ -452,9 +459,12 @@ public class ExamService {
   public List<Map<String, Object>> pastAttempts(Long userId) {
     List<Map<String, Object>> rows = examMapper.selectPastAttempts(userId);
     for (Map<String, Object> row : rows) {
+      boolean pendingReview = Integer.valueOf(2).equals(Numbers.toInteger(row.get("status")));
+      row.put("pendingReview", pendingReview);
       row.put("statusLabel", attemptStatusText(row.get("status")));
       row.put("completionDate", row.get("submittedAt"));
-      row.put("score", row.get("totalScore"));
+      // 待人工评分时只展示已机审的客观题得分，避免把部分分误当最终成绩
+      row.put("score", pendingReview ? row.get("objectiveScore") : row.get("totalScore"));
     }
     return rows;
   }
@@ -538,7 +548,6 @@ public class ExamService {
     attempt.setRemainingSeconds(remaining);
     attempt.setPassScore(exam.getPassScore());
     attempt.setWrongCount(0);
-    attempt.setSwitchCount(0);
     attemptMapper.insert(attempt);
     return attemptPayload(attempt, exam);
   }
@@ -597,18 +606,6 @@ public class ExamService {
   }
 
   @Transactional
-  public Map<String, Object> switchScreen(Long attemptId) {
-    Long userId = com.joker.emp.security.AuthContext.userId();
-    ExamAttempt attempt = requireOwnAttempt(attemptId, userId);
-    if (!Integer.valueOf(1).equals(attempt.getStatus())) {
-      return Map.of("switchCount", attempt.getSwitchCount());
-    }
-    attempt.setSwitchCount((attempt.getSwitchCount() == null ? 0 : attempt.getSwitchCount()) + 1);
-    attemptMapper.updateById(attempt);
-    return Map.of("switchCount", attempt.getSwitchCount());
-  }
-
-  @Transactional
   public Map<String, Object> submit(Long attemptId) {
     Long userId = com.joker.emp.security.AuthContext.userId();
     ExamAttempt attempt = requireOwnAttempt(attemptId, userId);
@@ -642,7 +639,6 @@ public class ExamService {
           && question.getCorrectAnswer() != null
           && normalizeKeys(answer.getSelectedKeys())
               .equals(normalizeKeys(question.getCorrectAnswer()));
-      answer.setIsCorrect(correct);
       answer.setScoreGained(correct
           ? (question.getScore() == null ? BigDecimal.ZERO : question.getScore())
           : BigDecimal.ZERO);
@@ -685,7 +681,6 @@ public class ExamService {
       assignment.setStatus(2);
       assignmentMapper.updateById(assignment);
     }
-    refreshParticipantCount(attempt.getExamId());
     return attemptDetail(attemptId, userId, true);
   }
 
@@ -767,7 +762,7 @@ public class ExamService {
       throw new BizException("考试标题不能为空");
     }
     if (request.code() == null || request.code().isBlank()) {
-      throw new BizException("考试编号不能为空");
+      return;
     }
     long duplicate = examMapper.selectCount(Wrappers.<Exam>lambdaQuery()
         .eq(Exam::getCode, request.code().trim()));
@@ -776,55 +771,40 @@ public class ExamService {
     }
   }
 
+  private String generateExamCode() {
+    String prefix = "EXAM-" + Year.now().getValue() + "-";
+    long sequence = examMapper.selectCount(Wrappers.<Exam>lambdaQuery()
+        .likeRight(Exam::getCode, prefix)) + 1;
+    String code;
+    do {
+      code = prefix + String.format("%03d", sequence++);
+    } while (examMapper.selectCount(Wrappers.<Exam>lambdaQuery()
+        .eq(Exam::getCode, code)) > 0);
+    return code;
+  }
+
   private void apply(Exam exam, ExamSaveRequest request) {
     if (request.code() != null) exam.setCode(request.code().trim());
     if (request.title() != null) exam.setTitle(request.title());
     if (request.organizer() != null) exam.setOrganizer(request.organizer());
-    if (request.examType() != null) exam.setExamType(request.examType());
-    if (request.location() != null) exam.setLocation(request.location());
     if (request.startAt() != null) exam.setStartAt(request.startAt());
     if (request.endAt() != null) exam.setEndAt(request.endAt());
-    if (request.isDoubleCamera() != null) exam.setIsDoubleCamera(request.isDoubleCamera());
-    if (request.relatedCourseId() != null) exam.setRelatedCourseId(request.relatedCourseId());
-    if (request.relatedCourseText() != null) exam.setRelatedCourseText(request.relatedCourseText());
-    if (request.remainingChance() != null) exam.setRemainingChanceCached(request.remainingChance());
-  }
-
-  private void refreshParticipantCount(Long examId) {
-    long count = assignmentMapper.selectCount(Wrappers.<ExamAssignment>lambdaQuery()
-        .eq(ExamAssignment::getExamId, examId));
-    Exam update = new Exam();
-    update.setId(examId);
-    update.setParticipantCountCached((int) count);
-    update.setQuestionCountCached((int) questionService.countByExam(examId));
-    examMapper.updateById(update);
   }
 
   private Map<String, Object> toExamItem(Exam exam) {
     Map<String, Object> item = new LinkedHashMap<>();
     item.put("id", exam.getId());
-    item.put("extId", exam.getExtId());
     item.put("code", exam.getCode());
     item.put("title", exam.getTitle());
     item.put("organizer", exam.getOrganizer());
-    item.put("category", exam.getOrganizer());
-    item.put("examType", exam.getExamType());
     item.put("statusCode", exam.getStatus());
     item.put("status", statusText(exam.getStatus()));
-    item.put("location", exam.getLocation());
     item.put("startAt", exam.getStartAt());
     item.put("endAt", exam.getEndAt());
     item.put("timeWindow", timeWindow(exam.getStartAt(), exam.getEndAt()));
     item.put("durationMinutes", exam.getDurationMinutes());
     item.put("totalScore", exam.getTotalScore());
     item.put("passScore", exam.getPassScore());
-    item.put("isDoubleCamera", exam.getIsDoubleCamera());
-    item.put("isDoubleCameraProctored", exam.getIsDoubleCamera());
-    item.put("relatedCourseId", exam.getRelatedCourseId());
-    item.put("relatedCourseText", exam.getRelatedCourseText());
-    item.put("remainingChanceCached", exam.getRemainingChanceCached());
-    item.put("questionCountCached", exam.getQuestionCountCached());
-    item.put("participantCountCached", exam.getParticipantCountCached());
     item.put("createdBy", exam.getCreatedBy());
     item.put("createdAt", exam.getCreatedAt());
     item.put("updatedAt", exam.getUpdatedAt());
@@ -890,11 +870,10 @@ public class ExamService {
     };
   }
 
-  public record ExamSaveRequest(String code, String title, String organizer, String examType,
-      Integer status, String location, LocalDateTime startAt, LocalDateTime endAt,
+  public record ExamSaveRequest(String code, String title, String organizer,
+      Integer status, LocalDateTime startAt, LocalDateTime endAt,
       Integer durationMinutes, BigDecimal totalScore, BigDecimal passScore,
-      Boolean isDoubleCamera, Long relatedCourseId, String relatedCourseText,
-      Integer remainingChance, List<Long> questionIds) {
+      List<Long> questionIds) {
   }
 
   public record AssignRequest(List<Long> userIds, Integer attemptsAllowed,
@@ -904,7 +883,7 @@ public class ExamService {
   public record GradeRequest(BigDecimal subjectiveScore, List<AnswerGrade> answers) {
   }
 
-  public record AnswerGrade(Long answerId, BigDecimal scoreGained) {
+  public record AnswerGrade(Long answerId, Long questionId, BigDecimal scoreGained) {
   }
 
   public record AnswerSaveRequest(@NotNull(message = "缺少题目ID") Long questionId,

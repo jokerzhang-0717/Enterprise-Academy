@@ -20,9 +20,7 @@ public interface DepartmentMapper extends BaseMapper<Department> {
                 FROM sys_user u
                 JOIN enrollment e ON e.user_id = u.id
                WHERE u.department_id = d.id AND u.role = 1 AND u.deleted_at IS NULL
-             ) AS totalStudyHours,
-             d.learner_count_cached AS learnerCountCached,
-             d.study_hours_cached AS studyHoursCached
+             ) AS totalStudyHours
         FROM department d
        WHERE d.deleted_at IS NULL
        ORDER BY d.id

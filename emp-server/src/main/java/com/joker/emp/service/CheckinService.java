@@ -7,10 +7,8 @@ import com.joker.emp.common.BizException;
 import com.joker.emp.common.Numbers;
 import com.joker.emp.common.PageResult;
 import com.joker.emp.entity.CheckinRecord;
-import com.joker.emp.entity.Course;
 import com.joker.emp.entity.SysUser;
 import com.joker.emp.mapper.CheckinRecordMapper;
-import com.joker.emp.mapper.CourseMapper;
 import com.joker.emp.mapper.SysUserMapper;
 import com.joker.emp.security.AuthContext;
 import jakarta.validation.constraints.NotNull;
@@ -28,14 +26,12 @@ import org.springframework.transaction.annotation.Transactional;
 public class CheckinService {
 
   private final CheckinRecordMapper checkinMapper;
-  private final CourseMapper courseMapper;
   private final SysUserMapper userMapper;
   private final OperationLogService logService;
 
-  public CheckinService(CheckinRecordMapper checkinMapper, CourseMapper courseMapper,
-      SysUserMapper userMapper, OperationLogService logService) {
+  public CheckinService(CheckinRecordMapper checkinMapper, SysUserMapper userMapper,
+      OperationLogService logService) {
     this.checkinMapper = checkinMapper;
-    this.courseMapper = courseMapper;
     this.userMapper = userMapper;
     this.logService = logService;
   }
@@ -76,7 +72,7 @@ public class CheckinService {
   }
 
   @Transactional
-  public Map<String, Object> checkIn(Integer method) {
+  public Map<String, Object> checkIn() {
     Long userId = AuthContext.userId();
     LocalDate today = LocalDate.now();
     CheckinRecord exists = checkinMapper.selectOne(Wrappers.<CheckinRecord>lambdaQuery()
@@ -92,12 +88,10 @@ public class CheckinService {
       exists.setUserId(userId);
       exists.setCheckinDate(today);
       exists.setCheckInTime(now);
-      exists.setMethod(method == null ? 3 : method);
       exists.setStatus(now.isAfter(LocalTime.of(9, 0)) ? 2 : 1);
       checkinMapper.insert(exists);
     } else {
       exists.setCheckInTime(now);
-      exists.setMethod(method == null ? 3 : method);
       exists.setStatus(now.isAfter(LocalTime.of(9, 0)) ? 2 : 1);
       checkinMapper.updateById(exists);
     }
@@ -145,11 +139,9 @@ public class CheckinService {
     }
     CheckinRecord record = new CheckinRecord();
     record.setUserId(request.userId());
-    record.setCourseId(request.courseId());
     record.setCheckinDate(request.checkinDate());
     record.setCheckInTime(request.checkInTime());
     record.setCheckOutTime(request.checkOutTime());
-    record.setMethod(request.method() == null ? 1 : request.method());
     record.setStatus(request.status() == null
         ? (request.checkInTime() == null ? 3 : 1) : request.status());
     checkinMapper.insert(record);
@@ -170,7 +162,6 @@ public class CheckinService {
         throw new BizException(409, "该学员当天已有签到记录");
       }
     }
-    if (request.courseId() != null) record.setCourseId(request.courseId());
     if (request.checkinDate() != null) record.setCheckinDate(request.checkinDate());
     if (request.checkInTime() != null) record.setCheckInTime(parseTime(request.checkInTime()));
     if (request.checkOutTime() != null) record.setCheckOutTime(parseTime(request.checkOutTime()));
@@ -198,16 +189,6 @@ public class CheckinService {
     logService.record("user", "删除签到记录", "checkin", id);
   }
 
-  public List<Map<String, Object>> stats(LocalDate from, LocalDate to) {
-    LocalDate start = from == null ? LocalDate.now().withDayOfMonth(1) : from;
-    LocalDate end = to == null ? LocalDate.now() : to;
-    return checkinMapper.selectStatusStats(start, end).stream().map(row -> {
-      Map<String, Object> item = new LinkedHashMap<>(row);
-      item.put("statusLabel", statusText(row.get("status")));
-      return item;
-    }).toList();
-  }
-
   private CheckinRecord requireRecord(Long id) {
     CheckinRecord record = checkinMapper.selectById(id);
     if (record == null) {
@@ -220,12 +201,9 @@ public class CheckinService {
     Map<String, Object> item = new LinkedHashMap<>();
     item.put("id", record.getId());
     item.put("userId", record.getUserId());
-    item.put("courseId", record.getCourseId());
     item.put("checkinDate", record.getCheckinDate());
     item.put("checkInTime", record.getCheckInTime());
     item.put("checkOutTime", record.getCheckOutTime());
-    item.put("method", record.getMethod());
-    item.put("methodLabel", methodText(record.getMethod()));
     item.put("status", record.getStatus());
     item.put("statusLabel", statusText(record.getStatus()));
     if (record.getUserId() != null) {
@@ -233,22 +211,7 @@ public class CheckinService {
       item.put("userName", user == null ? null : user.getName());
       item.put("employeeNo", user == null ? null : user.getEmployeeNo());
     }
-    if (record.getCourseId() != null) {
-      Course course = courseMapper.selectById(record.getCourseId());
-      item.put("courseTitle", course == null ? null : course.getTitle());
-    }
     return item;
-  }
-
-  private String methodText(Integer method) {
-    if (method == null) {
-      return "";
-    }
-    return switch (method) {
-      case 2 -> "工牌刷卡";
-      case 3 -> "移动端定位";
-      default -> "人脸识别";
-    };
   }
 
   private String statusText(Object rawStatus) {
@@ -266,11 +229,11 @@ public class CheckinService {
 
   public record CheckinSaveRequest(@NotNull(message = "请选择学员") Long userId,
                                    @NotNull(message = "请选择签到日期") LocalDate checkinDate,
-                                   Long courseId, LocalTime checkInTime, LocalTime checkOutTime,
-                                   Integer method, Integer status) {
+                                   LocalTime checkInTime, LocalTime checkOutTime,
+                                   Integer status) {
   }
 
-  public record CheckinUpdateRequest(Long courseId, LocalDate checkinDate,
+  public record CheckinUpdateRequest(LocalDate checkinDate,
       String checkInTime, String checkOutTime, Integer status) {
   }
 }

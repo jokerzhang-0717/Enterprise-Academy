@@ -170,8 +170,8 @@
                 aria-describedby="login-err-password"
               />
               <button type="button" class="password-toggle" @click="showPassword = !showPassword" aria-label="切换密码可见性">
-                <EyeOff v-if="showPassword" class="h-[15px] w-[15px]" />
-                <Eye v-else class="h-[15px] w-[15px]" />
+                <Eye v-if="showPassword" class="h-[15px] w-[15px]" />
+                <EyeOff v-else class="h-[15px] w-[15px]" />
               </button>
             </div>
             <p v-if="loginErrors.password" id="login-err-password" class="login-error">
@@ -191,12 +191,12 @@
             <div
               ref="sliderRef"
               class="slider-track mt-2"
-              :class="{ verified: sliderVerified, 'slider-track--error': loginErrors.slider && !sliderVerified }"
+              :class="{ verified: sliderVerified, dragging, 'slider-track--error': loginErrors.slider && !sliderVerified }"
               @pointerdown="startDrag"
             >
-              <div class="slider-progress" :style="{ width: `${sliderPosition + 44}px` }"></div>
+              <div class="slider-progress" :style="{ width: sliderVerified ? '100%' : (sliderPosition ? `${sliderPosition + HANDLE_SIZE + SLIDER_INSET}px` : '0px') }"></div>
 
-              <span class="slider-hint" :class="sliderVerified ? 'text-[#1B7F63]' : ''">
+              <span class="slider-hint">
                 {{ sliderVerified ? '验证通过，安全信标就绪' : '按住滑块，拖动到最右端' }}
               </span>
 
@@ -205,8 +205,8 @@
                 :class="sliderVerified ? 'slider-handle-success' : ''"
                 :style="{ transform: `translateX(${sliderPosition}px)` }"
               >
-                <Check v-if="sliderVerified" class="h-[15px] w-[15px]" />
-                <ChevronsRight v-else class="h-[16px] w-[16px]" />
+                <Check v-if="sliderVerified" class="h-[18px] w-[18px]" />
+                <ChevronsRight v-else class="h-[18px] w-[18px]" />
               </div>
             </div>
             <p v-if="loginErrors.slider && !sliderVerified" class="login-error">
@@ -214,28 +214,11 @@
             </p>
           </div>
 
-          <!-- 记住设备 -->
-          <div class="fade-in flex items-center justify-between pt-[2px]" style="--d:.4s">
-            <label class="flex cursor-pointer select-none items-center gap-2">
-              <span class="custom-checkbox" :class="rememberDevice ? 'checked' : ''">
-                <input type="checkbox" v-model="rememberDevice" class="sr-only" />
-                <Check class="h-[11px] w-[11px] text-white" :class="rememberDevice ? 'opacity-100' : 'opacity-0'" />
-              </span>
-              <span class="text-[11px] text-[#4F627A]">30 天内记住当前设备</span>
-            </label>
-          </div>
-
-          <div class="fade-in pt-[2px]" style="--d:.46s">
+          <div class="fade-in pt-[2px]" style="--d:.4s">
             <button type="submit" class="submit-btn">
               <span>立即登录并开启学习</span>
               <ArrowRight class="h-[15px] w-[15px] transition-transform duration-300 group-hover:translate-x-1" />
             </button>
-          </div>
-
-          <div class="fade-in mt-4 rounded-[9px] border border-dashed border-[#D3E4F3] bg-[#F6FBFF] px-3 py-2" style="--d:.52s">
-            <p class="mono-font text-[9.5px] leading-[1.7] text-[#5B6B80]">
-              演示账号 · 学员:EMP-2024098 / 管理员:admin · 统一密码:123456(完成滑块验证后登录)
-            </p>
           </div>
         </form>
 
@@ -247,10 +230,21 @@
               <component :is="f.icon" class="input-icon" />
               <input
                 v-model.trim="f.model.value" @input="clearRegisterError(f.key)"
-                :type="f.type" :placeholder="f.placeholder" :autocomplete="f.autocomplete"
+                :type="f.type === 'password' ? (registerPasswordVisible[f.key] ? 'text' : 'password') : f.type"
+                :placeholder="f.placeholder" :autocomplete="f.autocomplete"
                 :aria-invalid="Boolean(registerErrors[f.key])" :aria-describedby="`reg-err-${f.key}`"
                 class="input-box" :class="f.key === 'employeeId' ? 'mono-font' : ''"
               />
+              <button
+                v-if="f.type === 'password'"
+                type="button"
+                class="password-toggle"
+                :aria-label="registerPasswordVisible[f.key] ? '隐藏密码' : '显示密码'"
+                @click="toggleRegisterPassword(f.key)"
+              >
+                <Eye v-if="registerPasswordVisible[f.key]" class="h-[15px] w-[15px]" />
+                <EyeOff v-else class="h-[15px] w-[15px]" />
+              </button>
             </div>
             <p v-if="registerErrors[f.key]" :id="`reg-err-${f.key}`" class="mt-[5px] text-[10px] text-[#C2417C]">
               {{ registerErrors[f.key] }}
@@ -316,7 +310,6 @@ const stats = [
 const employeeId = ref('EMP-2024098');
 const password = ref('');
 const showPassword = ref(false);
-const rememberDevice = ref(true);
 
 const loginErrors = ref({});
 const { show: showToast } = useToast();
@@ -328,6 +321,8 @@ const clearLoginError = (field) => {
 };
 
 /* ---------- 滑块行为验证 ---------- */
+const HANDLE_SIZE = 40;
+const SLIDER_INSET = 3;
 const sliderVerified = ref(false);
 const sliderPosition = ref(0);
 const sliderRef = ref(null);
@@ -335,7 +330,7 @@ const dragging = ref(false);
 
 const maxOffset = () => {
   const el = sliderRef.value;
-  return el ? el.clientWidth - 44 : 260;
+  return el ? el.clientWidth - HANDLE_SIZE - SLIDER_INSET * 2 : 260;
 };
 
 const startDrag = (e) => {
@@ -353,7 +348,7 @@ const onDrag = (e) => {
   if (!el) return;
   const rect = el.getBoundingClientRect();
   const max = maxOffset();
-  const pos = Math.min(Math.max(e.clientX - rect.left - 22, 0), max);
+  const pos = Math.min(Math.max(e.clientX - rect.left - SLIDER_INSET - HANDLE_SIZE / 2, 0), max);
   sliderPosition.value = pos;
   if (pos >= max - 6) {
     sliderVerified.value = true;
@@ -379,11 +374,16 @@ const registerEmployeeId = ref('');
 const registerPassword = ref('');
 const confirmPassword = ref('');
 const registerErrors = ref({});
+const registerPasswordVisible = ref({ password: false, confirmPassword: false });
+
+const toggleRegisterPassword = (key) => {
+  registerPasswordVisible.value[key] = !registerPasswordVisible.value[key];
+};
 
 const registerFields = computed(() => [
   { key: 'name', order: 0, label: 'Name · 姓名', type: 'text', placeholder: '请输入姓名', autocomplete: 'name', icon: User, model: registerName },
   { key: 'employeeId', order: 1, label: 'Employee ID · 企业工号', type: 'text', placeholder: '请输入企业工号', autocomplete: 'off', icon: Gauge, model: registerEmployeeId },
-  { key: 'password', order: 2, label: 'Password · 设置密码', type: 'password', placeholder: '至少 8 位', autocomplete: 'new-password', icon: KeyRound, model: registerPassword },
+  { key: 'password', order: 2, label: 'Password · 设置密码', type: 'password', placeholder: '至少 6 位', autocomplete: 'new-password', icon: KeyRound, model: registerPassword },
   { key: 'confirmPassword', order: 3, label: 'Confirm · 确认密码', type: 'password', placeholder: '请再次输入密码', autocomplete: 'new-password', icon: ShieldCheck, model: confirmPassword }
 ]);
 
@@ -413,7 +413,6 @@ const handleSubmit = async () => {
       refreshToken: result.refreshToken,
       user: result.user,
       employeeId: result.user?.employeeId || employeeId.value,
-      rememberDevice: rememberDevice.value,
     });
   } catch (error) {
     loginErrors.value = { password: error?.message || '登录失败，请稍后重试。' };
@@ -433,8 +432,8 @@ const handleRegister = async () => {
   if (!registerEmployeeId.value) errors.employeeId = '请输入企业工号。';
   if (!registerPassword.value) {
     errors.password = '请设置密码。';
-  } else if (registerPassword.value.length < 8) {
-    errors.password = '密码至少需要 8 位。';
+  } else if (registerPassword.value.length < 6) {
+    errors.password = '密码至少需要 6 位。';
   }
   if (!confirmPassword.value) {
     errors.confirmPassword = '请再次输入密码。';
@@ -460,7 +459,6 @@ const handleRegister = async () => {
       refreshToken: result.refreshToken,
       user: result.user,
       employeeId: result.user?.employeeId || registerEmployeeId.value,
-      rememberDevice: rememberDevice.value,
     });
   } catch (error) {
     registerErrors.value = { employeeId: error?.message || '注册失败，请稍后重试。' };
@@ -664,17 +662,17 @@ const handleRegister = async () => {
 .password-toggle:hover { color: #2E8BD6; }
 
 /* ==================== 10 滑块行为验证 ==================== */
-/* 轨道 = 一条 44px 表单框：同圆角、同描边、同底色 */
+/* 浅色轨道 + 实心方形把手，无投影 */
 .slider-track {
   position: relative;
-  height: 44px; border-radius: 11px;
+  height: 46px; border-radius: 12px;
   overflow: hidden;
-  border: 1.5px solid #D3E4F3;
-  background: rgba(255, 255, 255, .78);
+  border: 1px solid rgba(160, 199, 231, .5);
+  background: linear-gradient(180deg, #FFFFFF 0%, #F5FAFF 100%);
   user-select: none; touch-action: none;
   transition: border-color .25s, background .25s;
 }
-.slider-track:hover { border-color: #B9D7F0; }
+.slider-track:hover { border-color: rgba(125, 177, 220, .75); }
 .slider-track--error {
   border-color: #F0B4CC;
   background: #FDF4F8;
@@ -684,68 +682,65 @@ const handleRegister = async () => {
   background: rgba(233, 248, 242, .9);
 }
 
-/* 进度填充 */
+/* 进度填充：拖动时浅蓝，验证后整条绿色 */
 .slider-progress {
   position: absolute; inset: 0 auto 0 0;
-  border-radius: 10px;
-  background: linear-gradient(90deg, #83C9F4 0%, #A3D5FF 100%);
-  transition: background .3s;
+  background: linear-gradient(90deg, #D8ECFF 0%, #BCE0FF 100%);
+  transition: background .3s, width .32s cubic-bezier(.22, .61, .36, 1);
 }
+.slider-track.dragging .slider-progress { transition: background .3s; }
 .slider-track.verified .slider-progress {
   background: linear-gradient(90deg, #2FBF8F 0%, #7BD9B8 100%);
 }
+.slider-track.verified .slider-hint {
+  color: #FFFFFF;
+  padding-left: 0;
+  place-items: center;
+}
 
-/* 居中提示文字 */
+/* 居中提示文字：默认靠左，紧随把手 */
 .slider-hint {
   position: absolute; inset: 0; z-index: 1;
-  display: grid; place-items: center;
-  font-size: 11.5px; font-weight: 500; letter-spacing: .05em;
-  color: #2C4A63; pointer-events: none;
+  display: grid; place-items: center start;
+  padding-left: 58px;
+  font-size: 11.5px; font-weight: 500; letter-spacing: .04em;
+  color: #4E6B85; pointer-events: none;
+  transition: opacity .2s, color .2s;
 }
+/* 拖动时隐藏提示，避免文字与把手重叠 */
+.slider-track.dragging .slider-hint { opacity: 0; }
 
-/* 拖动把手 */
+/* 拖动把手：实心方形按钮，圆角收柔、无描边无投影 */
 .slider-handle {
-  position: absolute; top: 4px;
-  width: 36px; height: 36px; border-radius: 9px;
+  position: absolute; top: 3px; left: 3px;
+  width: 40px; height: 40px; border-radius: 12px;
   z-index: 2;
   display: grid; place-items: center;
-  background: #FFFFFF;
-  border: 1px solid rgba(131, 201, 244, .5);
-  color: #2E8BD6;
-  box-shadow: 0 2px 8px rgba(46, 100, 180, .18);
+  background: linear-gradient(180deg, #74B6E9 0%, #418FCF 100%);
+  border: none;
+  color: #FFFFFF;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .28);
   cursor: grab;
-  transition: box-shadow .2s, border-color .2s, color .2s, background .25s;
+  transition: background .25s, color .2s, transform .32s cubic-bezier(.22, .61, .36, 1);
 }
+.slider-track.dragging .slider-handle { transition: background .25s, color .2s; }
 .slider-handle:hover {
-  border-color: #83C9F4; color: #1F6FB5;
-  box-shadow: 0 4px 12px rgba(46, 100, 180, .26);
+  background: linear-gradient(180deg, #67ADE3 0%, #3985C5 100%);
 }
 .slider-handle:active {
   cursor: grabbing;
-  box-shadow: 0 1px 5px rgba(46, 100, 180, .18);
+  background: linear-gradient(180deg, #5EA3DA 0%, #337CBB 100%);
 }
 .slider-handle-success {
-  background: #2FBF8F; border-color: #2FBF8F; color: #fff;
+  background: #FFFFFF;
+  color: #2FBF8F;
   cursor: default;
-  box-shadow: 0 2px 8px rgba(47, 191, 143, .32);
 }
 .slider-handle-success:hover,
 .slider-handle-success:active {
-  background: #2FBF8F; border-color: #2FBF8F; color: #fff;
+  background: #FFFFFF;
+  color: #2FBF8F;
   cursor: default;
-  box-shadow: 0 2px 8px rgba(47, 191, 143, .32);
-}
-
-/* ==================== 11 复选框 ==================== */
-.custom-checkbox {
-  display: grid; place-items: center;
-  width: 15px; height: 15px; border-radius: 5px;
-  border: 1.5px solid #A9CFEC; background: rgba(255, 255, 255, .85);
-  transition: all .18s;
-}
-.custom-checkbox.checked {
-  border-color: transparent;
-  background: linear-gradient(135deg, #83C9F4, #9381FF);
 }
 
 /* ==================== 12 Tab 切换指示器 ==================== */

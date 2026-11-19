@@ -101,9 +101,7 @@ export const adaptUser = (user) => {
     email: user.email || '',
     learningHours: Number(user.learningHours || 0),
     completedCourses: Number(user.completedCourses || 0),
-    studyingCourses: Number(user.studyingCourses || 0),
     certificateCount: Number(user.certificateCount || 0),
-    unreadNotifications: Number(user.unreadNotifications || 0),
     lastActive: relativeTime(user.lastActiveAt),
     lastActiveAt: user.lastActiveAt || '',
   };
@@ -132,7 +130,6 @@ export const adaptChapter = (chapter) => ({
 
 export const adaptCourse = (course) => {
   if (!course) return null;
-  const totalLessons = course.totalLessons ?? course.totalLessonCount ?? 0;
   const completedLessons = course.completedLessons ?? course.completedLessonCount ?? 0;
   return {
     ...course,
@@ -146,11 +143,6 @@ export const adaptCourse = (course) => {
     },
     thumbnail: course.thumbnailUrl || course.thumbnail || '',
     thumbnailUrl: course.thumbnailUrl || course.thumbnail || '',
-    hours: Number(course.hours ?? course.totalHours ?? 0),
-    totalHours: Number(course.totalHours ?? course.hours ?? 0),
-    students: Number(course.students ?? course.enrollCount ?? 0),
-    totalLessons: Number(totalLessons),
-    totalLessonCount: Number(totalLessons),
     completedLessons: Number(completedLessons),
     completedLessonCount: Number(completedLessons),
     progress: Number(course.progress ?? course.progressPercent ?? 0),
@@ -158,7 +150,6 @@ export const adaptCourse = (course) => {
     // 管理端 statusCode: 1 草稿 / 2 已上架 / 3 已下架
     published: course.statusCode === 2,
     syllabus: (course.chapters || []).map(adaptChapter),
-    tags: course.tags || [],
   };
 };
 
@@ -177,37 +168,38 @@ export const adaptAdminCourse = (course) => {
   };
 };
 
-export const adaptTrack = (track) => {
-  if (!track) return null;
-  return {
-    ...track,
-    id: track.extId || toId(track.id),
-    numericId: track.id,
-    thumbnail: track.thumbnailUrl || track.thumbnail || '',
-    studentCount: track.studentCount ?? 0,
-    outline: track.outline || [],
-  };
-};
-
 /* ============================== 考试 ============================== */
 
 const assignmentStatusToUi = (assignment) => {
-  if (assignment.assignmentStatus === 2) return 'completed';
-  if (assignment.examStatusCode === 3) return 'in_progress';
-  if (assignment.examStatusCode === 5) return 'not_started';
-  if (assignment.examStatusCode === 4) return 'completed';
+  const examStatus = Number(assignment.examStatusCode);
+  const allowed = Number(assignment.attemptsAllowed ?? 1);
+  const used = Number(assignment.attemptsUsed ?? 0);
+  const remaining = Math.max(0, allowed - used);
+
+  // 考试未开始（2/5）或已结束（4）时不开放入口；后端 start() 同样只放行 status=3
+  if (examStatus === 2 || examStatus === 5) return 'not_started';
+  if (examStatus === 4) return 'completed';
+  if (examStatus === 3) {
+    // 有未交卷 attempt 时优先续考
+    if (assignment.inProgressAttemptId != null) return 'in_progress';
+    // 交卷只消耗一次机会，剩余机会仍可重考（不再被 assignmentStatus=2 误判为彻底结束）
+    if (remaining > 0) return 'in_progress';
+    return 'completed';
+  }
   return 'not_started';
 };
 
 export const adaptExamAssignment = (assignment) => {
   if (!assignment) return null;
   const status = assignmentStatusToUi(assignment);
+  const attemptsAllowed = Number(assignment.attemptsAllowed ?? 1);
+  const attemptsUsed = Number(assignment.attemptsUsed ?? 0);
   return {
     ...assignment,
     id: toId(assignment.examId),
     examId: assignment.examId,
     code: assignment.code || '',
-    category: assignment.organizer || assignment.category || '',
+    organizer: assignment.organizer || '',
     status,
     statusLabel: assignment.statusLabel || '',
     location: assignment.location || '',
@@ -216,20 +208,22 @@ export const adaptExamAssignment = (assignment) => {
     totalScore: assignment.totalScore || 100,
     passScore: assignment.passScore || 60,
     questionCount: assignment.questionCount || 0,
-    isDoubleCameraProctored: Boolean(assignment.isDoubleCameraProctored),
-    relatedCourse: assignment.relatedCourseText || '',
-    remainingTimeText: assignment.remainingChance != null
-      ? `剩余考评机会: ${assignment.remainingChance}次`
-      : (status === 'in_progress' ? '进行中' : ''),
+    attemptsAllowed,
+    attemptsUsed,
+    remainingAttempts: Math.max(0, attemptsAllowed - attemptsUsed),
+    inProgressAttemptId: assignment.inProgressAttemptId ?? null,
   };
 };
 
 export const adaptPastExam = (past) => {
   if (!past) return null;
+  const pendingReview = Boolean(past.pendingReview) || Number(past.status) === 2;
   const passed = Boolean(past.isPassed);
+  const fullScore = Number(past.examTotalScore || past.totalScore || 100);
   let status = 'failed';
-  if (passed) {
-    if (Number(past.score) >= Number(past.totalScore || 100)) status = 'passed_perfect';
+  if (pendingReview) status = 'pending_review';
+  else if (passed) {
+    if (Number(past.score) >= fullScore) status = 'passed_perfect';
     else if (Number(past.score) >= Number(past.passScore || 60) + 10) status = 'passed_excellent';
     else status = 'passed_qualified';
   }
@@ -238,16 +232,22 @@ export const adaptPastExam = (past) => {
     id: toId(past.attemptId ?? past.examId),
     examId: past.examId,
     attemptId: past.attemptId,
-    category: past.category || '',
+    attemptNo: Number(past.attemptNo || 0),
     type: past.type || '',
     completionDate: formatDateTime(past.completionDate || past.submittedAt),
-    score: Number(past.score || 0),
-    totalScore: Number(past.totalScore || 100),
+    score: Number(past.score ?? past.totalScore ?? 0),
+    objectiveScore: Number(past.objectiveScore || 0),
+    subjectiveScore: Number(past.subjectiveScore || 0),
+    attemptTotalScore: Number(past.totalScore || 0),
+    examTotalScore: Number(past.examTotalScore || past.totalScore || 100),
+    totalScore: Number(past.examTotalScore || past.totalScore || 100),
     passScore: Number(past.passScore || 60),
+    pendingReview,
     status,
-    statusLabel: past.statusLabel || '',
+    statusLabel: past.statusLabel || (pendingReview ? '待人工评分' : ''),
     wrongCount: Number(past.wrongCount || 0),
-    relatedCourse: past.relatedCourseText || '',
+    answeredCount: Number(past.answeredCount || 0),
+    questionCount: Number(past.questionCount || 0),
   };
 };
 
@@ -282,7 +282,6 @@ export const adaptExamQuestion = (question) => {
     typeLabel: question.typeLabel,
     score: Number(question.score || 0),
     title: question.title,
-    knowledgePoint: question.knowledgePoint || '',
     difficulty: Number(question.difficulty || 2),
     difficultyLabel: question.difficultyLabel || '中等',
     options,
@@ -315,41 +314,7 @@ export const adaptCertificate = (cert) => {
   };
 };
 
-/* ============================== 消息 / 通知 ============================== */
-
-const notificationType = (notice) => {
-  if (notice.refType === 'exam') return 'exam';
-  if (notice.refType === 'course') return 'course';
-  if (notice.refType === 'leave' || notice.refType === 'attendance') return 'attendance';
-  if (notice.refType === 'announcement') return 'announcement';
-  const map = { 1: 'exam', 2: 'course', 3: 'attendance', 4: 'announcement', 5: 'attendance' };
-  return map[notice.type] || 'announcement';
-};
-
-export const adaptNotification = (notice) => {
-  if (!notice) return null;
-  return {
-    ...notice,
-    id: toId(notice.id),
-    numericId: notice.id,
-    type: notificationType(notice),
-    typeLabel: notice.typeLabel || '系统通知',
-    sender: notice.senderName || '系统',
-    time: formatMessageTime(notice.createdAt),
-    preview: notice.summary || '',
-    priority: Number(notice.priority) >= 2 ? 'urgent' : 'normal',
-    isRead: Boolean(notice.isRead),
-    attachmentsCount: 0,
-    details: {
-      fullContent: notice.summary || '',
-      bulletPoints: [],
-      officialNoticeId: notice.officialRefNo || '',
-      examDuration: notice.durationLabel || '',
-      passingScore: notice.passingScoreLabel || '',
-      attachments: [],
-    },
-  };
-};
+/* ============================== 消息中心（公告） ============================== */
 
 /** 学员端公告 → 消息中心视图模型（消息来源于管理端公告管理） */
 export const adaptAnnouncementMessage = (announcement) => {
@@ -371,7 +336,6 @@ export const adaptAnnouncementMessage = (announcement) => {
     details: {
       fullContent: content,
       bulletPoints: [],
-      officialNoticeId: announcement.extId || '',
       examDuration: '',
       passingScore: '',
       attachments: [],
@@ -390,7 +354,6 @@ export const adaptLeave = (leave) => {
     numericId: leave.id,
     type: leave.leaveType || '',
     flowNumber: leave.flowNo || '',
-    title: leave.trainingTitle || '',
     timeRange: leave.startDate === leave.endDate
       ? formatDate(leave.startDate)
       : `${formatDate(leave.startDate)} ~ ${formatDate(leave.endDate)}`,
@@ -399,7 +362,6 @@ export const adaptLeave = (leave) => {
     status: statusMap[leave.status] || 'pending',
     statusLabel: leave.statusLabel || '',
     submittedTime: formatDateTime(leave.submittedAt),
-    // 管理端审批列表字段
     applicant: leave.userName || leave.applicant || '',
     userName: leave.userName || leave.applicant || '',
     avatarUrl: leave.avatarUrl || '',
@@ -418,16 +380,15 @@ export const adaptAdminDepartment = (dept) => {
     ...dept,
     id: toId(dept.id),
     numericId: dept.id,
-    extId: dept.extId,
     manager: dept.managerName || dept.manager || '',
     managerName: dept.managerName || dept.manager || '',
     desc: dept.description || dept.desc || '',
     description: dept.description || dept.desc || '',
     status: dept.status === 2 ? 'inactive' : 'active',
     statusCode: dept.status,
-    learners: Number(dept.learnerCount ?? dept.learnerCountCached ?? 0),
+    learners: Number(dept.learnerCount ?? 0),
     learnerCount: Number(dept.learnerCount ?? 0),
-    hours: Number(dept.totalStudyHours ?? dept.studyHoursCached ?? 0),
+    hours: Number(dept.totalStudyHours ?? 0),
     totalStudyHours: Number(dept.totalStudyHours ?? 0),
     sortNo: dept.sortNo ?? 0,
   };
@@ -442,12 +403,10 @@ export const adaptAdminExam = (exam) => {
   if (!exam) return null;
   return {
     ...exam,
-    id: toId(exam.id ?? exam.extId),
+    id: toId(exam.id),
     numericId: exam.id,
-    extId: exam.extId,
     code: exam.code || '',
-    category: exam.organizer || exam.category || '',
-    organizer: exam.organizer || exam.category || '',
+    organizer: exam.organizer || '',
     state: examStateFromCode(exam.statusCode),
     statusCode: exam.statusCode,
     status: exam.status || '',
@@ -457,13 +416,8 @@ export const adaptAdminExam = (exam) => {
     durationMinutes: exam.durationMinutes || 0,
     totalScore: exam.totalScore || 100,
     passScore: exam.passScore || 60,
-    questionCount: exam.questionCount ?? exam.questionCountCached ?? 0,
-    participants: exam.attemptCount ?? exam.participantCountCached ?? 0,
+    questionCount: exam.questionCount ?? 0,
     attemptCount: exam.attemptCount ?? 0,
-    passRate: exam.passRate ?? 0,
-    avgScore: exam.avgScore ?? 0,
-    relatedCourseText: exam.relatedCourseText || '',
-    isDoubleCameraProctored: Boolean(exam.isDoubleCameraProctored ?? exam.isDoubleCamera),
   };
 };
 
@@ -502,8 +456,6 @@ export const adaptAdminAnnouncement = (notice) => {
     authorName: notice.authorName || '系统',
     publishTime: formatDateTime(notice.publishAt),
     publishAt: notice.publishAt,
-    views: notice.viewCount || 0,
-    viewCount: notice.viewCount || 0,
   };
 };
 
@@ -525,7 +477,6 @@ export const adaptAdminCheckin = (checkin) => {
     checkOut: checkin.checkOutTime || '--',
     status: statusMap[checkin.status] || 'missing',
     statusLabel: checkin.statusLabel || '',
-    method: checkin.method === 2 ? '线上' : '线下',
   };
 };
 
@@ -536,6 +487,13 @@ export const adaptAttemptAnswer = (answer) => {
   return {
     ...answer,
     questionId: answer.questionId,
+    questionNo: Number(answer.questionNo || 0),
+    type: Number(answer.type || 0),
+    title: answer.title || '',
+    score: Number(answer.score || 0),
+    scoreGained: Number(answer.scoreGained || 0),
+    referenceAnswer: answer.referenceAnswer || '',
+    analysis: answer.analysis || '',
     selectedKeys: answer.selectedKeys || '',
     selectedList: String(answer.selectedKeys || '').replace(/[^A-Za-z]/g, '').split(''),
     answerText: answer.answerText || '',

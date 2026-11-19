@@ -86,8 +86,8 @@
       <button
         v-if="!isAdmin"
         class="bell-btn"
-        title="消息与站内信"
-        aria-label="消息与站内信"
+        title="消息中心"
+        aria-label="消息中心"
         @click="$emit('navigate', 'messages')"
       >
         <MessageSquareText class="message-icon" aria-hidden="true" />
@@ -182,7 +182,6 @@ const props = defineProps({
 const emit = defineEmits([
   'navigate',
   'cycle-theme',
-  'open-mockup',
   'toggle-checkin',
   'search',
   'select-search-result'

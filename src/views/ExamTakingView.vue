@@ -331,7 +331,6 @@ import {
 import {
   fetchAttempt,
   fetchExamPaper,
-  reportExamSwitch,
   saveExamAnswer,
   startExam,
   submitExam,
@@ -362,7 +361,6 @@ const loading = ref(true);
 const pageError = ref('');
 const saveError = ref('');
 const submitting = ref(false);
-const switchCount = ref(0);
 const secondsLeft = ref(0);
 const currentQuestionIdx = ref(1);
 
@@ -396,7 +394,6 @@ const applySession = (paper, session) => {
   secondsLeft.value = sessionRemaining == null
     ? examDurationSeconds
     : Math.max(0, sessionRemaining);
-  switchCount.value = Number(session.switchCount || 0);
 
   const nextAnswers = {};
   const nextFlags = {};
@@ -443,26 +440,13 @@ const loadSession = async () => {
   }
 };
 
-const reportSwitch = () => {
-  if (document.visibilityState === 'visible' || !attemptId.value || loading.value) return;
-  reportExamSwitch(attemptId.value)
-    .then((result) => {
-      switchCount.value = Number(result?.switchCount ?? switchCount.value);
-    })
-    .catch(() => {
-      /* 切屏计数上报失败不影响作答 */
-    });
-};
-
 onMounted(() => {
   loadSession();
-  document.addEventListener('visibilitychange', reportSwitch);
 });
 
 onUnmounted(() => {
   if (timer) clearInterval(timer);
   if (textSaveTimer) clearTimeout(textSaveTimer);
-  document.removeEventListener('visibilitychange', reportSwitch);
 });
 
 const formattedTimer = computed(() => {
@@ -650,7 +634,6 @@ const finishExam = async () => {
       answeredCount: answeredCount.value,
       totalQuestions: totalQuestions.value,
       wrongCount: Number(result.wrongCount || 0),
-      switchCount: Number(result.switchCount ?? switchCount.value),
       isPassed: Boolean(result.isPassed),
       pendingReview: Number(result.status) === 2
     });

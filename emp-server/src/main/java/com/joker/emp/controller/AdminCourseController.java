@@ -9,7 +9,6 @@ import com.joker.emp.service.CourseService.ChapterSaveRequest;
 import com.joker.emp.service.CourseService.CourseSaveRequest;
 import com.joker.emp.service.CourseService.LessonSaveRequest;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import java.util.List;
 import java.util.Map;
@@ -40,20 +39,8 @@ public class AdminCourseController {
       @RequestParam(defaultValue = "10") long size,
       @RequestParam(required = false) String keyword,
       @RequestParam(required = false) Long categoryId,
-      @RequestParam(required = false) Integer status,
-      @RequestParam(required = false) Boolean required) {
-    return ApiResponse.ok(courseService.page(page, size, keyword, categoryId, status, required));
-  }
-
-  @GetMapping("/courses/options")
-  public ApiResponse<List<Map<String, Object>>> options() {
-    return ApiResponse.ok(courseService.page(1, 200, null, null, 2, null).records().stream()
-        .map(c -> Map.<String, Object>of(
-            "id", c.get("id"),
-            "title", c.get("title"),
-            "categoryLabel", c.get("categoryLabel") == null ? "" : c.get("categoryLabel"),
-            "hours", c.get("hours") == null ? 0 : c.get("hours")))
-        .toList());
+      @RequestParam(required = false) Integer status) {
+    return ApiResponse.ok(courseService.page(page, size, keyword, categoryId, status));
   }
 
   @GetMapping("/courses/{id}")
@@ -128,16 +115,6 @@ public class AdminCourseController {
     return ApiResponse.ok(courseService.categories());
   }
 
-  @GetMapping("/course-tags")
-  public ApiResponse<List<Map<String, Object>>> tags() {
-    return ApiResponse.ok(courseService.tags());
-  }
-
-  @PostMapping("/course-tags")
-  public ApiResponse<Map<String, Object>> createTag(@Valid @RequestBody NameRequest request) {
-    return ApiResponse.ok(courseService.createTag(request.name()));
-  }
-
   @GetMapping("/instructors")
   public ApiResponse<List<Map<String, Object>>> instructors() {
     return ApiResponse.ok(courseService.instructors());
@@ -161,8 +138,5 @@ public class AdminCourseController {
   }
 
   public record StatusRequest(@NotNull(message = "请选择课程状态") Integer status) {
-  }
-
-  public record NameRequest(@NotBlank(message = "请输入标签名") String name) {
   }
 }

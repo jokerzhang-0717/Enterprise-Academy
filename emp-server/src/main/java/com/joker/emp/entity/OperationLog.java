@@ -19,9 +19,6 @@ public class OperationLog {
   @TableId(type = IdType.AUTO)
   private Long id;
 
-  /** mock 原始 id，如 act-1 */
-  private String extId;
-
   /** course / user / exam / notice / approve */
   private String logType;
 

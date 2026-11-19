@@ -108,6 +108,9 @@
             <td class="num">{{ item.days }} 天</td>
             <td class="reason-cell">
               <div class="reason-text">{{ item.reason }}</div>
+              <div v-if="item.status === 'rejected' && item.approveRemark" class="reason-reject">
+                驳回理由：{{ item.approveRemark }}
+              </div>
             </td>
             <td class="cell-muted">{{ item.submittedTime }}</td>
             <td>
@@ -171,10 +174,68 @@
               </span>
             </div>
             <p class="reason-dialog-text">{{ reasonDetail.reason }}</p>
+            <div v-if="reasonDetail.status === 'rejected'" class="reason-dialog-reject">
+              <span class="reason-dialog-reject-label">驳回理由</span>
+              <p class="reason-dialog-reject-text">{{ reasonDetail.approveRemark || '未填写驳回理由' }}</p>
+            </div>
             <p class="reason-dialog-foot">提交时间：{{ reasonDetail.submittedTime }}</p>
           </div>
           <div class="reason-dialog-actions">
             <button type="button" class="reason-dialog-btn" @click="closeReason">关闭</button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
+    <!-- 驳回理由 -->
+    <Teleport to="body">
+      <div v-if="rejectTarget" class="reason-modal" @click.self="closeReject">
+        <div class="reason-dialog" role="dialog" aria-modal="true" aria-labelledby="reject-dialog-title">
+          <div class="reason-dialog-head">
+            <div>
+              <h3 id="reject-dialog-title" class="reason-dialog-title">填写驳回理由</h3>
+              <p class="reason-dialog-sub">
+                {{ rejectTarget.applicant }} · {{ rejectTarget.department }} · {{ rejectTarget.employeeId }}
+              </p>
+            </div>
+            <button class="reason-dialog-close" aria-label="关闭" @click="closeReject">✕</button>
+          </div>
+          <div class="reason-dialog-body">
+            <div class="reason-dialog-meta">
+              <span class="type-chip">{{ rejectTarget.type }}</span>
+              <span class="reason-dialog-time">{{ rejectTarget.timeRange }} · {{ rejectTarget.days }} 天</span>
+            </div>
+            <p class="reason-dialog-text">{{ rejectTarget.reason }}</p>
+            <label class="reject-field" for="reject-remark">
+              驳回理由 <span class="reject-required">*</span>
+            </label>
+            <textarea
+              id="reject-remark"
+              v-model.trim="rejectRemark"
+              class="reject-textarea"
+              :class="rejectError ? 'is-error' : ''"
+              rows="4"
+              maxlength="200"
+              placeholder="请填写驳回理由，学员将在请假记录中看到"
+              :aria-invalid="Boolean(rejectError)"
+              aria-describedby="reject-remark-error"
+              @input="rejectError = ''"
+            ></textarea>
+            <div class="reject-field-foot">
+              <p v-if="rejectError" id="reject-remark-error" class="reject-error">{{ rejectError }}</p>
+              <span class="reject-count">{{ rejectRemark.length }}/200</span>
+            </div>
+          </div>
+          <div class="reason-dialog-actions">
+            <button type="button" class="reason-dialog-btn" @click="closeReject">取消</button>
+            <button
+              type="button"
+              class="reason-dialog-btn reason-dialog-btn--danger"
+              :disabled="rejectSubmitting"
+              @click="submitReject"
+            >
+              {{ rejectSubmitting ? '提交中…' : '确认驳回' }}
+            </button>
           </div>
         </div>
       </div>
@@ -244,11 +305,57 @@ const statusLabel = (status) => statusLabelMap[status] || status;
 const reasonDetail = ref(null);
 const openReason = (item) => { reasonDetail.value = item; };
 const closeReason = () => { reasonDetail.value = null; };
-const onKeydown = (e) => { if (e.key === 'Escape') closeReason(); };
+
+/* ---------- 驳回理由 ---------- */
+const rejectTarget = ref(null);
+const rejectRemark = ref('');
+const rejectError = ref('');
+const rejectSubmitting = ref(false);
+
+const openReject = (item) => {
+  rejectTarget.value = item;
+  rejectRemark.value = '';
+  rejectError.value = '';
+  rejectSubmitting.value = false;
+};
+const closeReject = () => {
+  if (rejectSubmitting.value) return;
+  rejectTarget.value = null;
+};
+const submitReject = async () => {
+  if (!rejectTarget.value || rejectSubmitting.value) return;
+  if (!rejectRemark.value) {
+    rejectError.value = '请填写驳回理由';
+    return;
+  }
+  rejectSubmitting.value = true;
+  try {
+    const item = rejectTarget.value;
+    await approveAdminLeave(item.numericId ?? item.id, 'rejected', rejectRemark.value);
+    await loadLeaves();
+    rejectSubmitting.value = false;
+    rejectTarget.value = null;
+    showToast('已驳回该请假申请', 'success');
+  } catch (err) {
+    rejectSubmitting.value = false;
+    rejectError.value = err?.message || '驳回失败，请重试';
+  }
+};
+
+const onKeydown = (e) => {
+  if (e.key === 'Escape') {
+    if (rejectTarget.value) closeReject();
+    else closeReason();
+  }
+};
 onMounted(() => window.addEventListener('keydown', onKeydown));
 onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown));
 
 const decide = (item, status) => {
+  if (status === 'rejected') {
+    openReject(item);
+    return;
+  }
   const approve = status === 'approved';
   askConfirm({
     tone: approve ? 'success' : 'danger',
@@ -259,15 +366,13 @@ const decide = (item, status) => {
       { label: '请假时间', value: `${item.timeRange} · ${item.days} 天` },
       { label: '提交时间', value: item.submittedTime }
     ],
-    tip: approve
-      ? '通过后，该学员培训考勤将按请假记录，不计入缺勤。'
-      : '驳回后，该学员将收到驳回通知，需正常参加培训。',
-    confirmText: approve ? '确认通过' : '确认驳回',
+    tip: '通过后，该学员培训考勤将按请假记录，不计入缺勤。',
+    confirmText: '确认通过',
     action: async () => {
       try {
         await approveAdminLeave(item.numericId ?? item.id, status);
         await loadLeaves();
-        showToast(approve ? '已通过该请假申请' : '已驳回该请假申请', 'success');
+        showToast('已通过该请假申请', 'success');
       } catch (err) {
         showToast(err?.message || '审批失败，请重试', 'error');
       }
@@ -584,7 +689,7 @@ th.ops, td.ops { text-align: right; white-space: nowrap; }
   align-items: center;
   justify-content: center;
   padding: 20px;
-  background: rgb(15 30 51 / 50%);
+  background: var(--app-scrim);
   backdrop-filter: blur(4px);
   animation: reason-fade 0.16s ease-out;
 }
@@ -674,6 +779,93 @@ th.ops, td.ops { text-align: right; white-space: nowrap; }
   color: var(--app-text-5);
 }
 
+/* 驳回理由（列表 / 详情） */
+.reason-reject {
+  margin-top: 6px;
+  font-size: 11.5px;
+  line-height: 1.6;
+  color: var(--app-rose-fg);
+  word-break: break-word;
+}
+
+.reason-dialog-reject {
+  margin-top: 12px;
+  padding: 12px 14px;
+  background: var(--app-rose-bg);
+  border: 1px solid var(--app-rose-line);
+  border-radius: 10px;
+}
+
+.reason-dialog-reject-label {
+  display: inline-block;
+  margin-bottom: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--app-rose-fg);
+}
+
+.reason-dialog-reject-text {
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--app-text-2);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* 驳回理由输入 */
+.reject-field {
+  display: block;
+  margin-top: 16px;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--app-text-2);
+}
+.reject-required { color: var(--app-rose-fg); }
+
+.reject-textarea {
+  display: block;
+  width: 100%;
+  margin-top: 8px;
+  padding: 10px 12px;
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--app-text);
+  background: var(--app-surface);
+  border: 1px solid var(--app-border);
+  border-radius: 10px;
+  outline: none;
+  resize: vertical;
+  min-height: 96px;
+  max-height: 220px;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.reject-textarea::placeholder { color: var(--app-text-5); }
+.reject-textarea:focus {
+  border-color: var(--app-rose-fg);
+  box-shadow: 0 0 0 3px var(--app-rose-bg);
+}
+.reject-textarea.is-error { border-color: var(--app-rose-fg); }
+
+.reject-field-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 6px;
+}
+.reject-error {
+  font-size: 12px;
+  color: var(--app-rose-fg);
+}
+.reject-count {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--app-text-5);
+  font-variant-numeric: tabular-nums;
+}
+
 .reason-dialog-actions {
   display: flex;
   justify-content: flex-end;
@@ -692,6 +884,15 @@ th.ops, td.ops { text-align: right; white-space: nowrap; }
   transition: background 0.15s, color 0.15s;
 }
 .reason-dialog-btn:hover { background: var(--app-surface-3); color: var(--app-heading); }
+
+.reason-dialog-btn--danger {
+  margin-left: 8px;
+  color: #fff;
+  background: var(--app-rose-fg);
+  border-color: transparent;
+}
+.reason-dialog-btn--danger:hover { background: var(--app-rose-fg); color: #fff; filter: brightness(0.94); }
+.reason-dialog-btn--danger:disabled { opacity: 0.6; cursor: not-allowed; }
 
 @keyframes reason-fade {
   from { opacity: 0; }

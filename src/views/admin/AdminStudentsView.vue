@@ -20,7 +20,7 @@
           v-model.trim="keyword"
           type="text"
           class="search-input"
-          placeholder="搜索姓名 / 工号 / 职级..."
+          placeholder="搜索姓名 / 工号 / 职位..."
         />
         <button
           v-if="keyword"
@@ -54,7 +54,7 @@
             <th>学员</th>
             <th>工号</th>
             <th>部门</th>
-            <th>职级</th>
+            <th>职位</th>
             <th class="center">学时</th>
             <th class="center">证书</th>
             <th class="center">状态</th>
@@ -143,7 +143,7 @@
               </select>
             </label>
             <label class="field">
-              <span class="field-label">职级</span>
+              <span class="field-label">职位</span>
               <input v-model.trim="form.title" type="text" class="field-input" placeholder="如 高级工程师" />
             </label>
           </div>
@@ -342,7 +342,7 @@ const resetPassword = (learner) => {
     subtitle: `${learner.name} · 工号: ${learner.employeeId}`,
     rows: [
       { label: '所属部门', value: learner.department },
-      { label: '学员职级', value: learner.title },
+      { label: '学员职位', value: learner.title },
       { label: '重置后密码', value: '12345678' }
     ],
     tip: '重置后该学员的登录密码将统一恢复为 12345678。',
@@ -418,7 +418,7 @@ const removeLearner = (learner) => {
     subtitle: `${learner.name} · ${learner.department}`,
     rows: [
       { label: '工号', value: learner.employeeId },
-      { label: '职级', value: learner.title },
+      { label: '职位', value: learner.title },
       { label: '累计学时', value: `${learner.learningHours}h` }
     ],
     tip: '删除后该学员的账号与学习记录将一并移除，此操作不可恢复。',
@@ -791,7 +791,7 @@ th.ops, td.ops { text-align: right; }
   align-items: center;
   justify-content: center;
   padding: 20px;
-  background: rgba(15, 30, 51, 0.45);
+  background: var(--app-scrim);
   backdrop-filter: blur(2px);
 }
 

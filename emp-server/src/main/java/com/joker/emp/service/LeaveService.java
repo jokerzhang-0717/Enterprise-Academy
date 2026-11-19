@@ -61,15 +61,12 @@ public class LeaveService {
     item.put("flowNo", leave.getFlowNo());
     item.put("userId", leave.getUserId());
     item.put("leaveType", leave.getLeaveType());
-    item.put("trainingTitle", leave.getTrainingTitle());
-    item.put("courseId", leave.getCourseId());
     item.put("startDate", leave.getStartDate());
     item.put("endDate", leave.getEndDate());
     item.put("leaveDays", leave.getLeaveDays());
     item.put("reason", leave.getReason());
     item.put("status", leave.getStatus());
     item.put("statusLabel", statusText(leave.getStatus()));
-    item.put("attachmentUrl", leave.getAttachmentUrl());
     item.put("submittedAt", leave.getSubmittedAt());
     item.put("approverId", leave.getApproverId());
     item.put("approvedAt", leave.getApprovedAt());
@@ -92,8 +89,6 @@ public class LeaveService {
     leave.setUserId(AuthContext.userId());
     leave.setFlowNo(nextFlowNo());
     leave.setLeaveType(request.leaveType());
-    leave.setTrainingTitle(request.trainingTitle());
-    leave.setCourseId(request.courseId());
     LocalDate start = request.startDate();
     LocalDate end = request.endDate() == null ? start : request.endDate();
     leave.setStartDate(start);
@@ -101,7 +96,6 @@ public class LeaveService {
     leave.setLeaveDays(resolveLeaveDays(start, end, request.leaveDays()));
     leave.setReason(request.reason());
     leave.setStatus(1);
-    leave.setAttachmentUrl(request.attachmentUrl());
     leave.setSubmittedAt(LocalDateTime.now());
     leaveMapper.insert(leave);
     logService.record("approve", "提交请假申请 " + leave.getFlowNo(), "leave", leave.getId());
@@ -118,8 +112,6 @@ public class LeaveService {
       throw new BizException("已审批的申请不能修改");
     }
     if (request.leaveType() != null) leave.setLeaveType(request.leaveType());
-    if (request.trainingTitle() != null) leave.setTrainingTitle(request.trainingTitle());
-    if (request.courseId() != null) leave.setCourseId(request.courseId());
     LocalDate start = request.startDate() != null ? request.startDate() : leave.getStartDate();
     LocalDate end = request.endDate() != null ? request.endDate() : leave.getEndDate();
     boolean datesChanged = request.startDate() != null || request.endDate() != null;
@@ -135,7 +127,6 @@ public class LeaveService {
     leave.setEndDate(end);
     leave.setLeaveDays(leaveDays);
     if (request.reason() != null) leave.setReason(request.reason());
-    if (request.attachmentUrl() != null) leave.setAttachmentUrl(request.attachmentUrl());
     leaveMapper.updateById(leave);
     return detail(id);
   }
@@ -177,14 +168,6 @@ public class LeaveService {
     LeaveRequest leave = requireLeave(id);
     leaveMapper.deleteById(id);
     logService.record("approve", "删除请假申请 " + leave.getFlowNo(), "leave", id);
-  }
-
-  public List<Map<String, Object>> stats() {
-    return leaveMapper.selectStatusStats().stream().map(row -> {
-      Map<String, Object> item = new LinkedHashMap<>(row);
-      item.put("statusLabel", statusText(row.get("status")));
-      return item;
-    }).toList();
   }
 
   private LeaveRequest requireLeave(Long id) {
@@ -250,8 +233,7 @@ public class LeaveService {
     };
   }
 
-  public record LeaveSaveRequest(String leaveType, String trainingTitle, Long courseId,
-      LocalDate startDate, LocalDate endDate, java.math.BigDecimal leaveDays, String reason,
-      String attachmentUrl) {
+  public record LeaveSaveRequest(String leaveType,
+      LocalDate startDate, LocalDate endDate, java.math.BigDecimal leaveDays, String reason) {
   }
 }

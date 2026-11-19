@@ -19,9 +19,6 @@ public class CourseChapter {
   @TableId(type = IdType.AUTO)
   private Long id;
 
-  /** mock 原始 id，如 ch-1 */
-  private String extId;
-
   private Long courseId;
 
   private String title;

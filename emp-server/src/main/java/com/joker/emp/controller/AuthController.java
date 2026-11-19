@@ -54,6 +54,12 @@ public class AuthController {
     return ApiResponse.ok(authService.me());
   }
 
+  /** 新员工阅读完入职手册后调用，记录首次完成时间。 */
+  @PostMapping("/onboarding/complete")
+  public ApiResponse<Map<String, Object>> completeOnboarding() {
+    return ApiResponse.ok(authService.completeOnboarding());
+  }
+
   @PutMapping("/password")
   public ApiResponse<Void> changePassword(@Valid @RequestBody ChangePasswordRequest request) {
     authService.changePassword(request.oldPassword(), request.newPassword());

@@ -45,7 +45,6 @@
           @cycle-theme="cycleTheme"
           @search="globalSearchQuery = $event"
           @select-search-result="handleSelectSearchResult"
-          @open-mockup-viewer="handleOpenMockupForCurrentView"
         />
 
         <!-- 视图画布 -->
@@ -138,16 +137,11 @@
                 @navigate="handleNavigate"
               />
 
-              <RecommendedTrackDetailView
-                v-else-if="currentView === 'track-detail' && selectedTrack"
-                :track="selectedTrack"
-                @back="handleNavigate('home')"
-              />
-
               <ExamsView
-                v-else-if="currentView === 'exams'"
+                v-else-if="currentView === 'exams' || currentView === 'exam-result'"
                 :search-target-id="searchTargetId"
                 @start-exam="handleStartExam"
+                @view-result="handleViewResult"
               />
 
               <ExamTakingView
@@ -157,6 +151,9 @@
                 @back="handleNavigate('exams')"
                 @submit-exam="handleSubmitExam"
               />
+
+              <!-- 答题明细独立页：整页展示逐题作答（成绩结果本身以大弹窗呈现） -->
+              <ExamResultDetailView v-else-if="currentView === 'exam-result-details'" />
 
               <AnalyticsView
                 v-else-if="currentView === 'analytics'"
@@ -206,34 +203,21 @@
 
     <!-- ============ 3. 弹窗 / 对话框 ============ -->
 
-    <!-- 1) 原型图查看器 -->
-    <MockupViewerModal
-      :is-open="isMockupViewerOpen"
-      :initial-key="mockupInitialKey"
-      @close="isMockupViewerOpen = false"
-    />
-
-    <!-- 2) 证书查看器 -->
+    <!-- 1) 证书查看器 -->
     <CertificateModal
       :certificate="selectedCert"
       :recipient-name="currentUser?.name || ''"
       @close="selectedCert = null"
     />
 
-    <!-- 3) 考试成绩弹窗 -->
-    <ExamResultModal
-      :is-open="isExamResultOpen"
-      :score="examResult.score"
-      :pass-score="examResult.passScore"
-      :total-score="examResult.totalScore"
-      :answered-count="examResult.answeredCount"
-      :total-questions="examResult.totalQuestions"
-      :exam-title="examResult.examTitle"
-      :is-passed="examResult.isPassed"
-      :pending-review="examResult.pendingReview"
-      @close="handleCloseExamResult"
-      @view-certificate="handleViewCertFromExam"
-      @retake="handleRetakeExam"
+    <!-- 2) 考试成绩大窗口：浮在考评中心之上，不占用独立页面 -->
+    <ExamResultView v-if="currentView === 'exam-result'" />
+
+    <!-- 3) 新员工首次登录：强制阅读入职手册 -->
+    <OnboardingGate
+      v-if="showOnboardingGate"
+      :user-name="currentUser?.name || ''"
+      @completed="handleOnboardingCompleted"
     />
   </div>
   </Transition>
@@ -242,24 +226,23 @@
 <script setup>
 import { computed, onMounted, ref, watch, watchEffect } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { SCREEN_MOCKUPS } from './screenMockups.js';
 
 // Shared Components
 import Sidebar from './components/Sidebar.vue';
 import AdminSidebar from './components/AdminSidebar.vue';
 import Header from './components/Header.vue';
-import MockupViewerModal from './components/MockupViewerModal.vue';
 import ToastStack from './components/ToastStack.vue';
 import CertificateModal from './components/CertificateModal.vue';
-import ExamResultModal from './components/ExamResultModal.vue';
+import OnboardingGate from './components/OnboardingGate.vue';
 
 // Views
 import HomeView from './views/HomeView.vue';
 import CoursesView from './views/CoursesView.vue';
 import CoursePlayerView from './views/CoursePlayerView.vue';
-import RecommendedTrackDetailView from './views/CourseDetailView.vue';
 import ExamsView from './views/ExamsView.vue';
 import ExamTakingView from './views/ExamTakingView.vue';
+import ExamResultView from './views/ExamResultView.vue';
+import ExamResultDetailView from './views/ExamResultDetailView.vue';
 import AnalyticsView from './views/AnalyticsView.vue';
 import ProfileView from './views/ProfileView.vue';
 import AttendanceView from './views/AttendanceView.vue';
@@ -276,7 +259,6 @@ import AdminLeaveApprovalView from './views/admin/AdminLeaveApprovalView.vue';
 import AdminCheckinRecordsView from './views/admin/AdminCheckinRecordsView.vue';
 import AdminCertificatesView from './views/admin/AdminCertificatesView.vue';
 import AdminAnnouncementsView from './views/admin/AdminAnnouncementsView.vue';
-
 import { useToast } from './composables/useToast.js';
 import { useMessages, resetMessages, loadMessages, markMessageRead } from './composables/useMessages.js';
 import { useAttendance, resetAttendance, loadAttendance } from './composables/useAttendance.js';
@@ -285,7 +267,7 @@ import { adminStore, loadAdminStore, resetAdminStore } from './adminStore.js';
 import { learnerStore, loadLearnerCourses, resetLearnerStore } from './learnerStore.js';
 import { locationForView } from './router/index.js';
 import {
-  fetchAllTracks,
+  fetchAttempt,
   fetchExams,
   fetchMyCertificates,
   logoutApi,
@@ -314,7 +296,6 @@ const currentView = ref(route.name === 'exam-taking-by-id' ? 'exam-taking' : rou
 const mainContent = ref(null);
 const theme = ref('cyan');
 const { isCheckedIn } = useAttendance();
-const selectedTrack = ref(null);
 const selectedMessageId = ref('');
 const messages = useMessages();
 const unreadMessageCount = computed(() => messages.value.filter(message => !message.isRead).length);
@@ -322,37 +303,16 @@ const selectedCourseId = ref('');
 const selectedExamId = ref('');
 const globalSearchQuery = ref('');
 const searchTargetId = ref('');
-const searchTracks = ref([]);
 const searchAssignments = ref([]);
 const searchPastExams = ref([]);
 const searchCertificates = ref([]);
-let trackLoadVersion = 0;
 
 watch(
   () => route.fullPath,
-  async () => {
+  () => {
     const routeName = route.name === 'exam-taking-by-id' ? 'exam-taking' : route.name;
     currentView.value = routeName || 'home';
     selectedCourseId.value = String(route.params.courseId || '');
-    const trackId = String(route.params.trackId || '');
-    selectedTrack.value = null;
-    const requestVersion = ++trackLoadVersion;
-    if (trackId) {
-      try {
-        let track = searchTracks.value.find((item) => item.id === trackId);
-        if (!track) {
-          track = (await fetchAllTracks()).find((item) => item.id === trackId);
-        }
-        if (requestVersion === trackLoadVersion) {
-          selectedTrack.value = track || null;
-          if (!track) showToast('未找到该研修通道。', 'error');
-        }
-      } catch (error) {
-        if (requestVersion === trackLoadVersion && error?.status !== 401) {
-          showToast(error?.message || '研修通道加载失败。', 'error');
-        }
-      }
-    }
     selectedMessageId.value = String(route.params.messageId || '');
     selectedExamId.value = String(route.params.examId || route.query.examId || '');
     searchTargetId.value = String(route.query.searchTargetId || '');
@@ -362,21 +322,7 @@ watch(
 );
 
 // Modals State
-const isMockupViewerOpen = ref(false);
-const mockupInitialKey = ref('home');
 const selectedCert = ref(null);
-
-const isExamResultOpen = ref(false);
-const examResult = ref({
-  score: 0,
-  passScore: 60,
-  totalScore: 100,
-  answeredCount: 0,
-  totalQuestions: 0,
-  examTitle: '',
-  isPassed: false,
-  pendingReview: false,
-});
 
 const searchableRecords = computed(() => {
   const admin = isAdmin.value;
@@ -391,10 +337,8 @@ const searchableRecords = computed(() => {
       course.summary,
       course.categoryLabel,
       course.category,
-      course.level,
       course.instructor?.name,
       course.instructor?.title,
-      ...(course.tags || []),
     ].filter(Boolean).join(' '),
     view: admin ? 'admin-courses' : 'courses',
     targetId: admin ? '' : `course-card-${course.id}`,
@@ -406,8 +350,8 @@ const searchableRecords = computed(() => {
         id: exam.id,
         type: '考试',
         title: exam.title,
-        description: exam.category || exam.statusLabel || '',
-        searchText: [exam.title, exam.category, exam.statusLabel].filter(Boolean).join(' '),
+        description: exam.organizer || exam.statusLabel || '',
+        searchText: [exam.title, exam.organizer, exam.statusLabel].filter(Boolean).join(' '),
         view: 'admin-exams',
         targetId: '',
       })),
@@ -432,27 +376,12 @@ const searchableRecords = computed(() => {
     );
   } else {
     records.push(
-      ...searchTracks.value.map((track) => ({
-        id: track.id,
-        type: '研修通道',
-        title: track.title,
-        description: track.summary || track.description || '',
-        searchText: [
-          track.title,
-          track.summary,
-          track.description,
-          track.audience,
-          ...(track.outline || []),
-        ].filter(Boolean).join(' '),
-        view: 'track-detail',
-        targetId: '',
-      })),
       ...searchAssignments.value.map((exam) => ({
         id: exam.id,
         type: '考试',
         title: exam.title,
-        description: `${exam.category || ''} · ${exam.timeWindow || ''}`,
-        searchText: [exam.title, exam.category, exam.timeWindow, exam.relatedCourse].filter(Boolean).join(' '),
+        description: `${exam.organizer || ''} · ${exam.timeWindow || ''}`,
+        searchText: [exam.title, exam.organizer, exam.timeWindow].filter(Boolean).join(' '),
         view: 'exams',
         targetId: `exam-${exam.id}`,
       })),
@@ -535,7 +464,6 @@ const handleNavigate = (view, { searchTargetId: targetId = '' } = {}) => {
   }
   const location = locationForView(view, {
     courseId,
-    trackId: selectedTrack.value?.id,
     messageId: selectedMessageId.value,
     examId: selectedExamId.value,
   });
@@ -556,9 +484,6 @@ const cycleTheme = () => {
 };
 
 const handleSelectSearchResult = (result) => {
-  selectedTrack.value = result.type === '研修通道'
-    ? searchTracks.value.find((track) => track.id === result.id) || null
-    : null;
   handleNavigate(result.view, { searchTargetId: result.targetId });
   globalSearchQuery.value = '';
 };
@@ -576,22 +501,23 @@ const handleOpenMessage = (messageId) => {
 
 const isAdmin = computed(() => currentUser.value?.role === 'admin');
 
+/* 新员工（学员）首次进入平台时，必须先读完入职手册才能使用。 */
+const showOnboardingGate = computed(() =>
+  currentUser.value?.role === 'learner' && currentUser.value?.onboardingCompleted !== true
+);
+
 const loadSearchData = async () => {
   if (isAdmin.value) return;
   const results = await Promise.allSettled([
-    fetchAllTracks(),
     fetchExams(),
     fetchMyCertificates(),
   ]);
   if (results[0].status === 'fulfilled') {
-    searchTracks.value = results[0].value;
+    searchAssignments.value = results[0].value.assignments || [];
+    searchPastExams.value = results[0].value.past || [];
   }
   if (results[1].status === 'fulfilled') {
-    searchAssignments.value = results[1].value.assignments || [];
-    searchPastExams.value = results[1].value.past || [];
-  }
-  if (results[2].status === 'fulfilled') {
-    searchCertificates.value = results[2].value;
+    searchCertificates.value = results[1].value;
   }
   if (results.some((result) => result.status === 'rejected' && result.reason?.status !== 401)) {
     showToast('部分搜索数据加载失败，相关内容暂不可搜索。', 'error');
@@ -599,7 +525,6 @@ const loadSearchData = async () => {
 };
 
 const resetSearchData = () => {
-  searchTracks.value = [];
   searchAssignments.value = [];
   searchPastExams.value = [];
   searchCertificates.value = [];
@@ -682,6 +607,12 @@ const handleUpdateUser = (updatedUser) => {
   setStoredUser(currentUser.value);
 };
 
+const handleOnboardingCompleted = (patch) => {
+  currentUser.value = { ...currentUser.value, ...(patch || {}), onboardingCompleted: true };
+  setStoredUser(currentUser.value);
+  showToast('入职手册已阅读完成，欢迎开始学习！', 'success');
+};
+
 const handleOpenCertificate = (certId) => {
   const found = searchCertificates.value.find((certificate) => certificate.id === String(certId));
   if (!found) {
@@ -691,46 +622,52 @@ const handleOpenCertificate = (certId) => {
   selectedCert.value = found;
 };
 
-const handleOpenMockupForCurrentView = () => {
-  let key = 'home';
-  if (currentView.value === 'courses') key = 'courses';
-  else if (currentView.value === 'course-player') key = 'coursePlayer';
-  else if (currentView.value === 'exams') key = 'exams';
-  else if (currentView.value === 'exam-taking') key = 'examTaking';
-  else if (currentView.value === 'analytics') key = 'analytics';
-  else if (currentView.value === 'attendance') key = 'attendance';
-  else if (currentView.value === 'certificates') key = 'certificates';
-  else if (currentView.value === 'messages') key = 'messages';
-  else if (currentView.value === 'login') key = 'login';
-
-  mockupInitialKey.value = key;
-  isMockupViewerOpen.value = true;
-};
-
 const handleStartExam = (exam) => {
   selectedExamId.value = exam?.examId ?? exam?.id ?? '';
   handleNavigate('exam-taking');
 };
 
+/* 组装好成绩后写入会话存储，再用路由触发考评中心之上的成绩大窗口。
+   同一 attemptId 刷新/新标签打开时都能拿到完整上下文，并自行拉取最新明细。 */
+const openExamResult = (result) => {
+  const attemptId = result?.attemptId;
+  if (attemptId == null) return;
+  try {
+    window.sessionStorage.setItem(`emp_exam_result_${attemptId}`, JSON.stringify(result));
+  } catch {
+    /* ignore storage failures */
+  }
+  router.push({ name: 'exam-result', params: { attemptId: String(attemptId) } });
+};
+
 const handleSubmitExam = (payload) => {
-  examResult.value = { ...examResult.value, ...(payload || {}) };
-  isExamResultOpen.value = true;
+  openExamResult({ ...(payload || {}), examId: selectedExamId.value });
 };
 
-const handleCloseExamResult = () => {
-  isExamResultOpen.value = false;
-  handleNavigate('exams');
-};
-
-const handleViewCertFromExam = () => {
-  isExamResultOpen.value = false;
-  handleNavigate('certificates');
-};
-
-const handleRetakeExam = () => {
-  isExamResultOpen.value = false;
-  selectedExamId.value = '';
-  handleNavigate('exams');
+/* 从「历史成绩」进入：按 attemptId 拉取答卷与成绩详情 */
+const handleViewResult = async (record) => {
+  if (!record?.attemptId) return;
+  try {
+    const detail = await fetchAttempt(record.attemptId);
+    const answers = detail?.answers || [];
+    openExamResult({
+      attemptId: record.attemptId,
+      examId: record.examId,
+      score: Number(record.score ?? detail.totalScore ?? 0),
+      passScore: Number(detail.passScore ?? record.passScore ?? 60),
+      totalScore: Number(record.totalScore ?? detail.totalScore ?? 100),
+      answeredCount: Number(record.answeredCount ?? answers.length),
+      totalQuestions: Number(record.questionCount ?? answers.length),
+      examTitle: detail?.examTitle || record.title || '',
+      isPassed: Boolean(detail?.isPassed),
+      pendingReview: Boolean(record.pendingReview) || Number(detail?.status) === 2,
+      attemptNo: Number(record.attemptNo ?? detail?.attemptNo ?? 0),
+      submittedAt: record.completionDate || detail?.submittedAt || '',
+      answers,
+    });
+  } catch (error) {
+    showToast(error?.message || '成绩详情加载失败，请稍后重试', 'error');
+  }
 };
 </script>
 
@@ -962,6 +899,8 @@ textarea {
   --app-btn-primary-hover: var(--app-accent-border);
   /* 页面底 */
   --app-page-bg: #f4f9fd;
+  /* 弹窗遮罩:浅色主题用藏青半透明,曜黑主题换成中性黑,避免整屏泛蓝 */
+  --app-scrim: rgba(15, 30, 51, 0.45);
 }
 .theme-black {
   /* 内容面:深色卡片层,页面底比卡片更暗 */
@@ -1010,6 +949,8 @@ textarea {
   --app-text-5: #787f8b;
   --app-text-6: #5c626e;
   --app-page-bg: #0e0f12;
+  /* 遮罩:曜黑下不再用藏青,改为中性黑,和深色界面更统一 */
+  --app-scrim: rgba(0, 0, 0, 0.62);
   /* 单一亮色:电光青。交互/选中/身份标识全部走它,
      语义色(成功/警告/危险)仍保留各自色相,只有状态标签带颜色。 */
   --app-accent: #38bdf8;

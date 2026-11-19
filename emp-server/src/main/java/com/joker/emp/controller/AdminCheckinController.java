@@ -8,7 +8,6 @@ import com.joker.emp.service.CheckinService.CheckinSaveRequest;
 import com.joker.emp.service.CheckinService.CheckinUpdateRequest;
 import jakarta.validation.Valid;
 import java.time.LocalDate;
-import java.util.List;
 import java.util.Map;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -40,13 +39,6 @@ public class AdminCheckinController {
       @RequestParam(required = false) Integer status,
       @RequestParam(required = false) String keyword) {
     return ApiResponse.ok(checkinService.page(page, size, date, status, keyword));
-  }
-
-  @GetMapping("/stats")
-  public ApiResponse<List<Map<String, Object>>> stats(
-      @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
-      @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
-    return ApiResponse.ok(checkinService.stats(from, to));
   }
 
   @PostMapping

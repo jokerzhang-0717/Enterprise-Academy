@@ -19,9 +19,6 @@ public class Announcement {
   @TableId(type = IdType.AUTO)
   private Long id;
 
-  /** mock 原始 id，如 ann-1 */
-  private String extId;
-
   private String title;
 
   private String content;
@@ -37,9 +34,6 @@ public class Announcement {
   private String authorName;
 
   private LocalDateTime publishAt;
-
-  /** 缓存：阅读量（学员端展示） */
-  private Integer viewCountCached;
 
   @TableField(fill = FieldFill.INSERT)
   private LocalDateTime createdAt;

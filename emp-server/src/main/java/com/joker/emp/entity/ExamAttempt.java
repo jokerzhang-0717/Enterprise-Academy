@@ -20,9 +20,6 @@ public class ExamAttempt {
   @TableId(type = IdType.AUTO)
   private Long id;
 
-  /** mock 原始 id，如 past-1 */
-  private String extId;
-
   private Long examId;
 
   private Long userId;
@@ -50,11 +47,6 @@ public class ExamAttempt {
   private Boolean isPassed;
 
   private Integer wrongCount;
-
-  /** 切屏次数（防作弊） */
-  private Integer switchCount;
-
-  private String deviceInfo;
 
   private LocalDateTime gradedAt;
 

@@ -18,9 +18,7 @@ import {
   adaptExamQuestion,
   adaptExamSession,
   adaptLeave,
-  adaptNotification,
   adaptPastExam,
-  adaptTrack,
   adaptUser,
 } from './adapters.js';
 
@@ -63,11 +61,6 @@ export const fetchCourses = (params = {}) =>
 
 export const fetchCourse = (id) => http.get(`/courses/${id}`).then(adaptCourse);
 
-export const enrollCourse = (id) => http.post(`/courses/${id}/enroll`);
-
-export const fetchLesson = (courseId, lessonId) =>
-  http.get(`/courses/${courseId}/lessons/${lessonId}`);
-
 export const saveLessonProgress = (courseId, lessonId, payload) =>
   http.post(`/courses/${courseId}/lessons/${lessonId}/progress`, payload);
 
@@ -80,20 +73,6 @@ export const heartbeatStudySession = (sessionId) =>
 export const stopStudySession = (sessionId) =>
   http.post(`/study-sessions/${sessionId}/stop`);
 
-export const fetchMyLearning = () => http.get('/courses/my-learning');
-
-export const fetchCourseCategories = () => http.get('/course-categories');
-
-export const fetchCourseTags = () => http.get('/course-tags');
-
-export const fetchInstructors = () => http.get('/instructors');
-
-export const fetchTracks = () => http.get('/tracks');
-
-export const fetchAllTracks = () => http.get('/tracks/all').then((list) => (list || []).map(adaptTrack));
-
-export const fetchTrack = (id) => http.get(`/tracks/${id}`);
-
 export const fetchExams = () =>
   http.get('/exams').then((data) => ({
     ...(data || {}),
@@ -101,10 +80,6 @@ export const fetchExams = () =>
     metrics: adaptExamMetrics(data?.metrics),
     past: (data?.past || []).map(adaptPastExam),
   }));
-
-export const fetchExamMetrics = () => http.get('/exams/metrics').then(adaptExamMetrics);
-
-export const fetchPastExams = () => http.get('/exams/past').then((list) => (list || []).map(adaptPastExam));
 
 export const fetchExamPaper = (id) => http.get(`/exams/${id}/paper`).then(adaptExamPaper);
 
@@ -116,9 +91,6 @@ export const fetchAttempt = (attemptId) =>
 export const saveExamAnswer = (attemptId, payload) =>
   http.post(`/exams/attempts/${attemptId}/answers`, payload);
 
-export const reportExamSwitch = (attemptId) =>
-  http.post(`/exams/attempts/${attemptId}/switch`);
-
 export const submitExam = (attemptId) =>
   http.post(`/exams/attempts/${attemptId}/submit`).then(adaptExamSession);
 
@@ -128,34 +100,20 @@ export const fetchLeaves = () => http.get('/leaves').then((list) => (list || [])
 
 export const createLeave = (payload) => http.post('/leaves', payload);
 
-export const deleteLeave = (id) => http.delete(`/leaves/${id}`);
-
-export const fetchCheckins = (params = {}) => http.get('/checkins', params);
-
 export const fetchTodayCheckin = () => http.get('/checkins/today');
 
 export const checkIn = () => http.post('/checkins/check-in');
 
 export const checkOut = () => http.post('/checkins/check-out');
 
-export const fetchCheckinStats = () => http.get('/checkins/stats');
-
 /* ---------- 证书 ---------- */
 
 export const fetchMyCertificates = () =>
   http.get('/certificates/my').then((list) => (list || []).map(adaptCertificate));
 
-export const fetchCertificates = (params = {}) => http.get('/certificates', params);
-
-export const verifyCertificate = (serial) => http.get(`/certificates/verify/${serial}`);
-
-/* ---------- 公告 / 通知 ---------- */
-
-export const fetchAnnouncements = (params = {}) => http.get('/announcements', params);
+/* ---------- 公告 ---------- */
 
 export const fetchAnnouncement = (id) => http.get(`/announcements/${id}`);
-
-export const fetchUnreadAnnouncementCount = () => http.get('/announcements/unread-count');
 
 export const markAllAnnouncementsRead = () => http.put('/announcements/read-all', {});
 
@@ -166,33 +124,9 @@ export const fetchAnnouncementMessages = (params = { page: 1, size: 100 }) =>
     records: (page?.records || []).map(adaptAnnouncementMessage),
   }));
 
-export const fetchNotifications = (params = { page: 1, size: 100 }) =>
-  http.get('/notifications', params).then((page) => ({
-    ...page,
-    records: (page?.records || []).map(adaptNotification),
-  }));
-
-export const fetchRecentNotifications = () =>
-  http.get('/notifications/recent').then((list) => (list || []).map(adaptNotification));
-
-export const fetchUnreadNotificationCount = () => http.get('/notifications/unread-count');
-
-export const markNotificationRead = (id, isRead = true) =>
-  http.put(`/notifications/${id}/read`, { isRead });
-
-export const markAllNotificationsRead = () => http.put('/notifications/read-all', {});
-
-export const deleteNotification = (id) => http.delete(`/notifications/${id}`);
-
 /* ============================== 管理端 ============================== */
 
 export const fetchAdminDashboard = () => http.get('/admin/dashboard');
-
-export const fetchAdminActivities = (params = { page: 1, size: 20 }) =>
-  http.get('/admin/activities', params);
-
-export const fetchAdminLogs = (params = { page: 1, size: 20 }) =>
-  http.get('/admin/logs', params);
 
 /* ---------- 用户 ---------- */
 
@@ -201,10 +135,6 @@ export const fetchAdminUsers = (params = {}) =>
     ...page,
     records: (page?.records || []).map(adaptUser),
   }));
-
-export const fetchAdminUserOptions = () => http.get('/admin/users/options');
-
-export const fetchAdminUser = (id) => http.get(`/admin/users/${id}`).then(adaptUser);
 
 export const createAdminUser = (payload) => http.post('/admin/users', payload);
 
@@ -226,10 +156,6 @@ export const fetchAdminDepartments = (params = {}) =>
     records: (page?.records || []).map(adaptAdminDepartment),
   }));
 
-export const fetchDepartmentOptions = () => http.get('/departments/options');
-
-export const fetchAdminDepartmentOptions = () => http.get('/admin/departments/options');
-
 export const createAdminDepartment = (payload) => http.post('/admin/departments', payload);
 
 export const updateAdminDepartment = (id, payload) => http.put(`/admin/departments/${id}`, payload);
@@ -247,11 +173,7 @@ export const fetchAdminCourses = (params = {}) =>
     records: (page?.records || []).map(adaptAdminCourse),
   }));
 
-export const fetchAdminCourseOptions = () => http.get('/admin/courses/options');
-
 export const fetchAdminCourseCategories = () => http.get('/admin/course-categories');
-
-export const fetchAdminCourseTags = () => http.get('/admin/course-tags');
 
 export const fetchAdminInstructors = () => http.get('/admin/instructors');
 
@@ -286,20 +208,6 @@ export const updateAdminLesson = (courseId, chapterId, lessonId, payload) =>
 export const deleteAdminLesson = (courseId, chapterId, lessonId) =>
   http.delete(`/admin/courses/${courseId}/chapters/${chapterId}/lessons/${lessonId}`);
 
-/* ---------- 研修通道 ---------- */
-
-export const fetchAdminTracks = (params = { page: 1, size: 100 }) =>
-  http.get('/admin/tracks', params);
-
-export const createAdminTrack = (payload) => http.post('/admin/tracks', payload);
-
-export const updateAdminTrack = (id, payload) => http.put(`/admin/tracks/${id}`, payload);
-
-export const deleteAdminTrack = (id) => http.delete(`/admin/tracks/${id}`);
-
-export const updateAdminTrackStatus = (id, status) =>
-  http.put(`/admin/tracks/${id}/status`, { status });
-
 /* ---------- 考试 ---------- */
 
 export const fetchAdminExams = (params = {}) =>
@@ -319,14 +227,13 @@ export const deleteAdminExam = (id) => http.delete(`/admin/exams/${id}`);
 export const updateAdminExamStatus = (id, status) =>
   http.put(`/admin/exams/${id}/status`, { status });
 
-export const fetchAdminExamAssignments = (examId, params = { page: 1, size: 100 }) =>
-  http.get(`/admin/exams/${examId}/assignments`, params);
+export const fetchAdminExamAttempts = (params = {}) =>
+  http.get('/admin/exam-attempts', { page: 1, size: 200, ...params });
 
-export const fetchAdminExamAttempts = (params = { page: 1, size: 100 }) =>
-  http.get('/admin/exam-attempts', params);
+export const fetchAdminExamAttempt = (id) => http.get(`/admin/exam-attempts/${id}`);
 
 export const gradeAdminExamAttempt = (id, payload) =>
-  http.put(`/admin/exam-attempts/${id}/grade`, payload);
+  http.post(`/admin/exam-attempts/${id}/grade`, payload);
 
 /* ---------- 题库 ---------- */
 
@@ -352,18 +259,13 @@ export const fetchAdminLeaves = (params = {}) =>
     records: (page?.records || []).map(adaptLeave),
   }));
 
-export const fetchAdminLeaveStats = () => http.get('/admin/leaves/stats');
-
 const LEAVE_STATUS_CODES = { pending: 1, approved: 2, rejected: 3 };
 
-/** status 既接受视图里的 'approved'/'rejected'，也接受后端原始码 2/3 */
 export const approveAdminLeave = (id, status, remark = '') =>
   http.put(`/admin/leaves/${id}/approve`, {
     status: LEAVE_STATUS_CODES[status] ?? status,
     remark,
   });
-
-export const deleteAdminLeave = (id) => http.delete(`/admin/leaves/${id}`);
 
 /* ---------- 签到 ---------- */
 
@@ -373,13 +275,9 @@ export const fetchAdminCheckins = (params = {}) =>
     records: (page?.records || []).map(adaptAdminCheckin),
   }));
 
-export const fetchAdminCheckinStats = () => http.get('/admin/checkins/stats');
-
 export const createAdminCheckin = (payload) => http.post('/admin/checkins', payload);
 
 export const updateAdminCheckin = (id, payload) => http.put(`/admin/checkins/${id}`, payload);
-
-export const deleteAdminCheckin = (id) => http.delete(`/admin/checkins/${id}`);
 
 /* ---------- 证书 ---------- */
 

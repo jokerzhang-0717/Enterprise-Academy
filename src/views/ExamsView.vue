@@ -97,7 +97,7 @@
           <div class="exm-card__info">
             <div class="exm-card__tags">
               <span v-if="exam.status === 'in_progress'" class="exm-badge exm-badge--live">
-                考试进行中 · 可进入作答
+                {{ exam.attemptsUsed > 0 ? '可重新作答' : '考试进行中 · 可进入作答' }}
               </span>
               <span v-else-if="exam.status === 'not_started'" class="exm-badge exm-badge--wait">
                 未开始 · 请稍后
@@ -108,6 +108,11 @@
               <span v-else class="exm-badge exm-badge--wait">
                 考试状态待确认
               </span>
+              <span class="exm-badge exm-badge--chance">
+                {{ exam.remainingAttempts > 0
+                  ? `剩余 ${exam.remainingAttempts}/${exam.attemptsAllowed} 次机会`
+                  : '考试机会已用完' }}
+              </span>
             </div>
 
             <h3 class="exm-card__title">{{ exam.title }}</h3>
@@ -115,12 +120,13 @@
             <div class="exm-card__meta">
               <span>时间: <strong>{{ exam.timeWindow }}</strong></span>
               <span>时长: <strong>{{ exam.durationMinutes }} 分钟 · 满分 {{ exam.totalScore }}</strong></span>
+              <span>考试机会: <strong>{{ exam.attemptsUsed }} / {{ exam.attemptsAllowed }} 已用</strong></span>
             </div>
           </div>
 
           <!-- 右侧操作 -->
           <div class="exm-card__actions">
-            <!-- 进行中 -->
+            <!-- 进行中 / 仍有重考机会 -->
             <button
               v-if="exam.status === 'in_progress'"
               type="button"
@@ -128,7 +134,7 @@
               @click="$emit('start-exam', exam)"
             >
               <FileCheck2 class="exm-icon exm-icon--sm" />
-              <span>开始考试</span>
+              <span>{{ exam.attemptsUsed > 0 ? '重新作答' : '开始考试' }}</span>
             </button>
 
             <!-- 未开始 -->
@@ -162,13 +168,55 @@
               <Clock class="exm-icon exm-icon--sm" />
               <span>暂不可考</span>
             </button>
+
+            <button
+              v-if="latestAttemptOf(exam.examId)"
+              type="button"
+              class="exm-btn exm-btn--ghost"
+              @click="openResult(latestAttemptOf(exam.examId))"
+            >
+              <Eye class="exm-icon exm-icon--sm" />
+              <span>查看成绩</span>
+            </button>
           </div>
         </article>
       </div>
     </section>
 
-    <!-- 3. Past Exam Records (已移除) -->
-    <!-- 4. Wrong Questions Modal (已移除) -->
+    <!-- 3. Past Exam Records -->
+    <section class="exm-section exm-history">
+      <div class="exm-section__head">
+        <div class="exm-section__title">
+          <span class="exm-section__bar" />
+          <h2>历史成绩</h2>
+          <span class="exm-section__hint">含待人工评分记录；主观题评分后显示最终成绩</span>
+        </div>
+      </div>
+
+      <div v-if="pastExams.length" class="exm-history__list">
+        <article v-for="record in pastExams" :key="record.attemptId" class="exm-history__row">
+          <div class="exm-history__main">
+            <div class="exm-history__title">{{ record.title }}</div>
+            <div class="exm-history__meta">
+              第 {{ record.attemptNo || 1 }} 次 · {{ record.completionDate }}
+              <template v-if="record.questionCount"> · 已答 {{ record.answeredCount }}/{{ record.questionCount }} 题</template>
+            </div>
+          </div>
+          <span class="exm-history__status" :class="`exm-history__status--${record.status}`">
+            {{ record.statusLabel }}
+          </span>
+          <div class="exm-history__score">
+            <strong>{{ record.pendingReview ? '待评分' : record.score }}</strong>
+            <span>/ {{ record.totalScore }} 分</span>
+          </div>
+          <button type="button" class="exm-btn exm-btn--ghost" @click="openResult(record)">
+            <Eye class="exm-icon exm-icon--sm" />
+            <span>查看详情</span>
+          </button>
+        </article>
+      </div>
+      <div v-else class="exm-history__empty">暂无考试记录</div>
+    </section>
   </div>
 </template>
 
@@ -178,7 +226,7 @@ import {
   FileCheck2,
   Clock,
   Award,
-  FileText,
+  Eye,
   Layers
 } from 'lucide-vue-next';
 import { fetchExams, fetchMyCertificates } from '../api/index.js';
@@ -190,9 +238,10 @@ const props = defineProps({
   },
 });
 
-defineEmits(['start-exam']);
+const emit = defineEmits(['start-exam', 'view-result']);
 
 const exams = ref([]);
+const pastExams = ref([]);
 const metrics = ref({ pendingCount: 0, inProgressCount: 0, finishedCount: 0, avgPastScore: 0, passRate: 0 });
 const certificateCount = ref(0);
 
@@ -205,6 +254,7 @@ onMounted(async () => {
   ]);
   if (examsData) {
     exams.value = examsData.assignments || [];
+    pastExams.value = examsData.past || [];
     metrics.value = examsData.metrics || metrics.value;
   }
   certificateCount.value = (certificates || []).length;
@@ -219,6 +269,22 @@ const examsInTab = (tab) => exams.value.filter(exam => {
 });
 
 const filteredExams = computed(() => examsInTab(filterTab.value));
+
+/* ---------- 历史成绩：按考试取最近一次 attempt ---------- */
+const pastByExam = computed(() => {
+  const map = new Map();
+  for (const record of pastExams.value) {
+    const key = Number(record.examId);
+    if (!map.has(key)) map.set(key, record);
+  }
+  return map;
+});
+
+const latestAttemptOf = (examId) => pastByExam.value.get(Number(examId)) || null;
+
+const openResult = (record) => {
+  if (record?.attemptId != null) emit('view-result', record);
+};
 
 /* ---------- 筛选切换：统一入口，避免直接改 ref 造成隐式闭环 ---------- */
 const setFilterTab = (tab) => {
@@ -571,6 +637,106 @@ watch(
   font-weight: 600;
 }
 .exm-btn--close:hover { background: var(--c-sky-hover); }
+.exm-btn--ghost {
+  padding: 8px 16px;
+  border: 1px solid var(--c-border);
+  background: var(--app-surface);
+  color: var(--c-blue);
+  font-weight: 600;
+}
+.exm-btn--ghost:hover {
+  border-color: var(--c-sky);
+  background: var(--c-blue-bg);
+}
 
-/* ============ Panel (已移除) ============ */
+.exm-badge--chance {
+  background: var(--app-amber-soft, var(--c-blue-bg));
+  color: var(--app-amber-strong, var(--c-blue));
+}
+
+/* ============ 历史成绩 ============ */
+.exm-history__list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.exm-history__row {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 20px;
+  border: 1px solid var(--c-border);
+  border-radius: 12px;
+  background: var(--app-surface);
+}
+@media (min-width: 768px) {
+  .exm-history__row {
+    flex-direction: row;
+    align-items: center;
+    gap: 16px;
+  }
+}
+.exm-history__main {
+  flex: 1;
+  min-width: 0;
+}
+.exm-history__title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--c-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.exm-history__meta {
+  margin-top: 4px;
+  font-size: 11px;
+  color: var(--c-muted);
+}
+.exm-history__status {
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+  background: var(--c-border-soft);
+  color: var(--c-muted);
+}
+.exm-history__status--passed_perfect,
+.exm-history__status--passed_excellent,
+.exm-history__status--passed_qualified {
+  background: var(--app-emerald-soft);
+  color: var(--app-emerald-fg);
+}
+.exm-history__status--pending_review {
+  background: var(--app-amber-50, var(--c-border-soft));
+  color: var(--app-amber-strong, var(--c-muted));
+}
+.exm-history__status--failed {
+  background: var(--app-amber-50, var(--c-border-soft));
+  color: var(--app-amber-fg, var(--c-muted));
+}
+.exm-history__score {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  min-width: 92px;
+  font-family: 'SFMono-Regular', Consolas, monospace;
+}
+.exm-history__score strong {
+  font-size: 20px;
+  color: var(--c-text);
+}
+.exm-history__score span {
+  font-size: 11px;
+  color: var(--c-muted);
+}
+.exm-history__empty {
+  padding: 32px;
+  border: 1px dashed var(--c-border);
+  border-radius: 12px;
+  text-align: center;
+  color: var(--c-muted);
+  font-size: 12px;
+}
 </style>

@@ -1,8 +1,5 @@
 package com.joker.emp.service;
 
-import com.baomidou.mybatisplus.core.metadata.IPage;
-import com.baomidou.mybatisplus.core.toolkit.Wrappers;
-import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.joker.emp.entity.OperationLog;
 import com.joker.emp.mapper.OperationLogMapper;
 import com.joker.emp.security.AuthContext;
@@ -34,13 +31,5 @@ public class OperationLogService {
       log.setOperatorName("系统自动");
     }
     logMapper.insert(log);
-  }
-
-  public IPage<OperationLog> page(long page, long size, String logType) {
-    return logMapper.selectPage(new Page<>(page, size),
-        Wrappers.<OperationLog>lambdaQuery()
-            .eq(logType != null && !logType.isBlank(), OperationLog::getLogType, logType)
-            .orderByDesc(OperationLog::getOccurredAt)
-            .orderByDesc(OperationLog::getId));
   }
 }

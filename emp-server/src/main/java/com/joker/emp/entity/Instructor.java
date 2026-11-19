@@ -25,11 +25,6 @@ public class Instructor {
   /** 讲师头衔，如 资深架构师 */
   private String title;
 
-  /** 1 机构讲师（如 集团安全部）0 个人 */
-  private Boolean isOrg;
-
-  private String avatarUrl;
-
   @TableField(fill = FieldFill.INSERT)
   private LocalDateTime createdAt;
 

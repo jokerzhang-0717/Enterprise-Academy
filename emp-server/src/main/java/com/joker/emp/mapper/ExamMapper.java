@@ -12,12 +12,14 @@ import org.apache.ibatis.annotations.Select;
 @Mapper
 public interface ExamMapper extends BaseMapper<Exam> {
 
+  /** 历史答卷可能指向已归档（软删除）的考试，读取详情时需绕过 @TableLogic */
+  @Select("SELECT * FROM exam WHERE id = #{id}")
+  Exam selectByIdIncludingDeleted(@Param("id") Long id);
+
   @Select("""
       <script>
       SELECT id, code, title, status, pass_score AS passScore,
-             question_count AS questionCount, attempt_count AS attemptCount,
-             passed_count AS passedCount, avg_score AS avgScore, pass_rate AS passRate,
-             participant_count_cached AS participantCountCached
+             question_count AS questionCount, attempt_count AS attemptCount
       FROM v_exam_overview
       WHERE 1 = 1
       <if test="keyword != null and keyword != ''">
@@ -31,12 +33,10 @@ public interface ExamMapper extends BaseMapper<Exam> {
       @Param("keyword") String keyword, @Param("status") Integer status);
 
   @Select("""
-      SELECT e.id AS examId, e.code, e.title, e.organizer, e.status, e.location,
+      SELECT e.id AS examId, e.code, e.title, e.organizer, e.status,
              e.start_at AS startAt, e.end_at AS endAt,
              e.duration_minutes AS durationMinutes, e.total_score AS totalScore,
-             e.pass_score AS passScore, e.is_double_camera AS isDoubleCamera,
-             e.related_course_id AS relatedCourseId, e.related_course_text AS relatedCourseText,
-             e.remaining_chance_cached AS remainingChance,
+             e.pass_score AS passScore,
              ast.status AS assignmentStatus, ast.attempts_allowed AS attemptsAllowed,
              ast.attempts_used AS attemptsUsed, ast.deadline_at AS deadlineAt,
              (SELECT COUNT(*) FROM exam_question q
@@ -52,14 +52,18 @@ public interface ExamMapper extends BaseMapper<Exam> {
   List<Map<String, Object>> selectAssignments(@Param("userId") Long userId);
 
   @Select("""
-      SELECT a.id AS attemptId, a.exam_id AS examId, e.title, e.code, e.exam_type AS examType,
+      SELECT a.id AS attemptId, a.exam_id AS examId, e.title, e.code,
              a.status, a.started_at AS startedAt, a.submitted_at AS submittedAt,
+             a.objective_score AS objectiveScore, a.subjective_score AS subjectiveScore,
              a.total_score AS totalScore, a.pass_score AS passScore, a.is_passed AS isPassed,
-             a.wrong_count AS wrongCount, a.switch_count AS switchCount
+             a.wrong_count AS wrongCount, e.total_score AS examTotalScore,
+             (SELECT COUNT(*) FROM attempt_answer aa WHERE aa.attempt_id = a.id) AS answeredCount,
+             (SELECT COUNT(*) FROM exam_question q
+               WHERE q.exam_id = a.exam_id AND q.deleted_at IS NULL) AS questionCount
       FROM exam_attempt a
       JOIN exam e ON e.id = a.exam_id
-      WHERE a.user_id = #{userId} AND a.status IN (3, 4)
-      ORDER BY a.submitted_at DESC
+      WHERE a.user_id = #{userId} AND a.status IN (2, 3, 4)
+      ORDER BY a.submitted_at DESC, a.id DESC
       """)
   List<Map<String, Object>> selectPastAttempts(@Param("userId") Long userId);
 

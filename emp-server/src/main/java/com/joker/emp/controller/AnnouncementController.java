@@ -29,11 +29,6 @@ public class AnnouncementController {
     return ApiResponse.ok(announcementService.publishedPage(page, size, keyword));
   }
 
-  @GetMapping("/unread-count")
-  public ApiResponse<Map<String, Object>> unreadCount() {
-    return ApiResponse.ok(Map.of("count", announcementService.unreadCount()));
-  }
-
   @PutMapping("/read-all")
   public ApiResponse<Map<String, Object>> markAllRead() {
     return ApiResponse.ok(Map.of("updated", announcementService.markAllRead()));

@@ -69,7 +69,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown));
   align-items: center;
   justify-content: center;
   padding: 20px;
-  background: rgba(15, 30, 51, 0.5);
+  background: var(--app-scrim);
   backdrop-filter: blur(4px);
   animation: fade-in 0.16s ease-out;
 }

@@ -7,7 +7,6 @@ import com.joker.emp.security.AdminOnly;
 import com.joker.emp.service.DepartmentService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
-import java.util.List;
 import java.util.Map;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -37,11 +36,6 @@ public class AdminDepartmentController {
       @RequestParam(required = false) String keyword,
       @RequestParam(required = false) Integer status) {
     return ApiResponse.ok(departmentService.page(page, size, keyword, status));
-  }
-
-  @GetMapping("/options")
-  public ApiResponse<List<Map<String, Object>>> options() {
-    return ApiResponse.ok(departmentService.options());
   }
 
   @GetMapping("/{id}")

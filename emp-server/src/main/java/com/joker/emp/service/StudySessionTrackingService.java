@@ -62,7 +62,6 @@ public class StudySessionTrackingService {
     session.setLessonId(lessonId);
     session.setStartedAt(now);
     session.setDurationMinutes(BigDecimal.ZERO);
-    session.setSource(1);
     studySessionMapper.insert(session);
 
     long nowMillis = System.currentTimeMillis();

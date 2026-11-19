@@ -25,8 +25,9 @@ const routes = [
   { path: '/home', name: 'home', component: Empty, meta: { learnerOnly: true } },
   { path: '/courses', name: 'courses', component: Empty, meta: { learnerOnly: true } },
   { path: '/courses/:courseId/player', name: 'course-player', component: Empty, meta: { learnerOnly: true } },
-  { path: '/tracks/:trackId', name: 'track-detail', component: Empty, meta: { learnerOnly: true } },
   { path: '/exams', name: 'exams', component: Empty, meta: { learnerOnly: true } },
+  { path: '/exams/result/:attemptId/details', name: 'exam-result-details', component: Empty, meta: { learnerOnly: true } },
+  { path: '/exams/result/:attemptId', name: 'exam-result', component: Empty, meta: { learnerOnly: true } },
   { path: '/exams/taking', name: 'exam-taking', component: Empty, meta: { learnerOnly: true } },
   { path: '/exams/:examId/taking', name: 'exam-taking-by-id', component: Empty, meta: { learnerOnly: true } },
   { path: '/analytics', name: 'analytics', component: Empty, meta: { learnerOnly: true } },
@@ -108,16 +109,12 @@ router.beforeEach(async (to) => {
 
 export { landingPath };
 
-export const locationForView = (view, { courseId, trackId, messageId, examId } = {}) => {
+export const locationForView = (view, { courseId, messageId, examId } = {}) => {
   switch (view) {
     case 'course-player':
       return courseId
         ? { name: 'course-player', params: { courseId } }
         : { name: 'courses' };
-    case 'track-detail':
-      return trackId
-        ? { name: 'track-detail', params: { trackId } }
-        : { name: 'home' };
     case 'messages-detail':
       return messageId
         ? { name: 'messages-detail', params: { messageId } }

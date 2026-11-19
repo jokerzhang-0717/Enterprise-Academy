@@ -134,27 +134,6 @@
             </div>
 
             <div class="att-field">
-              <label class="att-field__label" for="leave-time">请假时间</label>
-              <div class="att-input-wrap">
-                <input
-                  id="leave-time"
-                  ref="leaveTimeInput"
-                  v-model="leaveTime"
-                  type="date"
-                  class="att-input att-date-input"
-                  :class="leaveErrors.time ? 'is-error' : ''"
-                  :aria-invalid="Boolean(leaveErrors.time)"
-                  aria-describedby="leave-time-error"
-                  @change="leaveErrors.time = ''"
-                />
-                <button type="button" aria-label="选择请假日期" class="att-input-suffix" @click="openLeaveDatePicker">
-                  <CalendarDays class="att-icon" aria-hidden="true" />
-                </button>
-              </div>
-              <p v-if="leaveErrors.time" id="leave-time-error" class="att-field__error">{{ leaveErrors.time }}</p>
-            </div>
-
-            <div class="att-field">
               <label class="att-field__label" for="leave-days">请假天数</label>
               <input
                 id="leave-days"
@@ -163,8 +142,8 @@
                 inputmode="decimal"
                 maxlength="10"
                 pattern="[0-9]+([.][0-9]+)?"
-                title="请填写大于 0 的数字，可使用小数"
-                placeholder="请输入天数"
+                title="根据起止日期自动计算，可填写不超过日期范围的天数"
+                placeholder="选择日期后自动计算"
                 class="att-input"
                 :class="leaveErrors.days ? 'is-error' : ''"
                 :aria-invalid="Boolean(leaveErrors.days)"
@@ -173,6 +152,61 @@
               />
               <p v-if="leaveErrors.days" id="leave-days-error" class="att-field__error">{{ leaveErrors.days }}</p>
             </div>
+          </div>
+
+          <div class="att-field">
+            <span class="att-field__label">请假时间</span>
+            <div class="att-date-range">
+              <label
+                class="att-date-box"
+                :class="{
+                  'is-empty': !leaveStart,
+                  'is-error': Boolean(leaveErrors.time),
+                }"
+              >
+                <span class="att-date-box__text">
+                  {{ leaveStart || '开始日期' }}
+                </span>
+                <CalendarDays class="att-date-box__icon" aria-hidden="true" />
+                <input
+                  id="leave-start"
+                  v-model="leaveStart"
+                  type="date"
+                  aria-label="请假开始日期"
+                  :aria-invalid="Boolean(leaveErrors.time)"
+                  aria-describedby="leave-time-error"
+                  class="att-date-native"
+                  @change="onLeaveDatesChange"
+                  @click="openDatePicker"
+                />
+              </label>
+              <span class="att-date-range__sep" aria-hidden="true">至</span>
+              <label
+                class="att-date-box"
+                :class="{
+                  'is-empty': !leaveEnd,
+                  'is-error': Boolean(leaveErrors.time),
+                }"
+              >
+                <span class="att-date-box__text">
+                  {{ leaveEnd || '结束日期' }}
+                </span>
+                <CalendarDays class="att-date-box__icon" aria-hidden="true" />
+                <input
+                  id="leave-end"
+                  v-model="leaveEnd"
+                  type="date"
+                  aria-label="请假结束日期"
+                  :min="leaveStart"
+                  :aria-invalid="Boolean(leaveErrors.time)"
+                  aria-describedby="leave-time-error"
+                  class="att-date-native"
+                  @change="onLeaveDatesChange"
+                  @click="openDatePicker"
+                />
+              </label>
+            </div>
+            <p v-if="leaveErrors.time" id="leave-time-error" class="att-field__error">{{ leaveErrors.time }}</p>
           </div>
 
           <div class="att-field">
@@ -232,8 +266,6 @@
               </span>
             </div>
 
-            <h4 class="att-record__title">{{ req.title }}</h4>
-
             <div class="att-record__time">
               <Clock class="att-icon att-icon--xs" aria-hidden="true" />
               <span>请假时间: {{ req.timeRange }}</span>
@@ -243,6 +275,9 @@
             </div>
 
             <p class="att-record__reason">请假原因: {{ req.reason }}</p>
+            <p v-if="req.status === 'rejected' && req.approveRemark" class="att-record__reject">
+              驳回理由: {{ req.approveRemark }}
+            </p>
           </article>
         </div>
 
@@ -338,8 +373,8 @@ const displayedRange = computed(() => ({
 }));
 
 const leaveType = ref('');
-const leaveTime = ref('');
-const leaveTimeInput = ref(null);
+const leaveStart = ref('');
+const leaveEnd = ref('');
 const leaveDays = ref('');
 const leaveErrors = ref({ type: '', time: '', days: '', reason: '' });
 const leaveReason = ref('');
@@ -388,13 +423,48 @@ const handlePunchIn = async () => {
 
 const leaveSubmitting = ref(false);
 
+const leaveSpanDays = (start, end) => {
+  if (!start || !end) return 0;
+  const startDate = new Date(`${start}T00:00:00`);
+  const endDate = new Date(`${end}T00:00:00`);
+  if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) return 0;
+  const diff = Math.round((endDate.getTime() - startDate.getTime()) / 86400000) + 1;
+  return diff > 0 ? diff : 0;
+};
+
+const openDatePicker = (event) => {
+  const input = event?.currentTarget;
+  if (input && typeof input.showPicker === 'function') {
+    try {
+      input.showPicker();
+    } catch {
+      // 浏览器不支持或不在用户手势中时忽略，仍可直接输入日期
+    }
+  }
+};
+
+const onLeaveDatesChange = () => {
+  leaveErrors.value.time = '';
+  leaveErrors.value.days = '';
+  if (leaveStart.value && !leaveEnd.value) leaveEnd.value = leaveStart.value;
+  if (leaveEnd.value && !leaveStart.value) leaveStart.value = leaveEnd.value;
+  const span = leaveSpanDays(leaveStart.value, leaveEnd.value);
+  if (span > 0) leaveDays.value = String(span);
+};
+
 const handleSubmitLeave = async () => {
   if (leaveSubmitting.value) return;
+  const end = leaveEnd.value || leaveStart.value;
+  const span = leaveSpanDays(leaveStart.value, end);
   const days = Number(leaveDays.value);
   leaveErrors.value = {
     type: leaveType.value.trim() ? '' : '请填写请假类型。',
-    time: leaveTime.value ? '' : '请选择请假时间。',
-    days: Number.isFinite(days) && days > 0 ? '' : '请填写大于 0 的有效天数。',
+    time: !leaveStart.value
+      ? '请选择请假开始日期。'
+      : span > 0 ? '' : '请假结束日期不能早于开始日期。',
+    days: !Number.isFinite(days) || days <= 0
+      ? '请填写大于 0 的有效天数。'
+      : days > span ? `请假天数不能超过所选日期范围（${span} 天）。` : '',
     reason: leaveReason.value.trim() ? '' : '请填写请假原因。',
   };
   if (Object.values(leaveErrors.value).some(Boolean)) return;
@@ -403,13 +473,15 @@ const handleSubmitLeave = async () => {
   try {
     await submitLeave({
       leaveType: leaveType.value.trim(),
-      startDate: leaveTime.value,
+      startDate: leaveStart.value,
+      endDate: end,
       leaveDays: days,
       reason: leaveReason.value.trim(),
     });
     currentPage.value = 1;
     leaveType.value = '';
-    leaveTime.value = '';
+    leaveStart.value = '';
+    leaveEnd.value = '';
     leaveDays.value = '';
     leaveReason.value = '';
     showNotice('请假申请已提交', '可在下方请假记录中查看审批进度。');
@@ -418,11 +490,6 @@ const handleSubmitLeave = async () => {
   } finally {
     leaveSubmitting.value = false;
   }
-};
-
-const openLeaveDatePicker = () => {
-  const input = leaveTimeInput.value;
-  if (input && typeof input.showPicker === 'function') input.showPicker();
 };
 
 const showNotice = (title, message = '') => {
@@ -770,7 +837,72 @@ const clearNotice = () => {
   gap: 12px;
 }
 @media (min-width: 640px) {
-  .att-form__row { grid-template-columns: repeat(3, 1fr); }
+  .att-form__row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+.att-date-range {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.att-date-box {
+  position: relative;
+  flex: 1 1 148px;
+  min-width: 128px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  box-sizing: border-box;
+  padding: 9px 12px;
+  border: 1px solid var(--c-border-strong);
+  border-radius: 12px;
+  background: var(--c-bg-soft);
+  cursor: pointer;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.att-date-box:hover { border-color: var(--c-sky); }
+.att-date-box:focus-within {
+  border-color: var(--c-sky);
+  box-shadow: 0 0 0 3px var(--c-blue-bg);
+}
+.att-date-box.is-error { border-color: var(--app-red-400); }
+.att-date-box__text {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  font-variant-numeric: tabular-nums;
+  color: var(--c-text);
+}
+.att-date-box.is-empty .att-date-box__text {
+  font-weight: 400;
+  color: var(--c-faint);
+}
+.att-date-box__icon {
+  width: 15px;
+  height: 15px;
+  flex: none;
+  color: var(--c-muted);
+}
+.att-date-native {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.att-date-range__sep {
+  flex: none;
+  color: var(--c-muted);
+  font-size: 11px;
 }
 
 .att-field__label {
@@ -810,35 +942,6 @@ const clearNotice = () => {
 .att-textarea.is-error { border-color: var(--app-red-400); }
 .att-input::placeholder,
 .att-textarea::placeholder { color: var(--c-faint); }
-
-.att-input-wrap { position: relative; }
-.att-date-input {
-  padding-right: 40px;
-  cursor: pointer;
-  appearance: none;
-  -webkit-appearance: none;
-}
-.att-date-input::-webkit-calendar-picker-indicator {
-  width: 0;
-  opacity: 0;
-}
-.att-input-suffix {
-  position: absolute;
-  right: 8px;
-  top: 50%;
-  transform: translateY(-50%);
-  padding: 6px;
-  border: 0;
-  border-radius: 6px;
-  background: transparent;
-  color: var(--c-muted);
-  cursor: pointer;
-  transition: background-color 0.2s ease, color 0.2s ease;
-}
-.att-input-suffix:hover {
-  background: var(--app-blue-75);
-  color: var(--c-blue);
-}
 
 .att-btn-primary {
   display: flex;
@@ -882,6 +985,7 @@ const clearNotice = () => {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+  margin-bottom: 10px;
 }
 .att-record__tags {
   display: flex;
@@ -918,7 +1022,7 @@ const clearNotice = () => {
 }
 
 .att-record__title {
-  margin: 10px 0 6px;
+  margin: 0 0 6px;
   font-size: 12px;
   font-weight: 700;
   color: var(--c-text);
@@ -949,6 +1053,17 @@ const clearNotice = () => {
   font-size: 11px;
   line-height: 1.625;
   color: var(--c-text-sub);
+}
+.att-record__reject {
+  margin: 6px 0 0;
+  padding: 8px;
+  border: 1px solid var(--app-rose-line);
+  border-radius: 8px;
+  background: var(--app-rose-bg);
+  font-size: 11px;
+  line-height: 1.625;
+  color: var(--app-rose-fg);
+  word-break: break-word;
 }
 
 /* ============ Pagination ============ */

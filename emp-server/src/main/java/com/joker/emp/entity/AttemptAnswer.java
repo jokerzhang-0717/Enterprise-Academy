@@ -33,8 +33,6 @@ public class AttemptAnswer {
   /** 标记待复查 */
   private Boolean isFlagged;
 
-  private Boolean isCorrect;
-
   private BigDecimal scoreGained;
 
   private LocalDateTime answeredAt;

@@ -143,26 +143,23 @@ mvn spring-boot:run
 | 认证 | `/api/auth` | 登录、注册、当前用户 |
 | 个人中心 | `/api/profile` | 资料、修改密码 |
 | 首页看板 | `/api/dashboard` | 学习统计、待办、公告、签到 |
-| 课程 | `/api/courses` | 课程目录、详情、报名、课时进度、我的学习 |
-| 研修通道 | `/api/tracks` | 已上架通道列表与详情 |
-| 考试 | `/api/exams` | 我的考试、试卷、开始、答题、切屏、交卷、往期 |
+| 课程 | `/api/courses` | 课程目录、详情、报名、课时进度 |
+| 考试 | `/api/exams` | 我的考试、试卷、开始、答题、切屏、交卷、往期 |、历史成绩（含待评分）
 | 请假 | `/api/leaves` | 提交、修改、撤销、我的申请 |
-| 签到 | `/api/checkins` | 今日状态、签到、签退、记录、统计 |
+| 签到 | `/api/checkins` | 今日状态、签到、签退、记录 |
 | 证书 | `/api/certificates` | 我的证书、证书验真 |
-| 公告 | `/api/announcements` | 已发布公告、未读数、详情 |
-| 通知 | `/api/notifications` | 列表、最近、未读数、已读、删除 |
+| 公告 | `/api/announcements` | 已发布公告、详情 |
 | 文件 | `/api/files` | 上传、预签名上传/下载、稳定访问、删除 |
 
 ### 管理端（需管理员）
 
 | 模块 | 接口前缀 |
 | --- | --- |
-| 看板 / 操作日志 | `/api/admin/dashboard`、`/api/admin/activities`、`/api/admin/logs` |
+| 看板 | `/api/admin/dashboard` |
 | 学员 | `/api/admin/users` |
 | 部门 | `/api/admin/departments` |
-| 课程 / 章节 / 课时 / 标签 / 讲师 | `/api/admin/courses`、`/api/admin/course-categories`、`/api/admin/course-tags`、`/api/admin/instructors` |
-| 研修通道 | `/api/admin/tracks` |
-| 考试 / 指派 / 答卷 / 评分 | `/api/admin/exams`、`/api/admin/exam-attempts` |
+| 课程 / 章节 / 课时 / 讲师 | `/api/admin/courses`、`/api/admin/course-categories`、`/api/admin/instructors` |
+| 考试 / 指派 / 答卷 / 评分 | `/api/admin/exams`、`/api/admin/exam-attempts` |（含阅卷评分）
 | 题库 | `/api/admin/questions` |
 | 请假审批 | `/api/admin/leaves` |
 | 签到管理 | `/api/admin/checkins` |
@@ -177,7 +174,7 @@ mvn spring-boot:run
 - `docs/openapi.json`：JSON 版本
 - `docs/README.md`：导入步骤、演示账号、建议测试顺序、错误约定
 
-文档覆盖当前全部 147 个接口，并已与 Controller 路由逐条比对。修改接口后可运行：
+文档覆盖当前全部 118 个接口，并已与 Controller 路由逐条比对。修改接口后可运行：
 
 ```bash
 python docs/compare_routes.py

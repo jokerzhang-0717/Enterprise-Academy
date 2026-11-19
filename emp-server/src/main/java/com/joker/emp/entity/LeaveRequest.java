@@ -21,9 +21,6 @@ public class LeaveRequest {
   @TableId(type = IdType.AUTO)
   private Long id;
 
-  /** mock 原始 id，如 alv-1 / lv-1 */
-  private String extId;
-
   /** 审批流水号 LV-20250518-004 */
   private String flowNo;
 
@@ -31,11 +28,6 @@ public class LeaveRequest {
 
   /** 项目紧急发版 / 病假 / 因公外出 / 个人事务 */
   private String leaveType;
-
-  /** 缺席的培训/课程名称 */
-  private String trainingTitle;
-
-  private Long courseId;
 
   private LocalDate startDate;
 
@@ -48,9 +40,6 @@ public class LeaveRequest {
 
   /** 1 待审批 2 已通过 3 已驳回 */
   private Integer status;
-
-  /** 病假单据等 */
-  private String attachmentUrl;
 
   private LocalDateTime submittedAt;
 

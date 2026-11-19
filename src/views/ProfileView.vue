@@ -201,15 +201,15 @@
         </label>
         <label class="profile-field">
           <span>新密码</span>
-          <input v-model="passwordForm.next" type="password" autocomplete="new-password" required minlength="8" maxlength="128" :disabled="changingPassword" @input="clearPasswordFeedback" placeholder="至少 8 位" />
+          <input v-model="passwordForm.next" type="password" autocomplete="new-password" required minlength="6" maxlength="128" :disabled="changingPassword" @input="clearPasswordFeedback" placeholder="至少 6 位" />
         </label>
         <label class="profile-field">
           <span>确认新密码</span>
-          <input v-model="passwordForm.confirm" type="password" autocomplete="new-password" required minlength="8" maxlength="128" :disabled="changingPassword" @input="clearPasswordFeedback" placeholder="再次输入新密码" />
+          <input v-model="passwordForm.confirm" type="password" autocomplete="new-password" required minlength="6" maxlength="128" :disabled="changingPassword" @input="clearPasswordFeedback" placeholder="再次输入新密码" />
         </label>
 
         <div class="profile-password__foot">
-          <p class="profile-note profile-note--wrap">修改时会验证当前密码；新密码至少 8 位。</p>
+          <p class="profile-note profile-note--wrap">修改时会验证当前密码；新密码至少 6 位。</p>
           <button type="submit" class="profile-btn profile-btn--violet" :disabled="changingPassword">
             <KeyRound class="profile-icon" />
             {{ changingPassword ? '正在修改…' : '提交修改' }}
@@ -361,8 +361,6 @@ const saveProfile = async () => {
       phone: form.phone,
       email: form.email,
       jobTitle: form.title,
-      specialty: props.user.specialty || '',
-      grade: props.user.grade || '',
       avatarUrl: form.avatarUrl,
     });
     emit('update-user', updatedUser);
@@ -399,8 +397,8 @@ const submitPasswordChange = async () => {
     passwordError.value = '请输入当前密码';
     return;
   }
-  if (passwordForm.next.length < 8) {
-    passwordError.value = '新密码至少需要 8 位';
+  if (passwordForm.next.length < 6) {
+    passwordError.value = '新密码至少需要 6 位';
     return;
   }
   if (passwordForm.next === passwordForm.current) {

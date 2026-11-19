@@ -35,15 +35,10 @@ public class Enrollment {
   /** 缓存：该门课已投入学时 */
   private BigDecimal studyHours;
 
-  /** 结课成绩 */
-  private BigDecimal score;
-
   private LocalDateTime startedAt;
 
   /** 断点续学时间 */
   private LocalDateTime lastStudiedAt;
-
-  private LocalDateTime completedAt;
 
   @TableField(fill = FieldFill.INSERT)
   private LocalDateTime createdAt;

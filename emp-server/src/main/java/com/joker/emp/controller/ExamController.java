@@ -27,17 +27,6 @@ public class ExamController {
     return ApiResponse.ok(examService.myExams());
   }
 
-  @GetMapping("/metrics")
-  public ApiResponse<Map<String, Object>> metrics() {
-    return ApiResponse.ok(examService.metrics(com.joker.emp.security.AuthContext.userId()));
-  }
-
-  @GetMapping("/past")
-  public ApiResponse<java.util.List<Map<String, Object>>> past() {
-    return ApiResponse.ok(examService.pastAttempts(
-        com.joker.emp.security.AuthContext.userId()));
-  }
-
   @GetMapping("/{id}/paper")
   public ApiResponse<Map<String, Object>> paper(@PathVariable Long id) {
     return ApiResponse.ok(examService.paper(id));
@@ -57,11 +46,6 @@ public class ExamController {
   public ApiResponse<Map<String, Object>> answer(@PathVariable Long attemptId,
       @Valid @RequestBody AnswerSaveRequest request) {
     return ApiResponse.ok(examService.saveAnswer(attemptId, request));
-  }
-
-  @PostMapping("/attempts/{attemptId}/switch")
-  public ApiResponse<Map<String, Object>> switchScreen(@PathVariable Long attemptId) {
-    return ApiResponse.ok(examService.switchScreen(attemptId));
   }
 
   @PostMapping("/attempts/{attemptId}/submit")

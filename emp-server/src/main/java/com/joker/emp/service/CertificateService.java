@@ -14,7 +14,6 @@ import com.joker.emp.mapper.CertificateTemplateMapper;
 import com.joker.emp.mapper.SysUserMapper;
 import com.joker.emp.security.AuthContext;
 import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -61,14 +60,12 @@ public class CertificateService {
     CertificateIssue issue = requireIssue(id);
     Map<String, Object> item = new LinkedHashMap<>();
     item.put("id", issue.getId());
-    item.put("extId", issue.getExtId());
     item.put("templateId", issue.getTemplateId());
     item.put("userId", issue.getUserId());
     item.put("serialNumber", issue.getSerialNumber());
     item.put("issueDate", issue.getIssueDate());
     item.put("expireDate", issue.getExpireDate());
     item.put("validityLabel", issue.getValidityLabel());
-    item.put("rankingScore", issue.getRankingScore());
     item.put("status", issue.getStatus());
     item.put("statusLabel", statusText(issue.getStatus()));
     item.put("blockchainHash", issue.getBlockchainHash());
@@ -112,7 +109,6 @@ public class CertificateService {
         ? expireDate(issue.getIssueDate(), template.getValidityMonths()) : request.expireDate());
     issue.setValidityLabel(request.validityLabel() == null
         ? validityLabel(issue.getIssueDate(), issue.getExpireDate()) : request.validityLabel());
-    issue.setRankingScore(request.rankingScore());
     issue.setBlockchainHash(request.blockchainHash() == null
         ? randomHash() : request.blockchainHash());
     issue.setIssuedBy(AuthContext.userId());
@@ -137,7 +133,6 @@ public class CertificateService {
       // 有效期或签发日期变化后同步展示文案，避免出现“已过期但仍显示长期有效”。
       issue.setValidityLabel(validityLabel(issue.getIssueDate(), issue.getExpireDate()));
     }
-    if (request.rankingScore() != null) issue.setRankingScore(request.rankingScore());
     if (request.status() != null) issue.setStatus(request.status());
     if (request.blockchainHash() != null) issue.setBlockchainHash(request.blockchainHash());
     issueMapper.updateById(issue);
@@ -242,7 +237,6 @@ public class CertificateService {
     if (request.getIssueOrg() != null) template.setIssueOrg(request.getIssueOrg());
     if (request.getValidityMonths() != null) template.setValidityMonths(request.getValidityMonths());
     if (request.getDescription() != null) template.setDescription(request.getDescription());
-    if (request.getBadgeType() != null) template.setBadgeType(request.getBadgeType());
     if (request.getPrivilegeText() != null) template.setPrivilegeText(request.getPrivilegeText());
     templateMapper.updateById(template);
     return toTemplateItem(template);
@@ -332,20 +326,18 @@ public class CertificateService {
   private Map<String, Object> toTemplateItem(CertificateTemplate template) {
     Map<String, Object> item = new LinkedHashMap<>();
     item.put("id", template.getId());
-    item.put("extId", template.getExtId());
     item.put("title", template.getTitle());
     item.put("levelLabel", template.getLevelLabel());
     item.put("category", template.getCategory());
     item.put("issueOrg", template.getIssueOrg());
     item.put("validityMonths", template.getValidityMonths());
     item.put("description", template.getDescription());
-    item.put("badgeType", template.getBadgeType());
     item.put("privilegeText", template.getPrivilegeText());
     return item;
   }
 
   public record IssueSaveRequest(Long templateId, Long userId, String serialNumber,
-      LocalDate issueDate, LocalDate expireDate, String validityLabel, String rankingScore,
+      LocalDate issueDate, LocalDate expireDate, String validityLabel,
       Integer status, String blockchainHash) {
   }
 }

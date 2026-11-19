@@ -19,7 +19,7 @@ public interface ExamAttemptMapper extends BaseMapper<ExamAttempt> {
              a.started_at AS startedAt, a.submitted_at AS submittedAt,
              a.objective_score AS objectiveScore, a.subjective_score AS subjectiveScore,
              a.total_score AS totalScore, a.pass_score AS passScore, a.is_passed AS isPassed,
-             a.wrong_count AS wrongCount, a.switch_count AS switchCount, a.graded_at AS gradedAt
+             a.wrong_count AS wrongCount, a.graded_at AS gradedAt
       FROM exam_attempt a
       JOIN exam x ON x.id = a.exam_id
       JOIN sys_user u ON u.id = a.user_id

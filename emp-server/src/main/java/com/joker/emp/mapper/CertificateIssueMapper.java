@@ -14,11 +14,11 @@ public interface CertificateIssueMapper extends BaseMapper<CertificateIssue> {
   String ISSUE_SELECT = """
       SELECT ci.id, ci.serial_number AS serialNumber, ci.status,
              ci.issue_date AS issueDate, ci.expire_date AS expireDate,
-             ci.validity_label AS validityLabel, ci.ranking_score AS rankingScore,
+             ci.validity_label AS validityLabel,
              ci.blockchain_hash AS blockchainHash, ci.template_id AS templateId,
              ct.title AS templateTitle, ct.level_label AS levelLabel,
              ct.category, ct.issue_org AS issueOrg, ct.validity_months AS validityMonths,
-             ct.description, ct.badge_type AS badgeType, ct.privilege_text AS privilegeText,
+             ct.description, ct.privilege_text AS privilegeText,
              ci.user_id AS userId, u.name AS userName, u.employee_no AS employeeNo,
              u.avatar_url AS avatarUrl,
              d.name AS department
@@ -33,11 +33,11 @@ public interface CertificateIssueMapper extends BaseMapper<CertificateIssue> {
       <script>
       SELECT ci.id, ci.serial_number AS serialNumber, ci.status,
              ci.issue_date AS issueDate, ci.expire_date AS expireDate,
-             ci.validity_label AS validityLabel, ci.ranking_score AS rankingScore,
+             ci.validity_label AS validityLabel,
              ci.blockchain_hash AS blockchainHash, ci.template_id AS templateId,
              ct.title AS templateTitle, ct.level_label AS levelLabel,
              ct.category, ct.issue_org AS issueOrg, ct.validity_months AS validityMonths,
-             ct.description, ct.badge_type AS badgeType, ct.privilege_text AS privilegeText,
+             ct.description, ct.privilege_text AS privilegeText,
              ci.user_id AS userId, u.name AS userName, u.employee_no AS employeeNo,
              u.avatar_url AS avatarUrl,
              d.name AS department
@@ -61,11 +61,11 @@ public interface CertificateIssueMapper extends BaseMapper<CertificateIssue> {
   @Select("""
       SELECT ci.id, ci.serial_number AS serialNumber, ci.status,
              ci.issue_date AS issueDate, ci.expire_date AS expireDate,
-             ci.validity_label AS validityLabel, ci.ranking_score AS rankingScore,
+             ci.validity_label AS validityLabel,
              ci.blockchain_hash AS blockchainHash,
              ct.id AS templateId, ct.title AS templateTitle, ct.level_label AS levelLabel,
              ct.category, ct.issue_org AS issueOrg, ct.validity_months AS validityMonths,
-             ct.description, ct.badge_type AS badgeType, ct.privilege_text AS privilegeText,
+             ct.description, ct.privilege_text AS privilegeText,
              u.name AS userName, u.employee_no AS employeeNo, d.name AS department
       FROM certificate_issue ci
       JOIN certificate_template ct ON ct.id = ci.template_id
@@ -79,11 +79,11 @@ public interface CertificateIssueMapper extends BaseMapper<CertificateIssue> {
   @Select("""
       SELECT ci.id, ci.serial_number AS serialNumber, ci.status,
              ci.issue_date AS issueDate, ci.expire_date AS expireDate,
-             ci.validity_label AS validityLabel, ci.ranking_score AS rankingScore,
+             ci.validity_label AS validityLabel,
              ci.blockchain_hash AS blockchainHash,
              ct.title AS templateTitle, ct.level_label AS levelLabel,
              ct.category, ct.issue_org AS issueOrg, ct.validity_months AS validityMonths,
-             ct.badge_type AS badgeType, ct.privilege_text AS privilegeText,
+             ct.privilege_text AS privilegeText,
              u.name AS userName, u.employee_no AS employeeNo, d.name AS department
       FROM certificate_issue ci
       JOIN certificate_template ct ON ct.id = ci.template_id

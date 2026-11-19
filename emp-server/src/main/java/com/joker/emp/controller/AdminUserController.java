@@ -8,7 +8,6 @@ import com.joker.emp.service.UserService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import java.util.List;
 import java.util.Map;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -40,12 +39,6 @@ public class AdminUserController {
       @RequestParam(required = false) Integer status,
       @RequestParam(required = false, defaultValue = "1") Integer role) {
     return ApiResponse.ok(userService.page(page, size, keyword, departmentId, status, role));
-  }
-
-  @GetMapping("/options")
-  public ApiResponse<List<Map<String, Object>>> options(
-      @RequestParam(required = false) String keyword) {
-    return ApiResponse.ok(userService.options(keyword));
   }
 
   @GetMapping("/{id}")
@@ -90,8 +83,6 @@ public class AdminUserController {
       String password,
       Long departmentId,
       String jobTitle,
-      String grade,
-      String specialty,
       String avatarUrl,
       String phone,
       String email,
@@ -104,8 +95,6 @@ public class AdminUserController {
       user.setEmployeeNo(employeeNo);
       user.setDepartmentId(departmentId);
       user.setJobTitle(jobTitle);
-      user.setGrade(grade);
-      user.setSpecialty(specialty);
       user.setAvatarUrl(avatarUrl);
       user.setPhone(phone);
       user.setEmail(email);

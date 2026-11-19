@@ -12,17 +12,14 @@ import com.joker.emp.entity.CourseLesson;
 import com.joker.emp.entity.Enrollment;
 import com.joker.emp.entity.Instructor;
 import com.joker.emp.entity.LessonProgress;
-import com.joker.emp.entity.Tag;
 import com.joker.emp.mapper.CourseCategoryMapper;
 import com.joker.emp.mapper.CourseChapterMapper;
 import com.joker.emp.mapper.CourseLessonMapper;
 import com.joker.emp.mapper.CourseMapper;
-import com.joker.emp.mapper.CourseTagMapper;
 import com.joker.emp.mapper.EnrollmentMapper;
 import com.joker.emp.mapper.InstructorMapper;
 import com.joker.emp.mapper.LessonProgressMapper;
 import com.joker.emp.mapper.StudySessionMapper;
-import com.joker.emp.mapper.TagMapper;
 import com.joker.emp.security.AuthContext;
 import java.math.BigDecimal;
 import java.time.Duration;
@@ -44,8 +41,6 @@ public class CourseService {
   private final CourseCategoryMapper categoryMapper;
   private final CourseChapterMapper chapterMapper;
   private final CourseLessonMapper lessonMapper;
-  private final CourseTagMapper courseTagMapper;
-  private final TagMapper tagMapper;
   private final InstructorMapper instructorMapper;
   private final EnrollmentMapper enrollmentMapper;
   private final LessonProgressMapper lessonProgressMapper;
@@ -54,15 +49,13 @@ public class CourseService {
 
   public CourseService(CourseMapper courseMapper, CourseCategoryMapper categoryMapper,
       CourseChapterMapper chapterMapper, CourseLessonMapper lessonMapper,
-      CourseTagMapper courseTagMapper, TagMapper tagMapper, InstructorMapper instructorMapper,
-      EnrollmentMapper enrollmentMapper, LessonProgressMapper lessonProgressMapper,
+      InstructorMapper instructorMapper, EnrollmentMapper enrollmentMapper,
+      LessonProgressMapper lessonProgressMapper,
       StudySessionMapper studySessionMapper, OperationLogService logService) {
     this.courseMapper = courseMapper;
     this.categoryMapper = categoryMapper;
     this.chapterMapper = chapterMapper;
     this.lessonMapper = lessonMapper;
-    this.courseTagMapper = courseTagMapper;
-    this.tagMapper = tagMapper;
     this.instructorMapper = instructorMapper;
     this.enrollmentMapper = enrollmentMapper;
     this.lessonProgressMapper = lessonProgressMapper;
@@ -73,12 +66,11 @@ public class CourseService {
   // ------------------------------------------------------------------ 管理端
 
   public PageResult<Map<String, Object>> page(long page, long size, String keyword,
-      Long categoryId, Integer status, Boolean required) {
+      Long categoryId, Integer status) {
     IPage<Course> result = courseMapper.selectPage(new Page<>(page, size),
         Wrappers.<Course>lambdaQuery()
             .eq(categoryId != null, Course::getCategoryId, categoryId)
             .eq(status != null, Course::getStatus, status)
-            .eq(required != null, Course::getIsRequired, required)
             .and(keyword != null && !keyword.isBlank(), w -> w
                 .like(Course::getTitle, keyword)
                 .or().like(Course::getSummary, keyword)
@@ -138,7 +130,6 @@ public class CourseService {
     for (CourseChapter chapter : chapters) {
       Map<String, Object> ci = new LinkedHashMap<>();
       ci.put("id", chapter.getId());
-      ci.put("extId", chapter.getExtId());
       ci.put("courseId", chapter.getCourseId());
       ci.put("title", chapter.getTitle());
       ci.put("sortNo", chapter.getSortNo());
@@ -150,7 +141,6 @@ public class CourseService {
         LessonProgress lp = progress.get(lesson.getId());
         Map<String, Object> li = new LinkedHashMap<>();
         li.put("id", lesson.getId());
-        li.put("extId", lesson.getExtId());
         li.put("chapterId", lesson.getChapterId());
         li.put("title", lesson.getTitle());
         li.put("durationSeconds", lesson.getDurationSeconds());
@@ -176,11 +166,8 @@ public class CourseService {
     Course course = new Course();
     apply(course, request);
     course.setStatus(request.status() == null ? 1 : request.status());
-    course.setTotalLessonCount(0);
-    course.setEnrollCountCached(0);
     course.setCreatedBy(AuthContext.userId());
     courseMapper.insert(course);
-    saveTags(course.getId(), request.tagIds());
     logService.record("course", "新增课程 " + course.getTitle(), "course", course.getId());
     return detail(course.getId(), null);
   }
@@ -196,9 +183,6 @@ public class CourseService {
       course.setStatus(request.status());
     }
     courseMapper.updateById(course);
-    if (request.tagIds() != null) {
-      saveTags(id, request.tagIds());
-    }
     logService.record("course", "更新课程 " + course.getTitle(), "course", id);
     return detail(id, null);
   }
@@ -249,7 +233,6 @@ public class CourseService {
     } else {
       chapterMapper.updateById(chapter);
     }
-    refreshLessonCount(courseId);
     Map<String, Object> item = new LinkedHashMap<>();
     item.put("id", chapter.getId());
     item.put("courseId", courseId);
@@ -274,7 +257,6 @@ public class CourseService {
     lessonMapper.delete(Wrappers.<CourseLesson>lambdaQuery()
         .eq(CourseLesson::getChapterId, chapterId));
     chapterMapper.deleteById(chapterId);
-    refreshLessonCount(courseId);
   }
 
   @Transactional
@@ -306,7 +288,6 @@ public class CourseService {
     } else {
       lessonMapper.updateById(lesson);
     }
-    refreshLessonCount(courseId);
     Map<String, Object> item = new LinkedHashMap<>();
     item.put("id", lesson.getId());
     item.put("chapterId", chapterId);
@@ -326,13 +307,12 @@ public class CourseService {
     lessonProgressMapper.delete(Wrappers.<LessonProgress>lambdaQuery()
         .eq(LessonProgress::getLessonId, lessonId));
     lessonMapper.deleteById(lessonId);
-    refreshLessonCount(courseId);
   }
 
   // ------------------------------------------------------------- 学员端
 
   public PageResult<Map<String, Object>> catalog(long page, long size, String keyword,
-      String categoryCode, Boolean required, String status) {
+      String categoryCode, String status) {
     Long userId = AuthContext.userId();
     Long categoryId = null;
     if (categoryCode != null && !categoryCode.isBlank()) {
@@ -349,7 +329,6 @@ public class CourseService {
         Wrappers.<Course>lambdaQuery()
             .eq(Course::getStatus, 2)
             .eq(categoryId != null, Course::getCategoryId, categoryId)
-            .eq(required != null, Course::getIsRequired, required)
             .and(keyword != null && !keyword.isBlank(), w -> w
                 .like(Course::getTitle, keyword)
                 .or().like(Course::getSummary, keyword))
@@ -389,15 +368,6 @@ public class CourseService {
         .last("LIMIT 1"));
     applyEnrollment(item, enrollment);
     return item;
-  }
-
-  public List<Map<String, Object>> myLearning() {
-    Long userId = AuthContext.userId();
-    List<Map<String, Object>> rows = enrollmentMapper.selectProgress(userId);
-    for (Map<String, Object> row : rows) {
-      row.put("statusLabel", statusLabel(row.get("status")));
-    }
-    return rows;
   }
 
   @Transactional
@@ -484,9 +454,6 @@ public class CourseService {
       progress.setLessonId(lessonId);
       progress.setWatchedSeconds(safeWatchedSeconds);
       progress.setIsCompleted(Boolean.TRUE.equals(completed));
-      if (Boolean.TRUE.equals(completed)) {
-        progress.setCompletedAt(LocalDateTime.now());
-      }
       lessonProgressMapper.insert(progress);
     } else {
       progress.setWatchedSeconds(Math.max(
@@ -494,7 +461,6 @@ public class CourseService {
           safeWatchedSeconds));
       if (Boolean.TRUE.equals(completed)) {
         progress.setIsCompleted(true);
-        progress.setCompletedAt(LocalDateTime.now());
       }
       lessonProgressMapper.updateById(progress);
     }
@@ -513,7 +479,6 @@ public class CourseService {
     enrollment.setLastStudiedAt(LocalDateTime.now());
     if (percent >= 100) {
       enrollment.setStatus(3);
-      enrollment.setCompletedAt(LocalDateTime.now());
     } else if (percent > 0) {
       enrollment.setStatus(2);
     }
@@ -547,32 +512,6 @@ public class CourseService {
         }).toList();
   }
 
-  public List<Map<String, Object>> tags() {
-    return tagMapper.selectList(Wrappers.<Tag>lambdaQuery().orderByAsc(Tag::getId)).stream()
-        .map(t -> {
-          Map<String, Object> item = new LinkedHashMap<>();
-          item.put("id", t.getId());
-          item.put("name", t.getName());
-          return item;
-        }).toList();
-  }
-
-  @Transactional
-  public Map<String, Object> createTag(String name) {
-    if (name == null || name.isBlank()) {
-      throw new BizException("标签名不能为空");
-    }
-    Tag exists = tagMapper.selectOne(Wrappers.<Tag>lambdaQuery()
-        .eq(Tag::getName, name.trim()).last("LIMIT 1"));
-    if (exists != null) {
-      return Map.of("id", exists.getId(), "name", exists.getName());
-    }
-    Tag tag = new Tag();
-    tag.setName(name.trim());
-    tagMapper.insert(tag);
-    return Map.of("id", tag.getId(), "name", tag.getName());
-  }
-
   public List<Map<String, Object>> instructors() {
     return instructorMapper.selectList(Wrappers.<Instructor>lambdaQuery()
             .orderByAsc(Instructor::getId)).stream()
@@ -585,9 +524,6 @@ public class CourseService {
       throw new BizException("讲师姓名不能为空");
     }
     request.setId(null);
-    if (request.getIsOrg() == null) {
-      request.setIsOrg(false);
-    }
     instructorMapper.insert(request);
     return toInstructorItem(request);
   }
@@ -600,8 +536,6 @@ public class CourseService {
     }
     if (request.getName() != null) exists.setName(request.getName());
     if (request.getTitle() != null) exists.setTitle(request.getTitle());
-    if (request.getIsOrg() != null) exists.setIsOrg(request.getIsOrg());
-    if (request.getAvatarUrl() != null) exists.setAvatarUrl(request.getAvatarUrl());
     instructorMapper.updateById(exists);
     return toInstructorItem(exists);
   }
@@ -647,25 +581,8 @@ public class CourseService {
     if (request.categoryId() != null) course.setCategoryId(request.categoryId());
     if (request.subcategoryLabel() != null) course.setSubcategoryLabel(request.subcategoryLabel());
     if (request.instructorId() != null) course.setInstructorId(request.instructorId());
-    if (request.isRequired() != null) course.setIsRequired(request.isRequired());
-    if (request.level() != null) course.setLevel(request.level());
-    if (request.totalHours() != null) course.setTotalHours(request.totalHours());
     if (request.thumbnailUrl() != null) course.setThumbnailUrl(request.thumbnailUrl());
     if (request.summary() != null) course.setSummary(request.summary());
-    if (request.description() != null) course.setDescription(request.description());
-    if (request.enrollCount() != null) course.setEnrollCountCached(request.enrollCount());
-    if (course.getTotalHours() == null) course.setTotalHours(BigDecimal.ZERO);
-  }
-
-  private void saveTags(Long courseId, List<Long> tagIds) {
-    courseTagMapper.deleteByOwner(courseId);
-    if (tagIds == null) {
-      return;
-    }
-    int sort = 0;
-    for (Long tagId : tagIds) {
-      courseTagMapper.insert(courseId, tagId, sort++);
-    }
   }
 
   private int nextChapterSort(Long courseId) {
@@ -680,13 +597,6 @@ public class CourseService {
         .eq(CourseLesson::getChapterId, chapterId));
     return list.stream().map(CourseLesson::getSortNo).filter(java.util.Objects::nonNull)
         .max(Comparator.naturalOrder()).orElse(0) + 1;
-  }
-
-  private void refreshLessonCount(Long courseId) {
-    Course course = new Course();
-    course.setId(courseId);
-    course.setTotalLessonCount((int) lessonMapper.countByCourse(courseId));
-    courseMapper.updateById(course);
   }
 
   private Map<Long, Enrollment> enrollmentsOf(Long userId, List<Long> courseIds) {
@@ -711,7 +621,6 @@ public class CourseService {
         ? null : relativeTime(enrollment.getLastStudiedAt()));
     item.put("lastStudiedAt", enrollment == null ? null : enrollment.getLastStudiedAt());
     item.put("studyHours", enrollment == null ? 0 : enrollment.getStudyHours());
-    item.put("score", enrollment == null ? null : enrollment.getScore());
     String status = enrollStatus == null || enrollStatus == 1 ? "not_started"
         : enrollStatus == 2 ? "studying" : "completed";
     item.put("status", status);
@@ -735,9 +644,7 @@ public class CourseService {
       return "未开始";
     }
     if (Integer.valueOf(3).equals(enrollment.getStatus())) {
-      BigDecimal score = enrollment.getScore();
-      return score == null ? "已结课"
-          : "已结课 · " + score.stripTrailingZeros().toPlainString() + "分";
+      return "已结课";
     }
     if (Integer.valueOf(2).equals(enrollment.getStatus())) {
       return "学习中 · " + enrollment.getProgressPercent() + "%";
@@ -783,7 +690,6 @@ public class CourseService {
       Instructor instructor) {
     Map<String, Object> item = new LinkedHashMap<>();
     item.put("id", course.getId());
-    item.put("extId", course.getExtId());
     item.put("title", course.getTitle());
     item.put("categoryId", course.getCategoryId());
     item.put("category", category == null ? null : category.getCode());
@@ -792,26 +698,14 @@ public class CourseService {
     item.put("subcategoryLabel", course.getSubcategoryLabel());
     item.put("instructorId", course.getInstructorId());
     item.put("instructor", instructor == null ? null : toInstructorItem(instructor));
-    item.put("isRequired", course.getIsRequired());
-    item.put("level", course.getLevel());
-    item.put("hours", course.getTotalHours());
-    item.put("totalHours", course.getTotalHours());
-    item.put("totalLessons", course.getTotalLessonCount());
-    item.put("totalLessonCount", course.getTotalLessonCount());
-    item.put("students", course.getEnrollCountCached());
-    item.put("enrollCount", course.getEnrollCountCached());
     item.put("thumbnail", course.getThumbnailUrl());
     item.put("thumbnailUrl", course.getThumbnailUrl());
     item.put("summary", course.getSummary());
-    item.put("description", course.getDescription());
     item.put("statusCode", course.getStatus());
     item.put("status", statusText(course.getStatus()));
     item.put("createdBy", course.getCreatedBy());
     item.put("createdAt", course.getCreatedAt());
     item.put("updatedAt", course.getUpdatedAt());
-    List<Map<String, Object>> tags = courseTagMapper.selectTags(course.getId());
-    item.put("tags", tags.stream().map(t -> t.get("name")).toList());
-    item.put("tagIds", courseTagMapper.selectLinkedIds(course.getId()));
     return item;
   }
 
@@ -820,8 +714,7 @@ public class CourseService {
     Map<String, Object> item = toAdminItem(course, category, instructor);
     item.put("instructor", instructor == null ? null : Map.of(
         "name", instructor.getName(),
-        "title", instructor.getTitle() == null ? "" : instructor.getTitle(),
-        "isOrg", instructor.getIsOrg()));
+        "title", instructor.getTitle() == null ? "" : instructor.getTitle()));
     item.put("status", "not_started");
     return item;
   }
@@ -842,15 +735,12 @@ public class CourseService {
     item.put("id", instructor.getId());
     item.put("name", instructor.getName());
     item.put("title", instructor.getTitle());
-    item.put("isOrg", instructor.getIsOrg());
-    item.put("avatarUrl", instructor.getAvatarUrl());
     return item;
   }
 
   public record CourseSaveRequest(String title, Long categoryId, String subcategoryLabel,
-      Long instructorId, Boolean isRequired, String level, BigDecimal totalHours,
-      String thumbnailUrl, String summary, String description, Integer status,
-      Integer enrollCount, List<Long> tagIds) {
+      Long instructorId, String thumbnailUrl, String summary,
+      Integer status) {
   }
 
   public record ChapterSaveRequest(String title, Integer sortNo) {

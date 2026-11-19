@@ -207,7 +207,7 @@ const pending = computed(() => dash.value.pending || {});
 
 const learners = computed(() => adminStore.users);
 const activeLearners = computed(() => learners.value.filter(u => u.status === 'active').length);
-const requiredCourses = computed(() => adminStore.courses.filter(c => c.isRequired).length);
+const totalCourses = computed(() => adminStore.courses.length);
 const attemptTotal = computed(() =>
   (dash.value.exams || []).reduce((sum, e) => sum + Number(e.attemptCount || 0), 0));
 
@@ -227,7 +227,7 @@ const statCards = computed(() => [
   },
   {
     label: '在架课程', value: stats.value.publishedCourseCount ?? 0,
-    foot: `含 ${requiredCourses.value} 门必修红线课`, trend: '', trendClass: 'flat',
+    foot: `共 ${totalCourses.value} 门课程`, trend: '', trendClass: 'flat',
     icon: Collection, color: '--app-violet-fg', tint: '--app-violet-bg'
   },
   {

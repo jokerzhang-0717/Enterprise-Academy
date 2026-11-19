@@ -3,7 +3,7 @@
   "info": {
     "title": "企业学堂（Enterprise Academy）API",
     "version": "1.0.0",
-    "description": "企业学堂后端接口文档，可直接导入 Apifox / Postman / Swagger Editor。\n\n- 服务地址：`http://127.0.0.1:8080/api`（Spring Boot context-path 为 `/api`）\n- 鉴权方式：登录后把 `data.token` 放入请求头 `Authorization: Bearer <token>`；只接受该请求头，不再兼容 `X-Token` 或 `?token=`\n- 访问令牌默认 15 分钟；过期后用 `POST /auth/refresh` 与 `data.refreshToken` 换发新令牌\n- 退出登录、修改密码或账号停用后，相关令牌立即失效\n- 管理端接口（`/admin/**` 以及 `POST /notifications/send`）要求账号角色 `role=2`\n- 统一响应：`{ \"code\": 0, \"message\": \"ok\", \"data\": ... }`\n- 分页响应：`data` 为 `{ total, page, size, records }`\n- 时间格式：`LocalDateTime` 为 `yyyy-MM-ddTHH:mm:ss`，`LocalDate` 为 `yyyy-MM-dd`，`LocalTime` 为 `HH:mm:ss`\n- 错误码与 HTTP 状态码一致：400 参数错误、401 未登录、403 无权限、404 不存在、409 冲突、413 文件过大、415 请求格式不支持、429 请求过于频繁\n\n演示账号：学员 `EMP-2024098 / 123456`，管理员 `admin / 123456`。\n"
+    "description": "企业学堂后端接口文档，可直接导入 Apifox / Postman / Swagger Editor。\n\n- 服务地址：`http://127.0.0.1:8080/api`（Spring Boot context-path 为 `/api`）\n- 鉴权方式：登录后把 `data.token` 放入请求头 `Authorization: Bearer <token>`；只接受该请求头，不再兼容 `X-Token` 或 `?token=`\n- 访问令牌默认 15 分钟；过期后用 `POST /auth/refresh` 与 `data.refreshToken` 换发新令牌\n- 退出登录、修改密码或账号停用后，相关令牌立即失效\n- 管理端接口（`/admin/**`）要求账号角色 `role=2`\n- 统一响应：`{ \"code\": 0, \"message\": \"ok\", \"data\": ... }`\n- 分页响应：`data` 为 `{ total, page, size, records }`\n- 时间格式：`LocalDateTime` 为 `yyyy-MM-ddTHH:mm:ss`，`LocalDate` 为 `yyyy-MM-dd`，`LocalTime` 为 `HH:mm:ss`\n- 错误码与 HTTP 状态码一致：400 参数错误、401 未登录、403 无权限、404 不存在、409 冲突、413 文件过大、415 请求格式不支持、429 请求过于频繁\n\n演示账号：学员 `EMP-2024098 / 123456`，管理员 `admin / 123456`。\n"
   },
   "servers": [
     {
@@ -30,10 +30,6 @@
       "description": "课程目录、详情、报名、学习进度"
     },
     {
-      "name": "学员端-研修通道",
-      "description": "已上架研修通道"
-    },
-    {
       "name": "学员端-考试",
       "description": "我的考试、试卷、作答、交卷"
     },
@@ -46,8 +42,8 @@
       "description": "我的证书、证书验真"
     },
     {
-      "name": "学员端-公告与通知",
-      "description": "公告、站内通知"
+      "name": "学员端-公告",
+      "description": "公告列表与已读状态"
     },
     {
       "name": "文件",
@@ -63,11 +59,7 @@
     },
     {
       "name": "管理端-课程与题库",
-      "description": "课程、章节、课时、标签、讲师、题库"
-    },
-    {
-      "name": "管理端-研修通道",
-      "description": "研修通道管理"
+      "description": "课程、章节、课时、讲师、题库"
     },
     {
       "name": "管理端-考试",
@@ -125,8 +117,6 @@
                       "departmentId": 1,
                       "department": "技术研发部",
                       "jobTitle": "高级研发工程师",
-                      "grade": "P6 高级研发",
-                      "specialty": "云原生与微服务",
                       "avatarUrl": null,
                       "phone": "13800000000",
                       "email": "liming@example.com",
@@ -262,7 +252,7 @@
           "认证与个人"
         ],
         "summary": "当前登录用户",
-        "description": "返回当前用户资料及学习统计字段（learningHours、completedCourses、studyingCourses、certificateCount、unreadNotifications）。",
+        "description": "返回当前用户资料及学习统计字段（learningHours、completedCourses、certificateCount）。",
         "responses": {
           "200": {
             "$ref": "#/components/responses/Ok"
@@ -369,8 +359,6 @@
                 "phone": "13800000000",
                 "email": "liming@example.com",
                 "jobTitle": "高级研发工程师",
-                "specialty": "云原生与微服务",
-                "grade": "P6 高级研发",
                 "avatarUrl": "http://127.0.0.1:8080/api/files/view/avatar/demo.png"
               }
             }
@@ -471,11 +459,6 @@
                         "title": "云原生微服务架构实战",
                         "category": "技术研发",
                         "categoryLabel": "技术研发",
-                        "level": "进阶技术",
-                        "isRequired": true,
-                        "totalHours": 6.5,
-                        "lessonCount": 12,
-                        "enrollCount": 320,
                         "thumbnailUrl": null,
                         "summary": "从 0 到 1 掌握微服务拆分与治理",
                         "status": 2,
@@ -489,23 +472,6 @@
           },
           "400": {
             "$ref": "#/components/responses/BadRequest"
-          },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
-          }
-        }
-      }
-    },
-    "/courses/my-learning": {
-      "get": {
-        "tags": [
-          "学员端-课程"
-        ],
-        "summary": "我的学习",
-        "description": "返回当前学员已报名课程及学习进度。",
-        "responses": {
-          "200": {
-            "$ref": "#/components/responses/Ok"
           },
           "401": {
             "$ref": "#/components/responses/Unauthorized"
@@ -754,22 +720,6 @@
         }
       }
     },
-    "/course-tags": {
-      "get": {
-        "tags": [
-          "学员端-课程"
-        ],
-        "summary": "课程标签列表",
-        "responses": {
-          "200": {
-            "$ref": "#/components/responses/Ok"
-          },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
-          }
-        }
-      }
-    },
     "/instructors": {
       "get": {
         "tags": [
@@ -782,82 +732,6 @@
           },
           "401": {
             "$ref": "#/components/responses/Unauthorized"
-          }
-        }
-      }
-    },
-    "/tracks": {
-      "get": {
-        "tags": [
-          "学员端-研修通道"
-        ],
-        "summary": "已上架研修通道（分页）",
-        "parameters": [
-          {
-            "$ref": "#/components/parameters/PageQuery"
-          },
-          {
-            "$ref": "#/components/parameters/SizeQuery12"
-          },
-          {
-            "$ref": "#/components/parameters/KeywordQuery"
-          },
-          {
-            "name": "category",
-            "in": "query",
-            "required": false,
-            "description": "security / tech / leadership",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "$ref": "#/components/responses/Ok"
-          },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
-          }
-        }
-      }
-    },
-    "/tracks/all": {
-      "get": {
-        "tags": [
-          "学员端-研修通道"
-        ],
-        "summary": "全部已上架通道",
-        "responses": {
-          "200": {
-            "$ref": "#/components/responses/Ok"
-          },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
-          }
-        }
-      }
-    },
-    "/tracks/{id}": {
-      "get": {
-        "tags": [
-          "学员端-研修通道"
-        ],
-        "summary": "研修通道详情",
-        "parameters": [
-          {
-            "$ref": "#/components/parameters/IdPath"
-          }
-        ],
-        "responses": {
-          "200": {
-            "$ref": "#/components/responses/Ok"
-          },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
-          },
-          "404": {
-            "$ref": "#/components/responses/NotFound"
           }
         }
       }
@@ -896,49 +770,36 @@
                         "timeWindow": "2025-04-18 14:00 ~ 2025-04-18 15:30",
                         "durationMinutes": 90,
                         "questionCount": 25,
-                        "totalScore": 100.0,
-                        "passScore": 60.0,
+                        "totalScore": 100,
+                        "passScore": 60,
                         "attemptsAllowed": 2,
-                        "attemptsUsed": 0
+                        "attemptsUsed": 0,
+                        "inProgressAttemptId": null
                       }
                     ],
-                    "past": []
+                    "past": [
+                      {
+                        "attemptId": 7,
+                        "examId": 1,
+                        "title": "考试标题",
+                        "attemptNo": 1,
+                        "status": 2,
+                        "statusLabel": "待评分",
+                        "pendingReview": true,
+                        "score": 60.0,
+                        "objectiveScore": 60.0,
+                        "totalScore": 100.0,
+                        "passScore": 80.0,
+                        "answeredCount": 27,
+                        "questionCount": 30,
+                        "completionDate": "2026-11-08T15:09:30",
+                        "examTotalScore": 100.0
+                      }
+                    ]
                   }
                 }
               }
             }
-          },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
-          }
-        }
-      }
-    },
-    "/exams/metrics": {
-      "get": {
-        "tags": [
-          "学员端-考试"
-        ],
-        "summary": "我的考试统计",
-        "responses": {
-          "200": {
-            "$ref": "#/components/responses/Ok"
-          },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
-          }
-        }
-      }
-    },
-    "/exams/past": {
-      "get": {
-        "tags": [
-          "学员端-考试"
-        ],
-        "summary": "往期考试记录",
-        "responses": {
-          "200": {
-            "$ref": "#/components/responses/Ok"
           },
           "401": {
             "$ref": "#/components/responses/Unauthorized"
@@ -1071,31 +932,6 @@
         }
       }
     },
-    "/exams/attempts/{attemptId}/switch": {
-      "post": {
-        "tags": [
-          "学员端-考试"
-        ],
-        "summary": "记录切屏",
-        "description": "切屏次数用于防作弊展示。",
-        "parameters": [
-          {
-            "$ref": "#/components/parameters/AttemptIdPath"
-          }
-        ],
-        "responses": {
-          "200": {
-            "$ref": "#/components/responses/Ok"
-          },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
-          },
-          "404": {
-            "$ref": "#/components/responses/NotFound"
-          }
-        }
-      }
-    },
     "/exams/attempts/{attemptId}/submit": {
       "post": {
         "tags": [
@@ -1169,13 +1005,10 @@
               },
               "example": {
                 "leaveType": "病假",
-                "trainingTitle": "云原生微服务架构实战",
-                "courseId": 1,
                 "startDate": "2026-12-01",
                 "endDate": "2026-12-02",
                 "leaveDays": 2,
-                "reason": "身体不适需要休息",
-                "attachmentUrl": null
+                "reason": "身体不适需要休息"
               }
             }
           }
@@ -1329,19 +1162,6 @@
           "学员端-考勤与请假"
         ],
         "summary": "签到",
-        "requestBody": {
-          "required": false,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CheckinAction"
-              },
-              "example": {
-                "method": 3
-              }
-            }
-          }
-        },
         "responses": {
           "200": {
             "$ref": "#/components/responses/Ok"
@@ -1367,30 +1187,6 @@
           },
           "400": {
             "$ref": "#/components/responses/BadRequest"
-          },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
-          }
-        }
-      }
-    },
-    "/checkins/stats": {
-      "get": {
-        "tags": [
-          "学员端-考勤与请假"
-        ],
-        "summary": "我的签到统计",
-        "parameters": [
-          {
-            "$ref": "#/components/parameters/FromDateQuery"
-          },
-          {
-            "$ref": "#/components/parameters/ToDateQuery"
-          }
-        ],
-        "responses": {
-          "200": {
-            "$ref": "#/components/responses/Ok"
           },
           "401": {
             "$ref": "#/components/responses/Unauthorized"
@@ -1480,22 +1276,6 @@
         }
       }
     },
-    "/announcements/unread-count": {
-      "get": {
-        "tags": [
-          "学员端-公告与通知"
-        ],
-        "summary": "未读公告数",
-        "responses": {
-          "200": {
-            "$ref": "#/components/responses/Ok"
-          },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
-          }
-        }
-      }
-    },
     "/announcements/read-all": {
       "put": {
         "tags": [
@@ -1534,268 +1314,6 @@
           },
           "404": {
             "$ref": "#/components/responses/NotFound"
-          }
-        }
-      }
-    },
-    "/notifications": {
-      "get": {
-        "tags": [
-          "学员端-公告与通知"
-        ],
-        "summary": "通知列表（分页）",
-        "parameters": [
-          {
-            "$ref": "#/components/parameters/PageQuery"
-          },
-          {
-            "$ref": "#/components/parameters/SizeQuery"
-          },
-          {
-            "name": "type",
-            "in": "query",
-            "required": false,
-            "description": "1 考试 / 2 课程 / 3 考勤 / 4 公告 / 5 培训考勤",
-            "schema": {
-              "type": "integer",
-              "enum": [
-                1,
-                2,
-                3,
-                4,
-                5
-              ]
-            }
-          },
-          {
-            "name": "isRead",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "boolean"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "$ref": "#/components/responses/Ok"
-          },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
-          }
-        }
-      }
-    },
-    "/notifications/recent": {
-      "get": {
-        "tags": [
-          "学员端-公告与通知"
-        ],
-        "summary": "最近通知",
-        "parameters": [
-          {
-            "name": "limit",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "default": 10
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "$ref": "#/components/responses/Ok"
-          },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
-          }
-        }
-      }
-    },
-    "/notifications/unread-count": {
-      "get": {
-        "tags": [
-          "学员端-公告与通知"
-        ],
-        "summary": "未读通知数",
-        "responses": {
-          "200": {
-            "$ref": "#/components/responses/Ok"
-          },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
-          }
-        }
-      }
-    },
-    "/notifications/{id}": {
-      "get": {
-        "tags": [
-          "学员端-公告与通知"
-        ],
-        "summary": "通知详情",
-        "parameters": [
-          {
-            "$ref": "#/components/parameters/IdPath"
-          }
-        ],
-        "responses": {
-          "200": {
-            "$ref": "#/components/responses/Ok"
-          },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
-          },
-          "404": {
-            "$ref": "#/components/responses/NotFound"
-          }
-        }
-      },
-      "delete": {
-        "tags": [
-          "学员端-公告与通知"
-        ],
-        "summary": "删除通知",
-        "parameters": [
-          {
-            "$ref": "#/components/parameters/IdPath"
-          }
-        ],
-        "responses": {
-          "200": {
-            "$ref": "#/components/responses/OkVoid"
-          },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
-          },
-          "404": {
-            "$ref": "#/components/responses/NotFound"
-          }
-        }
-      }
-    },
-    "/notifications/{id}/read": {
-      "put": {
-        "tags": [
-          "学员端-公告与通知"
-        ],
-        "summary": "标记单条已读/未读",
-        "parameters": [
-          {
-            "$ref": "#/components/parameters/IdPath"
-          }
-        ],
-        "requestBody": {
-          "required": false,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/NotificationReadRequest"
-              },
-              "example": {
-                "isRead": true
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "$ref": "#/components/responses/OkVoid"
-          },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
-          },
-          "404": {
-            "$ref": "#/components/responses/NotFound"
-          }
-        }
-      }
-    },
-    "/notifications/read-all": {
-      "put": {
-        "tags": [
-          "学员端-公告与通知"
-        ],
-        "summary": "全部标记已读",
-        "responses": {
-          "200": {
-            "$ref": "#/components/responses/OkVoid"
-          },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
-          }
-        }
-      }
-    },
-    "/notifications/send": {
-      "post": {
-        "tags": [
-          "学员端-公告与通知"
-        ],
-        "summary": "发送通知（管理员）",
-        "description": "仅管理员可调用。",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/NotificationSendRequest"
-              },
-              "example": {
-                "userIds": [
-                  1,
-                  2
-                ],
-                "type": 1,
-                "typeLabel": "考试",
-                "priority": 1,
-                "title": "考试提醒",
-                "summary": "您有一场考试即将开始",
-                "content": "请在规定时间内完成考试。",
-                "bulletPoints": [
-                  "提前 10 分钟进入考场",
-                  "保持网络稳定"
-                ],
-                "senderName": "培训中心",
-                "officialRefNo": "SEC-2025-Q2-0892",
-                "refType": "exam",
-                "refId": 1,
-                "durationLabel": "90 分钟",
-                "passingScoreLabel": "60分及格"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "$ref": "#/components/responses/Ok"
-          },
-          "400": {
-            "$ref": "#/components/responses/BadRequest"
-          },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
-          },
-          "403": {
-            "$ref": "#/components/responses/Forbidden"
-          }
-        }
-      }
-    },
-    "/departments/options": {
-      "get": {
-        "tags": [
-          "认证与个人"
-        ],
-        "summary": "部门下拉选项",
-        "description": "当前实现需要登录后访问（注册页请先使用公开注册接口或由前端内置选项）。",
-        "responses": {
-          "200": {
-            "$ref": "#/components/responses/Ok"
-          },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
           }
         }
       }
@@ -2004,69 +1522,6 @@
         }
       }
     },
-    "/admin/activities": {
-      "get": {
-        "tags": [
-          "管理端-看板与日志"
-        ],
-        "summary": "最新动态",
-        "parameters": [
-          {
-            "$ref": "#/components/parameters/PageQuery"
-          },
-          {
-            "$ref": "#/components/parameters/SizeQuery"
-          }
-        ],
-        "responses": {
-          "200": {
-            "$ref": "#/components/responses/Ok"
-          },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
-          },
-          "403": {
-            "$ref": "#/components/responses/Forbidden"
-          }
-        }
-      }
-    },
-    "/admin/logs": {
-      "get": {
-        "tags": [
-          "管理端-看板与日志"
-        ],
-        "summary": "操作日志（分页）",
-        "parameters": [
-          {
-            "$ref": "#/components/parameters/PageQuery"
-          },
-          {
-            "$ref": "#/components/parameters/SizeQuery"
-          },
-          {
-            "name": "logType",
-            "in": "query",
-            "required": false,
-            "description": "日志类型，如 user / course / exam / notice / approve",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "$ref": "#/components/responses/Ok"
-          },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
-          },
-          "403": {
-            "$ref": "#/components/responses/Forbidden"
-          }
-        }
-      }
-    },
     "/admin/users": {
       "get": {
         "tags": [
@@ -2150,8 +1605,6 @@
                 "password": "123456",
                 "departmentId": 1,
                 "jobTitle": "研发工程师",
-                "grade": "P5",
-                "specialty": "前端工程",
                 "avatarUrl": null,
                 "phone": "13900000000",
                 "email": "wangxm@example.com",
@@ -2176,30 +1629,6 @@
           },
           "409": {
             "$ref": "#/components/responses/Conflict"
-          }
-        }
-      }
-    },
-    "/admin/users/options": {
-      "get": {
-        "tags": [
-          "管理端-用户与部门"
-        ],
-        "summary": "用户下拉选项",
-        "parameters": [
-          {
-            "$ref": "#/components/parameters/KeywordQuery"
-          }
-        ],
-        "responses": {
-          "200": {
-            "$ref": "#/components/responses/Ok"
-          },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
-          },
-          "403": {
-            "$ref": "#/components/responses/Forbidden"
           }
         }
       }
@@ -2461,25 +1890,6 @@
         }
       }
     },
-    "/admin/departments/options": {
-      "get": {
-        "tags": [
-          "管理端-用户与部门"
-        ],
-        "summary": "部门下拉选项（管理端）",
-        "responses": {
-          "200": {
-            "$ref": "#/components/responses/Ok"
-          },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
-          },
-          "403": {
-            "$ref": "#/components/responses/Forbidden"
-          }
-        }
-      }
-    },
     "/admin/departments/{id}": {
       "get": {
         "tags": [
@@ -2691,18 +2101,10 @@
                 "categoryId": 1,
                 "subcategoryLabel": "研发架构",
                 "instructorId": 1,
-                "isRequired": true,
-                "level": "进阶技术",
-                "totalHours": 6.5,
                 "thumbnailUrl": null,
                 "summary": "从 0 到 1 掌握微服务拆分与治理",
                 "description": "完整的微服务架构课程",
-                "status": 1,
-                "enrollCount": 0,
-                "tagIds": [
-                  1,
-                  2
-                ]
+                "status": 1
               }
             }
           }
@@ -2713,25 +2115,6 @@
           },
           "400": {
             "$ref": "#/components/responses/BadRequest"
-          },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
-          },
-          "403": {
-            "$ref": "#/components/responses/Forbidden"
-          }
-        }
-      }
-    },
-    "/admin/courses/options": {
-      "get": {
-        "tags": [
-          "管理端-课程与题库"
-        ],
-        "summary": "已上架课程下拉选项",
-        "responses": {
-          "200": {
-            "$ref": "#/components/responses/Ok"
           },
           "401": {
             "$ref": "#/components/responses/Unauthorized"
@@ -3126,61 +2509,6 @@
         }
       }
     },
-    "/admin/course-tags": {
-      "get": {
-        "tags": [
-          "管理端-课程与题库"
-        ],
-        "summary": "课程标签列表",
-        "responses": {
-          "200": {
-            "$ref": "#/components/responses/Ok"
-          },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
-          },
-          "403": {
-            "$ref": "#/components/responses/Forbidden"
-          }
-        }
-      },
-      "post": {
-        "tags": [
-          "管理端-课程与题库"
-        ],
-        "summary": "新增课程标签",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/NameRequest"
-              },
-              "example": {
-                "name": "微服务"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "$ref": "#/components/responses/Ok"
-          },
-          "400": {
-            "$ref": "#/components/responses/BadRequest"
-          },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
-          },
-          "403": {
-            "$ref": "#/components/responses/Forbidden"
-          },
-          "409": {
-            "$ref": "#/components/responses/Conflict"
-          }
-        }
-      }
-    },
     "/admin/instructors": {
       "get": {
         "tags": [
@@ -3214,7 +2542,6 @@
               "example": {
                 "name": "陈老师",
                 "title": "资深架构师",
-                "isOrg": false,
                 "avatarUrl": null
               }
             }
@@ -3301,242 +2628,6 @@
         }
       }
     },
-    "/admin/tracks": {
-      "get": {
-        "tags": [
-          "管理端-研修通道"
-        ],
-        "summary": "研修通道列表（分页）",
-        "parameters": [
-          {
-            "$ref": "#/components/parameters/PageQuery"
-          },
-          {
-            "$ref": "#/components/parameters/SizeQuery"
-          },
-          {
-            "$ref": "#/components/parameters/KeywordQuery"
-          },
-          {
-            "name": "category",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "status",
-            "in": "query",
-            "required": false,
-            "description": "1 草稿 / 2 已上架 / 3 已下架",
-            "schema": {
-              "type": "integer",
-              "enum": [
-                1,
-                2,
-                3
-              ]
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "$ref": "#/components/responses/Ok"
-          },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
-          },
-          "403": {
-            "$ref": "#/components/responses/Forbidden"
-          }
-        }
-      },
-      "post": {
-        "tags": [
-          "管理端-研修通道"
-        ],
-        "summary": "新增研修通道",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/TrackSaveRequest"
-              },
-              "example": {
-                "category": "security",
-                "categoryLabel": "信息安全",
-                "title": "零信任安全架构实战",
-                "thumbnailUrl": null,
-                "summary": "从边界防护到零信任",
-                "description": "系统学习零信任架构",
-                "lectureCount": 12,
-                "studentCount": 0,
-                "durationLabel": "约 3 小时",
-                "level": 2,
-                "audience": "架构师、安全工程师",
-                "status": 1,
-                "sortNo": 1,
-                "outline": [
-                  "身份认证",
-                  "权限模型",
-                  "微隔离"
-                ],
-                "courseIds": [
-                  1,
-                  2
-                ]
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "$ref": "#/components/responses/Ok"
-          },
-          "400": {
-            "$ref": "#/components/responses/BadRequest"
-          },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
-          },
-          "403": {
-            "$ref": "#/components/responses/Forbidden"
-          }
-        }
-      }
-    },
-    "/admin/tracks/{id}": {
-      "get": {
-        "tags": [
-          "管理端-研修通道"
-        ],
-        "summary": "研修通道详情",
-        "parameters": [
-          {
-            "$ref": "#/components/parameters/IdPath"
-          }
-        ],
-        "responses": {
-          "200": {
-            "$ref": "#/components/responses/Ok"
-          },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
-          },
-          "403": {
-            "$ref": "#/components/responses/Forbidden"
-          },
-          "404": {
-            "$ref": "#/components/responses/NotFound"
-          }
-        }
-      },
-      "put": {
-        "tags": [
-          "管理端-研修通道"
-        ],
-        "summary": "更新研修通道",
-        "parameters": [
-          {
-            "$ref": "#/components/parameters/IdPath"
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/TrackSaveRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "$ref": "#/components/responses/Ok"
-          },
-          "400": {
-            "$ref": "#/components/responses/BadRequest"
-          },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
-          },
-          "403": {
-            "$ref": "#/components/responses/Forbidden"
-          },
-          "404": {
-            "$ref": "#/components/responses/NotFound"
-          }
-        }
-      },
-      "delete": {
-        "tags": [
-          "管理端-研修通道"
-        ],
-        "summary": "删除研修通道",
-        "parameters": [
-          {
-            "$ref": "#/components/parameters/IdPath"
-          }
-        ],
-        "responses": {
-          "200": {
-            "$ref": "#/components/responses/OkVoid"
-          },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
-          },
-          "403": {
-            "$ref": "#/components/responses/Forbidden"
-          },
-          "404": {
-            "$ref": "#/components/responses/NotFound"
-          }
-        }
-      }
-    },
-    "/admin/tracks/{id}/status": {
-      "put": {
-        "tags": [
-          "管理端-研修通道"
-        ],
-        "summary": "更新研修通道状态",
-        "parameters": [
-          {
-            "$ref": "#/components/parameters/IdPath"
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/StatusRequest"
-              },
-              "example": {
-                "status": 2
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "$ref": "#/components/responses/OkVoid"
-          },
-          "400": {
-            "$ref": "#/components/responses/BadRequest"
-          },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
-          },
-          "403": {
-            "$ref": "#/components/responses/Forbidden"
-          }
-        }
-      }
-    },
     "/admin/exams": {
       "get": {
         "tags": [
@@ -3598,18 +2689,12 @@
                 "code": "ZK-20261201-01",
                 "title": "2026年度微服务架构认证考试",
                 "organizer": "技术研发部 · 2026Q4",
-                "examType": "技术认证",
                 "status": 1,
-                "location": "在线网页自适应考试",
                 "startAt": "2026-12-01T14:00:00",
                 "endAt": "2026-12-01T15:30:00",
                 "durationMinutes": 90,
                 "totalScore": 100,
-                "passScore": 60,
-                "isDoubleCamera": false,
-                "relatedCourseId": 1,
-                "relatedCourseText": "《云原生微服务架构实战》",
-                "remainingChance": 2
+                "passScore": 60
               }
             }
           }
@@ -4241,25 +3326,6 @@
         }
       }
     },
-    "/admin/leaves/stats": {
-      "get": {
-        "tags": [
-          "管理端-考勤请假证书公告"
-        ],
-        "summary": "请假状态统计",
-        "responses": {
-          "200": {
-            "$ref": "#/components/responses/Ok"
-          },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
-          },
-          "403": {
-            "$ref": "#/components/responses/Forbidden"
-          }
-        }
-      }
-    },
     "/admin/leaves/{id}": {
       "get": {
         "tags": [
@@ -4423,11 +3489,9 @@
               },
               "example": {
                 "userId": 1,
-                "courseId": 1,
                 "checkinDate": "2026-11-06",
                 "checkInTime": "08:55:00",
                 "checkOutTime": "18:05:00",
-                "method": 1,
                 "status": 1
               }
             }
@@ -4448,33 +3512,6 @@
           },
           "409": {
             "$ref": "#/components/responses/Conflict"
-          }
-        }
-      }
-    },
-    "/admin/checkins/stats": {
-      "get": {
-        "tags": [
-          "管理端-考勤请假证书公告"
-        ],
-        "summary": "签到统计",
-        "parameters": [
-          {
-            "$ref": "#/components/parameters/FromDateQuery"
-          },
-          {
-            "$ref": "#/components/parameters/ToDateQuery"
-          }
-        ],
-        "responses": {
-          "200": {
-            "$ref": "#/components/responses/Ok"
-          },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
-          },
-          "403": {
-            "$ref": "#/components/responses/Forbidden"
           }
         }
       }
@@ -4606,7 +3643,6 @@
                 "issueDate": "2026-12-01",
                 "expireDate": "2028-12-01",
                 "validityLabel": "24 个月",
-                "rankingScore": "TOP 3%",
                 "status": 1,
                 "blockchainHash": null
               }
@@ -4802,7 +3838,6 @@
                 "issueOrg": "企业学堂",
                 "validityMonths": 24,
                 "description": "面向架构师的专家级认证",
-                "badgeType": "blockchain",
                 "privilegeText": "优先参与架构评审"
               }
             }
@@ -5652,16 +4687,6 @@
             "nullable": true,
             "example": "高级研发工程师"
           },
-          "specialty": {
-            "type": "string",
-            "nullable": true,
-            "example": "云原生与微服务"
-          },
-          "grade": {
-            "type": "string",
-            "nullable": true,
-            "example": "P6 高级研发"
-          },
           "avatarUrl": {
             "type": "string",
             "nullable": true,
@@ -5747,18 +4772,6 @@
             "description": "项目紧急发版 / 病假 / 因公外出 / 个人事务",
             "example": "病假"
           },
-          "trainingTitle": {
-            "type": "string",
-            "nullable": true,
-            "description": "缺席的培训/课程名称",
-            "example": "云原生微服务架构实战"
-          },
-          "courseId": {
-            "type": "integer",
-            "format": "int64",
-            "nullable": true,
-            "example": 1
-          },
           "startDate": {
             "type": "string",
             "format": "date",
@@ -5781,128 +4794,6 @@
           "reason": {
             "type": "string",
             "example": "身体不适需要休息"
-          },
-          "attachmentUrl": {
-            "type": "string",
-            "nullable": true,
-            "description": "病假单据等附件地址",
-            "example": null
-          }
-        }
-      },
-      "CheckinAction": {
-        "type": "object",
-        "properties": {
-          "method": {
-            "type": "integer",
-            "nullable": true,
-            "description": "1 人脸识别 / 2 工牌刷卡 / 3 移动端定位",
-            "example": 3
-          }
-        }
-      },
-      "NotificationReadRequest": {
-        "type": "object",
-        "properties": {
-          "isRead": {
-            "type": "boolean",
-            "nullable": true,
-            "description": "不传默认为 true",
-            "example": true
-          }
-        }
-      },
-      "NotificationSendRequest": {
-        "type": "object",
-        "required": [
-          "userIds",
-          "type",
-          "title"
-        ],
-        "properties": {
-          "userIds": {
-            "type": "array",
-            "items": {
-              "type": "integer",
-              "format": "int64"
-            },
-            "example": [
-              1,
-              2
-            ]
-          },
-          "type": {
-            "type": "integer",
-            "description": "1 考试 / 2 课程 / 3 考勤 / 4 公告 / 5 培训考勤",
-            "example": 1
-          },
-          "typeLabel": {
-            "type": "string",
-            "nullable": true,
-            "example": "考试"
-          },
-          "priority": {
-            "type": "integer",
-            "nullable": true,
-            "description": "1 普通 / 2 加急",
-            "example": 1
-          },
-          "title": {
-            "type": "string",
-            "example": "考试提醒"
-          },
-          "summary": {
-            "type": "string",
-            "nullable": true,
-            "example": "您有一场考试即将开始"
-          },
-          "content": {
-            "type": "string",
-            "nullable": true,
-            "example": "请在规定时间内完成考试。"
-          },
-          "bulletPoints": {
-            "type": "array",
-            "nullable": true,
-            "items": {
-              "type": "string"
-            },
-            "example": [
-              "提前 10 分钟进入考场",
-              "保持网络稳定"
-            ]
-          },
-          "senderName": {
-            "type": "string",
-            "nullable": true,
-            "example": "培训中心"
-          },
-          "officialRefNo": {
-            "type": "string",
-            "nullable": true,
-            "example": "SEC-2025-Q2-0892"
-          },
-          "refType": {
-            "type": "string",
-            "nullable": true,
-            "description": "exam / course / attendance / announcement",
-            "example": "exam"
-          },
-          "refId": {
-            "type": "integer",
-            "format": "int64",
-            "nullable": true,
-            "example": 1
-          },
-          "durationLabel": {
-            "type": "string",
-            "nullable": true,
-            "example": "90 分钟"
-          },
-          "passingScoreLabel": {
-            "type": "string",
-            "nullable": true,
-            "example": "60分及格"
           }
         }
       },
@@ -5961,16 +4852,6 @@
             "type": "string",
             "nullable": true,
             "example": "研发工程师"
-          },
-          "grade": {
-            "type": "string",
-            "nullable": true,
-            "example": "P5"
-          },
-          "specialty": {
-            "type": "string",
-            "nullable": true,
-            "example": "前端工程"
           },
           "avatarUrl": {
             "type": "string",
@@ -6100,23 +4981,6 @@
             "nullable": true,
             "example": 1
           },
-          "isRequired": {
-            "type": "boolean",
-            "nullable": true,
-            "description": "true 必修 / false 选修",
-            "example": true
-          },
-          "level": {
-            "type": "string",
-            "nullable": true,
-            "example": "进阶技术"
-          },
-          "totalHours": {
-            "type": "number",
-            "format": "double",
-            "nullable": true,
-            "example": 6.5
-          },
           "thumbnailUrl": {
             "type": "string",
             "nullable": true,
@@ -6137,24 +5001,6 @@
             "nullable": true,
             "description": "1 草稿 / 2 已上架 / 3 已下架",
             "example": 1
-          },
-          "enrollCount": {
-            "type": "integer",
-            "nullable": true,
-            "description": "展示用报名人数",
-            "example": 0
-          },
-          "tagIds": {
-            "type": "array",
-            "nullable": true,
-            "items": {
-              "type": "integer",
-              "format": "int64"
-            },
-            "example": [
-              1,
-              2
-            ]
           }
         }
       },
@@ -6202,18 +5048,6 @@
           }
         }
       },
-      "NameRequest": {
-        "type": "object",
-        "required": [
-          "name"
-        ],
-        "properties": {
-          "name": {
-            "type": "string",
-            "example": "微服务"
-          }
-        }
-      },
       "InstructorSaveRequest": {
         "type": "object",
         "required": [
@@ -6229,12 +5063,6 @@
             "nullable": true,
             "example": "资深架构师"
           },
-          "isOrg": {
-            "type": "boolean",
-            "nullable": true,
-            "description": "true 机构讲师 / false 个人讲师",
-            "example": false
-          },
           "avatarUrl": {
             "type": "string",
             "nullable": true,
@@ -6242,117 +5070,17 @@
           }
         }
       },
-      "TrackSaveRequest": {
-        "type": "object",
-        "required": [
-          "title"
-        ],
-        "properties": {
-          "category": {
-            "type": "string",
-            "nullable": true,
-            "description": "security / tech / leadership",
-            "example": "security"
-          },
-          "categoryLabel": {
-            "type": "string",
-            "nullable": true,
-            "example": "信息安全"
-          },
-          "title": {
-            "type": "string",
-            "example": "零信任安全架构实战"
-          },
-          "thumbnailUrl": {
-            "type": "string",
-            "nullable": true,
-            "example": null
-          },
-          "summary": {
-            "type": "string",
-            "nullable": true,
-            "example": "从边界防护到零信任"
-          },
-          "description": {
-            "type": "string",
-            "nullable": true,
-            "example": "系统学习零信任架构"
-          },
-          "lectureCount": {
-            "type": "integer",
-            "nullable": true,
-            "example": 12
-          },
-          "studentCount": {
-            "type": "integer",
-            "nullable": true,
-            "description": "展示用学习人数",
-            "example": 0
-          },
-          "durationLabel": {
-            "type": "string",
-            "nullable": true,
-            "example": "约 3 小时"
-          },
-          "level": {
-            "type": "integer",
-            "nullable": true,
-            "description": "1 入门 / 2 进阶 / 3 高级",
-            "example": 2
-          },
-          "audience": {
-            "type": "string",
-            "nullable": true,
-            "example": "架构师、安全工程师"
-          },
-          "status": {
-            "type": "integer",
-            "nullable": true,
-            "description": "1 草稿 / 2 已上架 / 3 已下架",
-            "example": 1
-          },
-          "sortNo": {
-            "type": "integer",
-            "nullable": true,
-            "example": 1
-          },
-          "outline": {
-            "type": "array",
-            "nullable": true,
-            "items": {
-              "type": "string"
-            },
-            "example": [
-              "身份认证",
-              "权限模型",
-              "微隔离"
-            ]
-          },
-          "courseIds": {
-            "type": "array",
-            "nullable": true,
-            "items": {
-              "type": "integer",
-              "format": "int64"
-            },
-            "example": [
-              1,
-              2
-            ]
-          }
-        }
-      },
       "ExamSaveRequest": {
         "type": "object",
         "required": [
-          "code",
           "title"
         ],
         "properties": {
           "code": {
             "type": "string",
-            "description": "考试编号，全局唯一",
-            "example": "ZK-20261201-01"
+            "description": "考试编号，全局唯一；不传时后端自动生成 EXAM-年份-序号",
+            "example": "EXAM-2026-001",
+            "nullable": true
           },
           "title": {
             "type": "string",
@@ -6363,21 +5091,11 @@
             "nullable": true,
             "example": "技术研发部 · 2026Q4"
           },
-          "examType": {
-            "type": "string",
-            "nullable": true,
-            "example": "技术认证"
-          },
           "status": {
             "type": "integer",
             "nullable": true,
             "description": "1 草稿 / 2 未开始 / 3 进行中 / 4 已结束 / 5 随时可考",
             "example": 1
-          },
-          "location": {
-            "type": "string",
-            "nullable": true,
-            "example": "在线网页自适应考试"
           },
           "startAt": {
             "type": "string",
@@ -6410,28 +5128,6 @@
             "nullable": true,
             "description": "默认 60",
             "example": 60
-          },
-          "isDoubleCamera": {
-            "type": "boolean",
-            "nullable": true,
-            "example": false
-          },
-          "relatedCourseId": {
-            "type": "integer",
-            "format": "int64",
-            "nullable": true,
-            "example": 1
-          },
-          "relatedCourseText": {
-            "type": "string",
-            "nullable": true,
-            "example": "《云原生微服务架构实战》"
-          },
-          "remainingChance": {
-            "type": "integer",
-            "nullable": true,
-            "description": "展示用剩余机会次数",
-            "example": 2
           }
         }
       },
@@ -6483,7 +5179,6 @@
             "items": {
               "type": "object",
               "required": [
-                "answerId",
                 "scoreGained"
               ],
               "properties": {
@@ -6492,12 +5187,19 @@
                   "format": "int64",
                   "example": 1
                 },
+                "questionId": {
+                  "type": "integer",
+                  "format": "int64",
+                  "nullable": true,
+                  "example": 12
+                },
                 "scoreGained": {
                   "type": "number",
                   "format": "double",
                   "example": 5
                 }
-              }
+              },
+              "description": "answerId 与 questionId 二选一；未作答的主观题传 questionId 后由服务端补建答卷行"
             }
           }
         }
@@ -6617,12 +5319,6 @@
             "format": "int64",
             "example": 1
           },
-          "courseId": {
-            "type": "integer",
-            "format": "int64",
-            "nullable": true,
-            "example": 1
-          },
           "checkinDate": {
             "type": "string",
             "format": "date",
@@ -6639,12 +5335,6 @@
             "nullable": true,
             "description": "时间格式 HH:mm:ss",
             "example": "18:05:00"
-          },
-          "method": {
-            "type": "integer",
-            "nullable": true,
-            "description": "1 人脸识别 / 2 工牌刷卡 / 3 移动端定位，默认 1",
-            "example": 1
           },
           "status": {
             "type": "integer",
@@ -6696,11 +5386,6 @@
             "nullable": true,
             "example": "24 个月"
           },
-          "rankingScore": {
-            "type": "string",
-            "nullable": true,
-            "example": "TOP 3%"
-          },
           "status": {
             "type": "integer",
             "nullable": true,
@@ -6751,12 +5436,6 @@
             "type": "string",
             "nullable": true,
             "example": "面向架构师的专家级认证"
-          },
-          "badgeType": {
-            "type": "string",
-            "nullable": true,
-            "description": "blockchain / security / cloud / ai",
-            "example": "blockchain"
           },
           "privilegeText": {
             "type": "string",

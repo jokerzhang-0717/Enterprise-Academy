@@ -213,7 +213,7 @@ export const request = async (path, options = {}) => {
     }
   }
 
-  if (response.status === 401) {
+  if (response.status === 401 && auth && token) {
     clearAuth();
     if (!sessionExpiredNotified) {
       sessionExpiredNotified = true;

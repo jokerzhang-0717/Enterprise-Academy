@@ -13,11 +13,10 @@ import org.apache.ibatis.annotations.Select;
 public interface EnrollmentMapper extends BaseMapper<Enrollment> {
 
   @Select("""
-      SELECT course_id AS courseId, title, total_hours AS totalHours,
-             total_lesson_count AS totalLessonCount, status,
+      SELECT course_id AS courseId, title, status,
              progress_percent AS progressPercent,
              completed_lesson_count AS completedLessonCount,
-             study_hours AS studyHours, score, last_studied_at AS lastStudiedAt,
+             study_hours AS studyHours, last_studied_at AS lastStudiedAt,
              badge_text AS badgeText
       FROM v_course_progress
       WHERE user_id = #{userId}

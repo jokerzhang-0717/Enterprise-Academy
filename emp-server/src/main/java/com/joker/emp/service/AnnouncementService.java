@@ -68,13 +68,6 @@ public class AnnouncementService {
         read.setUserId(userId);
         read.setReadAt(LocalDateTime.now());
         readMapper.insert(read);
-        Announcement update = new Announcement();
-        update.setId(id);
-        update.setViewCountCached((announcement.getViewCountCached() == null
-            ? 0 : announcement.getViewCountCached()) + 1);
-        announcementMapper.updateById(update);
-        announcement.setViewCountCached((announcement.getViewCountCached() == null
-            ? 0 : announcement.getViewCountCached()) + 1);
       }
     }
     return toItem(announcement, markRead ? AuthContext.userId() : null);
@@ -95,10 +88,6 @@ public class AnnouncementService {
     List<Map<String, Object>> records = result.getRecords().stream()
         .map(a -> toItem(a, userId, readIds)).toList();
     return PageResult.of(result.getTotal(), result.getCurrent(), result.getSize(), records);
-  }
-
-  public long unreadCount() {
-    return announcementMapper.countUnread(AuthContext.userId());
   }
 
   /** 将当前用户所有已发布公告标记为已读。 */
@@ -142,7 +131,6 @@ public class AnnouncementService {
     announcement.setAuthorName(current == null ? "系统自动" : current.getName());
     announcement.setStatus(request.status() == null ? 1 : request.status());
     announcement.setIsTop(Boolean.TRUE.equals(request.isTop()));
-    announcement.setViewCountCached(0);
     if (Integer.valueOf(2).equals(announcement.getStatus())) {
       announcement.setPublishAt(request.publishAt() == null
           ? LocalDateTime.now() : request.publishAt());
@@ -240,7 +228,6 @@ public class AnnouncementService {
   private Map<String, Object> toItem(Announcement announcement, Long userId, Set<Long> readIds) {
     Map<String, Object> item = new LinkedHashMap<>();
     item.put("id", announcement.getId());
-    item.put("extId", announcement.getExtId());
     item.put("title", announcement.getTitle());
     item.put("content", announcement.getContent());
     item.put("isTop", announcement.getIsTop());
@@ -250,7 +237,6 @@ public class AnnouncementService {
     item.put("authorId", announcement.getAuthorId());
     item.put("authorName", announcement.getAuthorName());
     item.put("publishAt", announcement.getPublishAt());
-    item.put("viewCount", announcement.getViewCountCached());
     item.put("createdAt", announcement.getCreatedAt());
     item.put("updatedAt", announcement.getUpdatedAt());
     if (userId != null) {

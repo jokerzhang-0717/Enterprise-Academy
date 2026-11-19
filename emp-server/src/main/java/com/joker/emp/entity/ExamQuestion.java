@@ -20,9 +20,6 @@ public class ExamQuestion {
   @TableId(type = IdType.AUTO)
   private Long id;
 
-  /** mock 原始 id，如 q-2 */
-  private String extId;
-
   /** 为空 = 未组卷的备用题 */
   private Long examId;
 
@@ -35,8 +32,6 @@ public class ExamQuestion {
   private BigDecimal score;
 
   private String title;
-
-  private String knowledgePoint;
 
   /** 1 简单 2 中等 3 困难 */
   private Integer difficulty;

@@ -33,10 +33,10 @@
     </div>
 
     <div class="toolbar exam-filter-bar">
-      <select v-model="categoryFilter" class="exam-filter-select" aria-label="按分类筛选考试">
-        <option value="">全部分类</option>
-        <option v-for="category in categories" :key="category" :value="category">
-          {{ category }}
+      <select v-model="organizerFilter" class="exam-filter-select" aria-label="按组织方筛选考试">
+        <option value="">全部组织方</option>
+        <option v-for="organizer in organizers" :key="organizer" :value="organizer">
+          {{ organizer }}
         </option>
       </select>
       <select v-model="stateFilter" class="exam-filter-select" aria-label="按状态筛选考试">
@@ -78,7 +78,7 @@
                 <span class="exam-dot" :class="`exam-dot--${exam.state}`"></span>
                 <div>
                   <div class="cell-exam-title">{{ exam.title }}</div>
-                  <div class="cell-exam-meta">{{ exam.category }}</div>
+                  <div class="cell-exam-meta">{{ exam.organizer }}</div>
                 </div>
               </div>
             </td>
@@ -102,8 +102,11 @@
                   class="text-btn text-btn--warn"
                   @click="revokeExam(exam)"
                 >撤回</button>
+                <button class="text-btn text-btn--primary" @click="openGrading(exam)">
+                  阅卷
+                </button>
                 <button class="text-btn text-btn--primary" @click="openQuickStatus(exam)">
-                  快捷改状态
+                  调整状态
                 </button>
                 <button class="icon-btn" title="编辑" @click="openEdit(exam)">
                   <EditPen />
@@ -132,7 +135,7 @@
     <div v-if="quickStatusExam" class="modal-backdrop" @click.self="closeQuickStatus">
       <div class="modal modal--quick-status">
         <div class="modal-head">
-          <h2 class="modal-title">快捷修改状态</h2>
+          <h2 class="modal-title">调整考试状态</h2>
           <button type="button" class="modal-close" @click="closeQuickStatus"><Close /></button>
         </div>
         <form class="modal-body" @submit.prevent="saveQuickStatus">
@@ -163,7 +166,7 @@
       :subtitle="detailExam.title"
       :tags="[stateLabel(detailExam.state), `${questionCount(detailExam.id)} 道题`]"
       :rows="[
-        { label: '组织方', value: detailExam.category },
+        { label: '组织方', value: detailExam.organizer },
         { label: '考试时间', value: detailExam.timeWindow, wide: true },
         { label: '考试时长', value: `${detailExam.durationMinutes} 分钟` },
         { label: '题目数量', value: `${questionCount(detailExam.id)} 道` },
@@ -182,16 +185,12 @@
         </div>
         <form class="modal-body" @submit.prevent="saveExam">
           <label class="field">
-            <span class="field-label">考试编号</span>
-            <input v-model.trim="form.code" type="text" class="field-input" placeholder="如 EXAM-2026-001" />
-          </label>
-          <label class="field">
             <span class="field-label">考试名称</span>
             <input v-model.trim="form.title" type="text" class="field-input" placeholder="请输入考试名称" />
           </label>
           <label class="field">
             <span class="field-label">组织方</span>
-            <input v-model.trim="form.category" type="text" class="field-input" placeholder="如 技术合规部" />
+            <input v-model.trim="form.organizer" type="text" class="field-input" placeholder="如 技术合规部" />
           </label>
           <label v-if="editingId" class="field">
             <span class="field-label">考试状态</span>
@@ -245,26 +244,12 @@
               考试已发布或已有作答，试卷已锁定。此处仅供查看。
             </div>
             <div class="builder-filters">
-              <input
-                v-model.trim="builderKeyword"
-                type="search"
-                class="field-input"
-                placeholder="搜索题干"
-                aria-label="搜索题干"
-              />
               <select v-model="builderTypeFilter" class="field-input" aria-label="按题型筛选">
                 <option value="">全部题型</option>
                 <option v-for="type in questionTypes" :key="type.value" :value="type.value">
                   {{ type.label }}
                 </option>
               </select>
-              <input
-                v-model.trim="builderKnowledgeFilter"
-                type="search"
-                class="field-input"
-                placeholder="筛选知识点"
-                aria-label="按知识点筛选"
-              />
               <select v-model.number="builderDifficultyFilter" class="field-input" aria-label="按难度筛选">
                 <option :value="0">全部难度</option>
                 <option :value="1">简单</option>
@@ -301,7 +286,6 @@
                 <span class="builder-question-main">
                   <span class="builder-question-meta">
                     {{ question.typeLabel }} · {{ question.score }} 分 · {{ question.difficultyLabel }}
-                    <span v-if="question.knowledgePoint">· {{ question.knowledgePoint }}</span>
                   </span>
                   <span class="builder-question-title">{{ question.title }}</span>
                 </span>
@@ -321,6 +305,12 @@
         </form>
       </div>
     </div>
+
+    <AdminGradingModal
+      v-if="gradingExam"
+      :exam="gradingExam"
+      @close="gradingExam = null"
+    />
 
     <ConfirmDialog
       v-if="confirmState"
@@ -353,6 +343,7 @@ import { useConfirm } from '../../composables/useConfirm.js';
 import { useToast } from '../../composables/useToast.js';
 import AdminPager from '../../components/AdminPager.vue';
 import AdminDetailModal from '../../components/AdminDetailModal.vue';
+import AdminGradingModal from '../../components/AdminGradingModal.vue';
 import ConfirmDialog from '../../components/ConfirmDialog.vue';
 
 const { show: showToast } = useToast();
@@ -363,11 +354,11 @@ const exams = adminStore.exams;
 
 const { confirmState, askConfirm, cancelConfirm, acceptConfirm } = useConfirm();
 
-const categoryFilter = ref('');
+const organizerFilter = ref('');
 const stateFilter = ref('');
 const keyword = ref('');
 
-const categories = computed(() => [...new Set(exams.map(exam => exam.category).filter(Boolean))].sort());
+const organizers = computed(() => [...new Set(exams.map(exam => exam.organizer).filter(Boolean))].sort());
 
 const runningCount = computed(() => exams.filter(e => e.state === 'running').length);
 const scheduledCount = computed(() => exams.filter(e => e.state === 'scheduled').length);
@@ -377,16 +368,16 @@ const draftCount = computed(() => exams.filter(e => e.state === 'draft').length)
 const filteredExams = computed(() => {
   const search = keyword.value.toLowerCase();
   return exams.filter((exam) => {
-    const matchesCategory = !categoryFilter.value || exam.category === categoryFilter.value;
+    const matchesOrganizer = !organizerFilter.value || exam.organizer === organizerFilter.value;
     const matchesState = !stateFilter.value || exam.state === stateFilter.value;
     const matchesKeyword = !search ||
-      `${exam.title} ${exam.category}`.toLowerCase().includes(search);
-    return matchesCategory && matchesState && matchesKeyword;
+      `${exam.title} ${exam.organizer}`.toLowerCase().includes(search);
+    return matchesOrganizer && matchesState && matchesKeyword;
   });
 });
 
 const { page, totalPages, paged: pagedExams, resetPage } = usePager(filteredExams, 7);
-watch([categoryFilter, stateFilter, keyword], resetPage);
+watch([organizerFilter, stateFilter, keyword], resetPage);
 
 const examStates = [
   { value: 'running', label: '进行中' },
@@ -413,6 +404,10 @@ const stateLabel = (state) => stateLabelMap[state] || state;
 /* ---------- 考试详情 ---------- */
 const detailExam = ref(null);
 const openDetail = (exam) => { detailExam.value = exam; };
+
+/* ---------- 阅卷 ---------- */
+const gradingExam = ref(null);
+const openGrading = (exam) => { gradingExam.value = exam; };
 
 const quickStatusExam = ref(null);
 const quickStatus = ref(1);
@@ -459,8 +454,6 @@ const formError = ref('');
 const saving = ref(false);
 const editingExam = ref(null);
 const selectedQuestionIds = ref([]);
-const builderKeyword = ref('');
-const builderKnowledgeFilter = ref('');
 const builderTypeFilter = ref('');
 const builderDifficultyFilter = ref(0);
 const randomPickCount = ref(5);
@@ -477,17 +470,12 @@ const canEditQuestionSet = computed(() =>
     || (editingExam.value?.statusCode === 1 && !Number(editingExam.value?.attemptCount || 0)),
 );
 
-const filteredQuestionPool = computed(() => {
-  const keyword = builderKeyword.value.toLowerCase();
-  const knowledge = builderKnowledgeFilter.value.toLowerCase();
-  return adminStore.questions.filter((question) => {
-    const text = `${question.title || ''} ${question.knowledgePoint || ''}`.toLowerCase();
-    return (!keyword || text.includes(keyword))
-      && (!knowledge || (question.knowledgePoint || '').toLowerCase().includes(knowledge))
-      && (!builderTypeFilter.value || question.type === builderTypeFilter.value)
-      && (!builderDifficultyFilter.value || question.difficulty === builderDifficultyFilter.value);
-  });
-});
+const filteredQuestionPool = computed(() =>
+  adminStore.questions.filter((question) =>
+    (!builderTypeFilter.value || question.type === builderTypeFilter.value)
+      && (!builderDifficultyFilter.value || question.difficulty === builderDifficultyFilter.value),
+  ),
+);
 
 const selectedQuestions = computed(() => {
   const byId = new Map(adminStore.questions.map((question) => [question.numericId, question]));
@@ -507,9 +495,8 @@ const defaultDate = () => {
 };
 
 const form = ref({
-  code: '',
   title: '',
-  category: '',
+  organizer: '',
   examDate: defaultDate(),
   startTime: '14:00',
   endTime: '15:30',
@@ -544,9 +531,8 @@ const openCreate = async () => {
   resetBuilderFilters();
   formError.value = '';
   form.value = {
-    code: '',
     title: '',
-    category: '',
+    organizer: '',
     examDate: defaultDate(),
     startTime: '14:00',
     endTime: '15:30',
@@ -557,8 +543,6 @@ const openCreate = async () => {
 };
 
 const resetBuilderFilters = () => {
-  builderKeyword.value = '';
-  builderKnowledgeFilter.value = '';
   builderTypeFilter.value = '';
   builderDifficultyFilter.value = 0;
   randomPickCount.value = 5;
@@ -599,9 +583,8 @@ const openEdit = async (exam) => {
   resetBuilderFilters();
   formError.value = '';
   form.value = {
-    code: exam.code || '',
     title: exam.title,
-    category: exam.category,
+    organizer: exam.organizer,
     examDate: win.examDate,
     startTime: win.startTime,
     endTime: win.endTime,
@@ -676,9 +659,8 @@ const closeModal = () => {
 };
 
 const saveExam = async () => {
-  if (!form.value.code) { formError.value = '请输入考试编号。'; return; }
   if (!form.value.title) { formError.value = '请输入考试名称。'; return; }
-  if (!form.value.category) { formError.value = '请输入组织方。'; return; }
+  if (!form.value.organizer) { formError.value = '请输入组织方。'; return; }
   if (!form.value.examDate) { formError.value = '请选择考试日期。'; return; }
   if (toMinutes(form.value.endTime) <= toMinutes(form.value.startTime)) {
     formError.value = '结束时间需要晚于开始时间。';
@@ -700,13 +682,10 @@ const saveExam = async () => {
     formError.value = '及格分不能超过试卷总分。';
     return;
   }
-  const dup = exams.some(e => e.code === form.value.code && e.id !== editingId.value);
-  if (dup) { formError.value = '考试编号已存在，请换一个。'; return; }
 
   const payload = {
-    code: form.value.code,
     title: form.value.title,
-    organizer: form.value.category,
+    organizer: form.value.organizer,
     startAt: `${form.value.examDate}T${form.value.startTime}:00`,
     endAt: `${form.value.examDate}T${form.value.endTime}:00`,
     durationMinutes: durationMinutes.value,
@@ -783,8 +762,7 @@ const removeExam = (exam) => {
     subtitle: exam.title,
     rows: [
       { label: '考试状态', value: stateLabel(exam.state) },
-      { label: '时间窗', value: exam.timeWindow },
-      { label: '参考人数', value: `${(exam.participants || 0).toLocaleString()} 人` }
+      { label: '时间窗', value: exam.timeWindow }
     ],
     tip: '删除后考试信息、题目关联与成绩记录将一并移除，此操作不可恢复。',
     confirmText: '确认删除',
@@ -1170,7 +1148,7 @@ th.ops, td.ops { text-align: right; }
   align-items: center;
   justify-content: center;
   padding: 20px;
-  background: rgba(15, 30, 51, 0.45);
+  background: var(--app-scrim);
   backdrop-filter: blur(2px);
 }
 

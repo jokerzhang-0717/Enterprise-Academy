@@ -28,8 +28,6 @@ public class LessonProgress {
   /** 断点续播位置 */
   private Integer watchedSeconds;
 
-  private LocalDateTime completedAt;
-
   @TableField(fill = FieldFill.INSERT_UPDATE)
   private LocalDateTime updatedAt;
 }

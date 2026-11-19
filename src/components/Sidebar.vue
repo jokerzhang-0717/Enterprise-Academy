@@ -85,7 +85,7 @@ const navItems = [
   { id: 'exams',        label: '考试与测评中心',   icon: DocumentChecked },
   { id: 'analytics',    label: '个人学习看板',     icon: DataAnalysis },
   { id: 'attendance',   label: '培训考勤与请假',   icon: Calendar },
-  { id: 'messages',     label: '消息与站内信',     icon: Bell },
+  { id: 'messages',     label: '消息中心',         icon: Bell },
   { id: 'certificates', label: '荣誉证书与问答',   icon: Medal },
   { id: 'profile',      label: '个人中心',         icon: User }
 ];

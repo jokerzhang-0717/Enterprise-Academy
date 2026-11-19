@@ -42,14 +42,8 @@ public class CourseController {
       @RequestParam(defaultValue = "12") long size,
       @RequestParam(required = false) String keyword,
       @RequestParam(required = false) String category,
-      @RequestParam(required = false) Boolean required,
       @RequestParam(required = false) String status) {
-    return ApiResponse.ok(courseService.catalog(page, size, keyword, category, required, status));
-  }
-
-  @GetMapping("/courses/my-learning")
-  public ApiResponse<List<Map<String, Object>>> myLearning() {
-    return ApiResponse.ok(courseService.myLearning());
+    return ApiResponse.ok(courseService.catalog(page, size, keyword, category, status));
   }
 
   @GetMapping("/courses/{id}")
@@ -105,11 +99,6 @@ public class CourseController {
   @GetMapping("/course-categories")
   public ApiResponse<List<Map<String, Object>>> categories() {
     return ApiResponse.ok(courseService.categories());
-  }
-
-  @GetMapping("/course-tags")
-  public ApiResponse<List<Map<String, Object>>> tags() {
-    return ApiResponse.ok(courseService.tags());
   }
 
   @GetMapping("/instructors")

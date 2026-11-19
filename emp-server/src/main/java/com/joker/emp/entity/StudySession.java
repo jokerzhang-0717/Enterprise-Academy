@@ -30,9 +30,6 @@ public class StudySession {
 
   private BigDecimal durationMinutes;
 
-  /** 1 视频 2 线下培训 3 考试复盘 */
-  private Integer source;
-
   @TableField(fill = FieldFill.INSERT)
   private LocalDateTime createdAt;
 }

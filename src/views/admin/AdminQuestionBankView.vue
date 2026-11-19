@@ -5,7 +5,7 @@
     <div class="page-head">
       <div>
         <h1 class="page-title">题库管理</h1>
-        <p class="page-sub">统一维护题库 · 组卷时复制为独立试卷，发布后内容锁定</p>
+        <p class="page-sub">统一维护题库 · 组卷时复制为独立试卷，修改后同步试卷与学员端</p>
       </div>
       <div class="page-head-actions">
         <button class="btn btn--secondary" @click="openImportModal">
@@ -22,10 +22,6 @@
       <div class="stat-item">
         <span class="stat-value">{{ questions.length }}</span>
         <span class="stat-label">总题数</span>
-      </div>
-      <div class="stat-item">
-        <span class="stat-value stat-value--green">{{ poolQuestionCount }}</span>
-        <span class="stat-label">备用题</span>
       </div>
       <div class="stat-item">
         <span class="stat-value stat-value--blue">{{ typeCount('single') }}</span>
@@ -47,13 +43,6 @@
 
     <!-- 筛选工具栏 -->
     <div class="toolbar">
-      <select v-model="examFilter" class="select">
-        <option value="">全部考试</option>
-        <option value="__standalone__">备用题库</option>
-        <option v-for="exam in exams" :key="exam.id" :value="exam.id">
-          {{ exam.title.slice(0, 24) }}{{ exam.title.length > 24 ? '…' : '' }}
-        </option>
-      </select>
       <select v-model="typeFilter" class="select">
         <option value="">全部题型</option>
         <option v-for="t in qTypeOptions" :key="t.id" :value="t.id">{{ t.label }}</option>
@@ -90,8 +79,7 @@
             <span class="q-type-chip" :class="`q-type-chip--${q.type}`">{{ q.typeLabel }}</span>
             <span class="q-score">{{ q.score }} 分</span>
             <span class="q-exam">{{ examTitle(q.examId) }}</span>
-            <span v-if="isQuestionLocked(q)" class="q-exam">已锁定</span>
-            <span v-if="q.knowledgePoint" class="q-exam">{{ q.knowledgePoint }}</span>
+            <span v-if="isQuestionLocked(q)" class="q-exam" title="该考试已发布或已有作答，仍可编辑并同步到试卷与学员端">已发布</span>
             <span class="q-exam">难度：{{ q.difficultyLabel }}</span>
             <span v-if="q.answer" class="q-answer mono">答案:{{ q.answer }}</span>
           </div>
@@ -100,13 +88,12 @@
         <div class="q-actions" @click.stop>
           <button
             class="icon-btn"
-            :title="isQuestionLocked(q) ? '考试已发布或已有作答，题目已锁定' : '编辑'"
-            :disabled="isQuestionLocked(q)"
+            :title="isQuestionLocked(q) ? '编辑并同步到试卷与学员端' : '编辑'"
             @click="openEdit(q)"
           ><EditPen /></button>
           <button
             class="icon-btn icon-btn--danger"
-            :title="isQuestionLocked(q) ? '考试已发布或已有作答，题目已锁定' : '删除'"
+            :title="isQuestionLocked(q) ? '该考试已发布或已有作答，删除已锁定' : '删除'"
             :disabled="isQuestionLocked(q)"
             @click="removeQ(q)"
           ><Delete /></button>
@@ -129,23 +116,12 @@
           <button type="button" class="modal-close" @click="closeModal"><Close /></button>
         </div>
         <form class="modal-body" @submit.prevent="saveQ">
-          <div class="field-row">
-            <label class="field">
-              <span class="field-label">题目归属</span>
-              <select v-model="form.examId" class="field-input">
-                <option value="">备用题库（推荐）</option>
-                <option v-for="exam in exams" :key="exam.id" :value="exam.id">
-                  {{ exam.title.slice(0, 28) }}{{ exam.title.length > 28 ? '…' : '' }}
-                </option>
-              </select>
-            </label>
-            <label class="field">
-              <span class="field-label">题型</span>
-              <select v-model="form.type" class="field-input" @change="switchType">
-                <option v-for="t in qTypeOptions" :key="t.id" :value="t.id">{{ t.label }}</option>
-              </select>
-            </label>
-          </div>
+          <label class="field">
+            <span class="field-label">题型</span>
+            <select v-model="form.type" class="field-input" @change="switchType">
+              <option v-for="t in qTypeOptions" :key="t.id" :value="t.id">{{ t.label }}</option>
+            </select>
+          </label>
           <div class="field-row">
             <label class="field">
               <span class="field-label">分值</span>
@@ -160,10 +136,6 @@
               </select>
             </label>
           </div>
-          <label class="field">
-            <span class="field-label">知识点</span>
-            <input v-model.trim="form.knowledgePoint" type="text" class="field-input" placeholder="如：数据库事务" />
-          </label>
           <label class="field">
             <span class="field-label">题干</span>
             <textarea v-model.trim="form.title" rows="3" class="field-input field-textarea" placeholder="请输入题目内容"></textarea>
@@ -305,7 +277,7 @@
 <script setup>
 import { computed, ref, watch } from 'vue';
 import { Plus, EditPen, Delete, Close, Upload } from '@element-plus/icons-vue';
-import { adminStore, loadQuestions } from '../../adminStore.js';
+import { adminStore, loadExams, loadQuestions } from '../../adminStore.js';
 import {
   createAdminQuestion,
   deleteAdminQuestion,
@@ -324,10 +296,8 @@ const questions = adminStore.questions;
 const { confirmState, askConfirm, cancelConfirm, acceptConfirm } = useConfirm();
 const exams = adminStore.exams;
 
-const examFilter = ref('');
 const typeFilter = ref('');
 const keyword = ref('');
-
 const qTypeOptions = [
   { id: 'single',      label: '单选题' },
   { id: 'multiple',    label: '多选题' },
@@ -336,7 +306,6 @@ const qTypeOptions = [
 ];
 
 const typeCount = (type) => questions.filter(q => q.type === type).length;
-const poolQuestionCount = computed(() => questions.filter((question) => !question.examId).length);
 const isQuestionLocked = (question) => {
   if (!question.examId) return false;
   const exam = exams.find((item) => item.id === question.examId);
@@ -351,17 +320,15 @@ const examTitle = (examId) => {
 const filteredQuestions = computed(() => {
   const kw = keyword.value.trim().toLowerCase();
   return questions.filter(q => {
-    const hitExam = !examFilter.value
-      || (examFilter.value === '__standalone__' ? !q.examId : q.examId === examFilter.value);
     const hitType = !typeFilter.value || q.type === typeFilter.value;
-    const hitKw = !kw || `${q.title || ''} ${q.knowledgePoint || ''}`.toLowerCase().includes(kw);
-    return hitExam && hitType && hitKw;
+    const hitKw = !kw || `${q.title || ''}`.toLowerCase().includes(kw);
+    return hitType && hitKw;
   });
 });
 
 const PAGE_SIZE = 5;
 const { page, totalPages, paged: pagedQuestions, resetPage } = usePager(filteredQuestions, PAGE_SIZE);
-watch([examFilter, typeFilter, keyword], resetPage);
+watch([typeFilter, keyword], resetPage);
 
 /* ---------- 弹窗表单 ---------- */
 const modalOpen = ref(false);
@@ -373,7 +340,6 @@ const emptyForm = () => ({
   examId: '',
   type: 'single',
   score: 5,
-  knowledgePoint: '',
   difficulty: 2,
   title: '',
   options: [
@@ -394,17 +360,12 @@ const openAdd = () => {
 };
 
 const openEdit = (q) => {
-  if (isQuestionLocked(q)) {
-    showToast('该考试已发布或已有作答记录，题目已锁定。', 'info');
-    return;
-  }
   editingId.value = q.numericId ?? q.id;
   formError.value = '';
   form.value = {
     examId: q.examId,
     type: q.type,
     score: q.score,
-    knowledgePoint: q.knowledgePoint || '',
     difficulty: q.difficulty || 2,
     title: q.title,
     options: (q.options && q.options.length) ? q.options.map(o => ({ ...o })) : emptyForm().options,
@@ -440,7 +401,6 @@ const toSavePayload = (source) => {
     type: typeCodeMap[source.type] ?? 1,
     score: Number(source.score) || 5,
     title: source.title.trim(),
-    knowledgePoint: (source.knowledgePoint || '').trim(),
     difficulty: Number(source.difficulty) || 2,
     correctAnswer: objective ? String(source.answer || '').trim().toUpperCase() : '',
     options: objective
@@ -471,6 +431,7 @@ const saveQ = async () => {
       await createAdminQuestion(payload);
     }
     await loadQuestions();
+    await loadExams();
     closeModal();
   } catch (err) {
     formError.value = err?.message || '保存题目失败，请重试。';
@@ -801,7 +762,7 @@ button { cursor: pointer; }
 /* ========== 题型统计 ========== */
 .stat-strip {
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 12px;
 }
 
@@ -1073,7 +1034,7 @@ button { cursor: pointer; }
   align-items: center;
   justify-content: center;
   padding: 20px;
-  background: rgba(15, 30, 51, 0.45);
+  background: var(--app-scrim);
   backdrop-filter: blur(2px);
 }
 

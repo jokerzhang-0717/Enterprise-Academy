@@ -66,7 +66,7 @@
                 <div class="cell-course-text">
                   <div class="cell-course-title">{{ course.title }}</div>
                   <div class="cell-course-meta">
-                    {{ course.instructor?.name || '—' }} · {{ course.tags?.join(' / ') }}
+                    {{ course.instructor?.name || '—' }}
                   </div>
                 </div>
               </div>
@@ -326,7 +326,7 @@ const resolveInstructorId = async (name) => {
 const filteredCourses = computed(() => {
   const kw = keyword.value.trim().toLowerCase();
   return courses.filter(c => {
-    const hitKw = !kw || [c.title, c.summary, c.instructor?.name, c.categoryLabel, ...(c.tags || [])]
+    const hitKw = !kw || [c.title, c.summary, c.instructor?.name, c.categoryLabel]
       .filter(Boolean)
       .some(v => v.toLowerCase().includes(kw));
     const hitCat = !categoryFilter.value || c.category === categoryFilter.value;
@@ -649,9 +649,7 @@ const removeCourse = (course) => {
     title: '删除该课程？',
     subtitle: course.title,
     rows: [
-      { label: '课程分类', value: course.categoryLabel },
-      { label: '课时数', value: `${course.totalLessons} 课时` },
-      { label: '在学人数', value: `${(course.students || 0).toLocaleString()} 人` }
+      { label: '课程分类', value: course.categoryLabel }
     ],
     tip: '删除后课程内容、章节与学员学习进度将一并移除，此操作不可恢复。',
     confirmText: '确认删除',
@@ -1018,7 +1016,7 @@ th.ops, td.ops { text-align: right; }
   align-items: center;
   justify-content: center;
   padding: 20px;
-  background: rgba(15, 30, 51, 0.50);
+  background: var(--app-scrim);
   backdrop-filter: blur(4px);
 }
 

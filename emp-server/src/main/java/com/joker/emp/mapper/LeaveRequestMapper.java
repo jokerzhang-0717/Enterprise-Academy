@@ -15,9 +15,8 @@ public interface LeaveRequestMapper extends BaseMapper<LeaveRequest> {
   @Select("""
       <script>
       SELECT lr.id, lr.flow_no AS flowNo, lr.leave_type AS leaveType,
-             lr.training_title AS trainingTitle, lr.course_id AS courseId,
              lr.start_date AS startDate, lr.end_date AS endDate, lr.leave_days AS leaveDays,
-             lr.reason, lr.status, lr.attachment_url AS attachmentUrl,
+             lr.reason, lr.status,
              lr.submitted_at AS submittedAt, lr.approver_id AS approverId,
              lr.approved_at AS approvedAt, lr.approve_remark AS approveRemark,
              lr.user_id AS userId, u.name AS userName, u.employee_no AS employeeNo,
@@ -42,9 +41,8 @@ public interface LeaveRequestMapper extends BaseMapper<LeaveRequest> {
   @Select("""
       <script>
       SELECT lr.id, lr.flow_no AS flowNo, lr.leave_type AS leaveType,
-             lr.training_title AS trainingTitle, lr.course_id AS courseId,
              lr.start_date AS startDate, lr.end_date AS endDate, lr.leave_days AS leaveDays,
-             lr.reason, lr.status, lr.attachment_url AS attachmentUrl,
+             lr.reason, lr.status,
              lr.submitted_at AS submittedAt, lr.approver_id AS approverId,
              lr.approved_at AS approvedAt, lr.approve_remark AS approveRemark
       FROM leave_request lr
@@ -54,14 +52,6 @@ public interface LeaveRequestMapper extends BaseMapper<LeaveRequest> {
       </script>
       """)
   List<Map<String, Object>> selectMyList(@Param("userId") Long userId, @Param("status") Integer status);
-
-  @Select("""
-      SELECT status, COUNT(*) AS total
-      FROM leave_request
-      WHERE deleted_at IS NULL
-      GROUP BY status
-      """)
-  List<Map<String, Object>> selectStatusStats();
 
   /**
    * 当天最新的请假流水号，包含已逻辑删除的记录。

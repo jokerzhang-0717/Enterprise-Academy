@@ -71,15 +71,12 @@ public class UserService {
     for (SysUser user : users) {
       Map<String, Object> item = new LinkedHashMap<>();
       item.put("id", user.getId());
-      item.put("extId", user.getExtId());
       item.put("employeeNo", user.getEmployeeNo());
       item.put("name", user.getName());
       item.put("departmentId", user.getDepartmentId());
       Department dept = user.getDepartmentId() == null ? null : departments.get(user.getDepartmentId());
       item.put("department", dept == null ? null : dept.getName());
       item.put("jobTitle", user.getJobTitle());
-      item.put("grade", user.getGrade());
-      item.put("specialty", user.getSpecialty());
       item.put("avatarUrl", user.getAvatarUrl());
       item.put("phone", user.getPhone());
       item.put("email", user.getEmail());
@@ -91,9 +88,7 @@ public class UserService {
       Map<String, Object> profile = profiles.get(user.getId());
       item.put("learningHours", profile == null ? 0 : profile.get("learningHours"));
       item.put("completedCourses", profile == null ? 0 : profile.get("completedCourses"));
-      item.put("studyingCourses", profile == null ? 0 : profile.get("studyingCourses"));
       item.put("certificateCount", profile == null ? 0 : profile.get("certificateCount"));
-      item.put("unreadNotifications", profile == null ? 0 : profile.get("unreadNotifications"));
       records.add(item);
     }
     return PageResult.of(result.getTotal(), result.getCurrent(), result.getSize(), records);
@@ -112,8 +107,6 @@ public class UserService {
     Department dept = user.getDepartmentId() == null ? null : departmentMapper.selectById(user.getDepartmentId());
     item.put("department", dept == null ? null : dept.getName());
     item.put("jobTitle", user.getJobTitle());
-    item.put("grade", user.getGrade());
-    item.put("specialty", user.getSpecialty());
     item.put("avatarUrl", user.getAvatarUrl());
     item.put("gender", user.getGender());
     item.put("age", user.getAge());
@@ -177,8 +170,6 @@ public class UserService {
     if (request.getName() != null) exists.setName(request.getName());
     if (request.getDepartmentId() != null) exists.setDepartmentId(request.getDepartmentId());
     if (request.getJobTitle() != null) exists.setJobTitle(request.getJobTitle());
-    if (request.getGrade() != null) exists.setGrade(request.getGrade());
-    if (request.getSpecialty() != null) exists.setSpecialty(request.getSpecialty());
     if (request.getAvatarUrl() != null) exists.setAvatarUrl(request.getAvatarUrl());
     if (request.getPhone() != null) exists.setPhone(request.getPhone());
     if (request.getEmail() != null) exists.setEmail(request.getEmail());
@@ -247,34 +238,9 @@ public class UserService {
     throw new BizException(missingMessage);
   }
 
-  public List<Map<String, Object>> options(String keyword) {
-    List<SysUser> users = userMapper.selectList(Wrappers.<SysUser>lambdaQuery()
-        .eq(SysUser::getRole, 1)
-        .eq(SysUser::getAccountStatus, 1)
-        .and(keyword != null && !keyword.isBlank(), w -> w
-            .like(SysUser::getName, keyword)
-            .or().like(SysUser::getEmployeeNo, keyword))
-        .orderByAsc(SysUser::getId)
-        .last("LIMIT 200"));
-    Map<Long, Department> departments = departmentMapper.selectList(null).stream()
-        .collect(Collectors.toMap(Department::getId, Function.identity()));
-    List<Map<String, Object>> result = new ArrayList<>();
-    for (SysUser user : users) {
-      Map<String, Object> item = new LinkedHashMap<>();
-      item.put("id", user.getId());
-      item.put("name", user.getName());
-      item.put("employeeNo", user.getEmployeeNo());
-      Department dept = user.getDepartmentId() == null ? null : departments.get(user.getDepartmentId());
-      item.put("department", dept == null ? null : dept.getName());
-      result.add(item);
-    }
-    return result;
-  }
-
   @Transactional
   public Map<String, Object> updateProfile(String name, String gender, Integer age,
-      String phone, String email, String jobTitle, String specialty, String grade,
-      String avatarUrl) {
+      String phone, String email, String jobTitle, String avatarUrl) {
     Long userId = AuthContext.userId();
     SysUser user = userMapper.selectById(userId);
     if (user == null) {
@@ -288,8 +254,6 @@ public class UserService {
         .set(SysUser::getPhone, phone)
         .set(SysUser::getEmail, email)
         .set(jobTitle != null, SysUser::getJobTitle, jobTitle)
-        .set(specialty != null, SysUser::getSpecialty, specialty)
-        .set(grade != null, SysUser::getGrade, grade)
         .set(avatarUrl != null, SysUser::getAvatarUrl, avatarUrl));
     return detail(userId);
   }

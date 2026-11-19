@@ -147,11 +147,30 @@ public class AuthService {
     if (profile != null) {
       result.put("learningHours", profile.get("learningHours"));
       result.put("completedCourses", profile.get("completedCourses"));
-      result.put("studyingCourses", profile.get("studyingCourses"));
       result.put("certificateCount", profile.get("certificateCount"));
-      result.put("unreadNotifications", profile.get("unreadNotifications"));
     }
     return result;
+  }
+
+  /**
+   * 记录新员工已阅读入职手册。重复调用保持首次完成时间不变，
+   * 返回最新的用户信息供前端同步登录态。
+   */
+  @Transactional
+  public Map<String, Object> completeOnboarding() {
+    AuthUser current = AuthContext.require();
+    SysUser user = userMapper.selectById(current.id());
+    if (user == null) {
+      throw BizException.unauthorized("账号不存在");
+    }
+    if (user.getOnboardingCompletedAt() == null) {
+      SysUser update = new SysUser();
+      update.setId(user.getId());
+      update.setOnboardingCompletedAt(LocalDateTime.now());
+      userMapper.updateById(update);
+      user.setOnboardingCompletedAt(update.getOnboardingCompletedAt());
+    }
+    return toSafeUser(user);
   }
 
   @Transactional
@@ -164,8 +183,8 @@ public class AuthService {
     if (!matches(user, oldPassword)) {
       throw new BizException("原密码不正确");
     }
-    if (newPassword == null || newPassword.length() < 8) {
-      throw new BizException("新密码至少需要 8 位");
+    if (newPassword == null || newPassword.length() < 6) {
+      throw new BizException("新密码至少需要 6 位");
     }
     SysUser update = new SysUser();
     update.setId(user.getId());
@@ -198,8 +217,6 @@ public class AuthService {
       result.put("department", null);
     }
     result.put("jobTitle", user.getJobTitle());
-    result.put("grade", user.getGrade());
-    result.put("specialty", user.getSpecialty());
     result.put("avatarUrl", user.getAvatarUrl());
     result.put("gender", user.getGender());
     result.put("age", user.getAge());
@@ -208,6 +225,8 @@ public class AuthService {
     result.put("role", user.getRole());
     result.put("accountStatus", user.getAccountStatus());
     result.put("lastActiveAt", user.getLastActiveAt());
+    result.put("onboardingCompleted", user.getOnboardingCompletedAt() != null);
+    result.put("onboardingCompletedAt", user.getOnboardingCompletedAt());
     return result;
   }
 

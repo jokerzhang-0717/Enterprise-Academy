@@ -14,11 +14,10 @@ public interface SysUserMapper extends BaseMapper<SysUser> {
 
   String LEARNER_PROFILE_COLUMNS = """
       user_id AS userId, employee_no AS employeeNo, name, department,
-      job_title AS jobTitle, grade, specialty, avatar_url AS avatarUrl,
+      job_title AS jobTitle, avatar_url AS avatarUrl,
       role, account_status AS accountStatus, last_active_at AS lastActiveAt,
       learning_hours AS learningHours, completed_courses AS completedCourses,
-      studying_courses AS studyingCourses, enrolled_courses AS enrolledCourses,
-      certificate_count AS certificateCount, unread_notifications AS unreadNotifications
+      certificate_count AS certificateCount
       """;
 
   @Select("SELECT " + LEARNER_PROFILE_COLUMNS + " FROM v_learner_profile WHERE user_id = #{userId}")
@@ -27,11 +26,10 @@ public interface SysUserMapper extends BaseMapper<SysUser> {
   @Select("""
       <script>
       SELECT user_id AS userId, employee_no AS employeeNo, name, department,
-             job_title AS jobTitle, grade, specialty, avatar_url AS avatarUrl,
+             job_title AS jobTitle, avatar_url AS avatarUrl,
              role, account_status AS accountStatus, last_active_at AS lastActiveAt,
              learning_hours AS learningHours, completed_courses AS completedCourses,
-             studying_courses AS studyingCourses, enrolled_courses AS enrolledCourses,
-             certificate_count AS certificateCount, unread_notifications AS unreadNotifications
+             certificate_count AS certificateCount
       FROM v_learner_profile
       WHERE user_id IN
       <foreach collection="ids" item="id" open="(" separator="," close=")">#{id}</foreach>

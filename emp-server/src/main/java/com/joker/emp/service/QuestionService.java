@@ -42,19 +42,15 @@ public class QuestionService {
   }
 
   public List<Map<String, Object>> list(Long examId, Integer type, String keyword,
-      boolean standalone, String knowledgePoint, Integer difficulty) {
+      boolean standalone, Integer difficulty) {
     String keywordFilter = keyword == null ? null : keyword.trim();
-    String knowledgePointFilter = knowledgePoint == null ? null : knowledgePoint.trim();
     List<ExamQuestion> questions = questionMapper.selectList(Wrappers.<ExamQuestion>lambdaQuery()
         .eq(standalone, ExamQuestion::getExamId, null)
         .eq(!standalone && examId != null, ExamQuestion::getExamId, examId)
         .eq(type != null, ExamQuestion::getType, type)
-        .like(knowledgePointFilter != null && !knowledgePointFilter.isBlank(),
-            ExamQuestion::getKnowledgePoint, knowledgePointFilter)
         .eq(difficulty != null, ExamQuestion::getDifficulty, difficulty)
         .and(keywordFilter != null && !keywordFilter.isBlank(), w -> w
-            .like(ExamQuestion::getTitle, keywordFilter)
-            .or().like(ExamQuestion::getKnowledgePoint, keywordFilter))
+            .like(ExamQuestion::getTitle, keywordFilter))
         .orderByAsc(ExamQuestion::getQuestionNo)
         .orderByAsc(ExamQuestion::getId));
     Map<Long, List<QuestionOption>> options = optionsOf(
@@ -66,7 +62,7 @@ public class QuestionService {
 
   public List<Map<String, Object>> list(Long examId, Integer type, String keyword,
       boolean standalone) {
-    return list(examId, type, keyword, standalone, null, null);
+    return list(examId, type, keyword, standalone, null);
   }
 
   public Map<String, Object> detail(Long id) {
@@ -98,6 +94,7 @@ public class QuestionService {
     }
     questionMapper.insert(question);
     saveOptions(question.getId(), request.options());
+    refreshExamSnapshot(question.getExamId());
     logService.record("exam", "新增题目：" + truncate(question.getTitle()), "question", question.getId());
     return detail(question.getId());
   }
@@ -105,12 +102,19 @@ public class QuestionService {
   @Transactional
   public Map<String, Object> update(Long id, QuestionSaveRequest request) {
     ExamQuestion question = requireQuestion(id);
-    if (question.getExamId() != null) {
-      assertExamEditable(question.getExamId());
-    }
-    if (request.examId() != null && request.examId() > 0
-        && !Objects.equals(request.examId(), question.getExamId())) {
-      assertExamEditable(request.examId());
+    Long previousExamId = question.getExamId();
+    Long requestedExamId = request.examId() == null ? previousExamId
+        : (request.examId() == 0 ? null : request.examId());
+    boolean examChanged = !Objects.equals(previousExamId, requestedExamId);
+    // 已发布或已有作答的试卷只锁定“换卷”；题干、选项、答案和分值仍可修改，
+    // 修改会直接写回该试卷的题目记录，管理端试卷与学员端会同步生效。
+    if (examChanged) {
+      if (previousExamId != null) {
+        assertExamEditable(previousExamId);
+      }
+      if (requestedExamId != null) {
+        assertExamEditable(requestedExamId);
+      }
     }
     if (request.difficulty() != null
         && (request.difficulty() < 1 || request.difficulty() > 3)) {
@@ -121,6 +125,10 @@ public class QuestionService {
     if (request.options() != null) {
       saveOptions(id, request.options());
     }
+    if (examChanged) {
+      refreshExamSnapshot(previousExamId);
+    }
+    refreshExamSnapshot(question.getExamId());
     logService.record("exam", "更新题目：" + truncate(question.getTitle()), "question", id);
     return detail(id);
   }
@@ -128,12 +136,14 @@ public class QuestionService {
   @Transactional
   public void remove(Long id) {
     ExamQuestion question = requireQuestion(id);
-    if (question.getExamId() != null) {
-      assertExamEditable(question.getExamId());
+    Long examId = question.getExamId();
+    if (examId != null) {
+      assertExamEditable(examId);
     }
     optionMapper.delete(Wrappers.<QuestionOption>lambdaQuery()
         .eq(QuestionOption::getQuestionId, id));
     questionMapper.deleteById(id);
+    refreshExamSnapshot(examId);
     logService.record("exam", "删除题目：" + truncate(question.getTitle()), "question", id);
   }
 
@@ -175,7 +185,6 @@ public class QuestionService {
         copy.setType(source.getType());
         copy.setScore(source.getScore());
         copy.setTitle(source.getTitle());
-        copy.setKnowledgePoint(source.getKnowledgePoint());
         copy.setDifficulty(source.getDifficulty());
         copy.setCorrectAnswer(source.getCorrectAnswer());
         copy.setReferenceAnswer(source.getReferenceAnswer());
@@ -208,6 +217,25 @@ public class QuestionService {
     if (!Objects.equals(exam.getStatus(), 1) || attemptCount > 0) {
       throw new BizException("考试已发布或已有作答记录，试卷题目已锁定");
     }
+  }
+
+  /** 题目变更后同步试卷缓存字段，保证试卷总分、题量与题库修改保持一致。 */
+  private void refreshExamSnapshot(Long examId) {
+    if (examId == null) {
+      return;
+    }
+    Exam exam = examMapper.selectById(examId);
+    if (exam == null) {
+      return;
+    }
+    List<ExamQuestion> questions = questionsOf(examId);
+    BigDecimal totalScore = questions.stream()
+        .map(question -> question.getScore() == null ? BigDecimal.ZERO : question.getScore())
+        .reduce(BigDecimal.ZERO, BigDecimal::add);
+    Exam update = new Exam();
+    update.setId(examId);
+    update.setTotalScore(totalScore);
+    examMapper.updateById(update);
   }
 
   /** 学员作答视图：不返回正确答案与解析。 */
@@ -304,10 +332,6 @@ public class QuestionService {
     if (request.type() != null) question.setType(request.type());
     if (request.score() != null) question.setScore(request.score());
     if (request.title() != null) question.setTitle(request.title());
-    if (request.knowledgePoint() != null) {
-      question.setKnowledgePoint(request.knowledgePoint().isBlank()
-          ? null : request.knowledgePoint().trim());
-    }
     if (request.difficulty() != null) question.setDifficulty(request.difficulty());
     if (request.correctAnswer() != null) {
       question.setCorrectAnswer(request.correctAnswer().isBlank()
@@ -333,7 +357,6 @@ public class QuestionService {
       boolean includeAnswer) {
     Map<String, Object> item = new LinkedHashMap<>();
     item.put("id", question.getId());
-    item.put("extId", question.getExtId());
     item.put("examId", question.getExamId());
     item.put("questionNo", question.getQuestionNo());
     item.put("type", typeCode(question.getType()));
@@ -341,7 +364,6 @@ public class QuestionService {
     item.put("typeLabel", typeLabel(question.getType()));
     item.put("score", question.getScore());
     item.put("title", question.getTitle());
-    item.put("knowledgePoint", question.getKnowledgePoint());
     item.put("difficulty", question.getDifficulty() == null ? 2 : question.getDifficulty());
     item.put("difficultyLabel", difficultyLabel(question.getDifficulty()));
     List<Map<String, Object>> optionItems = new ArrayList<>();
@@ -401,8 +423,7 @@ public class QuestionService {
 
   public record QuestionSaveRequest(Long examId, Integer questionNo, Integer type,
       BigDecimal score, String title, String correctAnswer, String referenceAnswer,
-      String analysis, List<OptionSaveRequest> options, String knowledgePoint,
-      Integer difficulty) {
+      String analysis, List<OptionSaveRequest> options, Integer difficulty) {
   }
 
   public record OptionSaveRequest(String key, String content, String explanation,

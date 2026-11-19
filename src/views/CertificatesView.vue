@@ -132,7 +132,7 @@
               </div>
               <div class="detail-item">
                 <span class="detail-label">考核评级</span>
-                <span class="detail-value detail-value--purple">{{ cert.rankingScore || '合格' }}</span>
+                <span class="detail-value detail-value--purple">{{ cert.level || '合格' }}</span>
               </div>
             </div>
           </div>

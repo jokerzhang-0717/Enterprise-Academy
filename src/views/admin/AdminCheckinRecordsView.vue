@@ -376,7 +376,6 @@ const saveRecord = async () => {
       await createAdminCheckin({
         ...payload,
         userId: editingRecord.value.userId,
-        method: 1,
       });
     } else {
       await updateAdminCheckin(editingRecord.value.numericId ?? editingRecord.value.id, payload);
@@ -659,7 +658,7 @@ const saveRecord = async () => {
   align-items: center;
   justify-content: center;
   padding: 20px;
-  background: rgb(15 30 51 / 48%);
+  background: var(--app-scrim);
   backdrop-filter: blur(3px);
 }
 .edit-modal {

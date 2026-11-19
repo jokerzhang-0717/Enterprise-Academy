@@ -1,14 +1,11 @@
 package com.joker.emp.service;
 
-import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.joker.emp.entity.Announcement;
 import com.joker.emp.entity.CheckinRecord;
 import com.joker.emp.entity.Course;
-import com.joker.emp.entity.Department;
 import com.joker.emp.entity.Enrollment;
-import com.joker.emp.entity.Exam;
 import com.joker.emp.entity.OperationLog;
 import com.joker.emp.entity.SysUser;
 import com.joker.emp.mapper.AnnouncementMapper;
@@ -17,8 +14,6 @@ import com.joker.emp.mapper.CourseMapper;
 import com.joker.emp.mapper.DepartmentMapper;
 import com.joker.emp.mapper.EnrollmentMapper;
 import com.joker.emp.mapper.ExamMapper;
-import com.joker.emp.mapper.LearningTrackMapper;
-import com.joker.emp.mapper.NotificationMapper;
 import com.joker.emp.mapper.OperationLogMapper;
 import com.joker.emp.mapper.SysUserMapper;
 import com.joker.emp.security.AuthContext;
@@ -40,27 +35,23 @@ public class DashboardService {
   private final EnrollmentMapper enrollmentMapper;
   private final ExamMapper examMapper;
   private final AnnouncementMapper announcementMapper;
-  private final NotificationMapper notificationMapper;
   private final CheckinRecordMapper checkinMapper;
   private final OperationLogMapper operationLogMapper;
-  private final LearningTrackMapper trackMapper;
   private final AuthService authService;
 
   public DashboardService(SysUserMapper userMapper, DepartmentMapper departmentMapper,
       CourseMapper courseMapper, EnrollmentMapper enrollmentMapper, ExamMapper examMapper,
-      AnnouncementMapper announcementMapper, NotificationMapper notificationMapper,
+      AnnouncementMapper announcementMapper,
       CheckinRecordMapper checkinMapper, OperationLogMapper operationLogMapper,
-      LearningTrackMapper trackMapper, AuthService authService) {
+      AuthService authService) {
     this.userMapper = userMapper;
     this.departmentMapper = departmentMapper;
     this.courseMapper = courseMapper;
     this.enrollmentMapper = enrollmentMapper;
     this.examMapper = examMapper;
     this.announcementMapper = announcementMapper;
-    this.notificationMapper = notificationMapper;
     this.checkinMapper = checkinMapper;
     this.operationLogMapper = operationLogMapper;
-    this.trackMapper = trackMapper;
     this.authService = authService;
   }
 
@@ -73,17 +64,13 @@ public class DashboardService {
     Map<String, Object> stats = new LinkedHashMap<>();
     stats.put("learningHours", profile == null ? 0 : profile.get("learningHours"));
     stats.put("completedCourses", profile == null ? 0 : profile.get("completedCourses"));
-    stats.put("studyingCourses", profile == null ? 0 : profile.get("studyingCourses"));
-    stats.put("enrolledCourses", profile == null ? 0 : profile.get("enrolledCourses"));
     stats.put("certificateCount", profile == null ? 0 : profile.get("certificateCount"));
-    stats.put("unreadNotifications", profile == null ? 0 : profile.get("unreadNotifications"));
     result.put("stats", stats);
 
     result.put("monthlyStudyHours", userMapper.selectMonthlyStudyHours(userId));
     result.put("courses", enrollmentMapper.selectProgress(userId));
     result.put("upcomingExams", examMapper.selectAssignments(userId));
     result.put("examMetrics", examMapper.selectMetrics(userId));
-    result.put("recentNotifications", notificationMapper.selectRecent(userId, 5));
     result.put("announcements", announcementMapper.selectList(
             Wrappers.<Announcement>lambdaQuery()
                 .eq(Announcement::getStatus, 2)
@@ -116,7 +103,6 @@ public class DashboardService {
     stats.put("publishedCourseCount", courseMapper.selectCount(Wrappers.<Course>lambdaQuery()
         .eq(Course::getStatus, 2)));
     stats.put("examCount", examMapper.selectCount(null));
-    stats.put("trackCount", trackMapper.selectCount(null));
     stats.put("announcementCount", announcementMapper.selectCount(null));
     result.put("stats", stats);
 
@@ -130,25 +116,6 @@ public class DashboardService {
         .getRecords());
     result.put("enrollmentStats", enrollmentStats());
     return result;
-  }
-
-  public List<Map<String, Object>> recentActivities(long page, long size) {
-    IPage<OperationLog> result = operationLogMapper.selectPage(new Page<>(page, size),
-        Wrappers.<OperationLog>lambdaQuery()
-            .orderByDesc(OperationLog::getOccurredAt)
-            .orderByDesc(OperationLog::getId));
-    return result.getRecords().stream().map(log -> {
-      Map<String, Object> item = new LinkedHashMap<>();
-      item.put("id", log.getId());
-      item.put("logType", log.getLogType());
-      item.put("content", log.getContent());
-      item.put("operatorId", log.getOperatorId());
-      item.put("operatorName", log.getOperatorName());
-      item.put("refType", log.getRefType());
-      item.put("refId", log.getRefId());
-      item.put("occurredAt", log.getOccurredAt());
-      return item;
-    }).toList();
   }
 
   private Map<String, Object> todayCheckin(Long userId) {

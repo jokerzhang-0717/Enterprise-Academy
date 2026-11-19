@@ -12,7 +12,6 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -58,19 +57,6 @@ public class DepartmentService {
     int from = (int) Math.min(total, Math.max(0, (page - 1) * size));
     int to = (int) Math.min(total, from + size);
     return PageResult.of(total, page, size, items.subList(from, to));
-  }
-
-  public List<Map<String, Object>> options() {
-    return departmentMapper.selectList(Wrappers.<Department>lambdaQuery()
-            .orderByAsc(Department::getSortNo)
-            .orderByAsc(Department::getId)).stream()
-        .map(d -> {
-          Map<String, Object> item = new LinkedHashMap<>();
-          item.put("id", d.getId());
-          item.put("name", d.getName());
-          item.put("status", d.getStatus());
-          return item;
-        }).toList();
   }
 
   public Map<String, Object> detail(Long id) {
@@ -159,7 +145,6 @@ public class DepartmentService {
   private Map<String, Object> toItem(Department department, Map<String, Object> stat) {
     Map<String, Object> item = new LinkedHashMap<>();
     item.put("id", department.getId());
-    item.put("extId", department.getExtId());
     item.put("name", department.getName());
     item.put("managerName", department.getManagerName());
     item.put("description", department.getDescription());
@@ -168,8 +153,6 @@ public class DepartmentService {
     item.put("createdAt", department.getCreatedAt());
     item.put("learnerCount", stat == null ? 0 : stat.get("learnerCount"));
     item.put("totalStudyHours", stat == null ? 0 : stat.get("totalStudyHours"));
-    item.put("learnerCountCached", department.getLearnerCountCached());
-    item.put("studyHoursCached", department.getStudyHoursCached());
     return item;
   }
 }
