@@ -26,6 +26,7 @@ const routes = [
   { path: '/courses', name: 'courses', component: Empty, meta: { learnerOnly: true } },
   { path: '/courses/:courseId/player', name: 'course-player', component: Empty, meta: { learnerOnly: true } },
   { path: '/exams', name: 'exams', component: Empty, meta: { learnerOnly: true } },
+  { path: '/exams/:examId/detail', name: 'exam-detail', component: Empty, meta: { learnerOnly: true } },
   { path: '/exams/result/:attemptId/details', name: 'exam-result-details', component: Empty, meta: { learnerOnly: true } },
   { path: '/exams/result/:attemptId', name: 'exam-result', component: Empty, meta: { learnerOnly: true } },
   { path: '/exams/taking', name: 'exam-taking', component: Empty, meta: { learnerOnly: true } },
@@ -119,6 +120,10 @@ export const locationForView = (view, { courseId, messageId, examId } = {}) => {
       return messageId
         ? { name: 'messages-detail', params: { messageId } }
         : { name: 'messages' };
+    case 'exam-detail':
+      return examId
+        ? { name: 'exam-detail', params: { examId } }
+        : { name: 'exams' };
     case 'exam-taking':
       return examId
         ? { name: 'exam-taking-by-id', params: { examId } }

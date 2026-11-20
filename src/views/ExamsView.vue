@@ -52,7 +52,7 @@
         <div class="exm-section__title">
           <span class="exm-section__bar" />
           <h2>待参加考试安排</h2>
-          <span class="exm-section__hint">点击对应课程考卷卡片即可即时解锁考位并加载在线作答套题</span>
+          <span class="exm-section__hint">点击对应卡片可查看考核详情与作答入口</span>
         </div>
 
         <div class="exm-tabs">
@@ -92,6 +92,10 @@
           :key="exam.id"
           class="exm-card"
           :class="{ 'exm-card--search-target': searchTargetId === `exam-${exam.id}` }"
+          role="button"
+          tabindex="0"
+          @click="handleCardClick(exam)"
+          @keydown.enter.prevent="handleCardClick(exam)"
         >
           <!-- 左侧信息 -->
           <div class="exm-card__info">
@@ -108,11 +112,6 @@
               <span v-else class="exm-badge exm-badge--wait">
                 考试状态待确认
               </span>
-              <span class="exm-badge exm-badge--chance">
-                {{ exam.remainingAttempts > 0
-                  ? `剩余 ${exam.remainingAttempts}/${exam.attemptsAllowed} 次机会`
-                  : '考试机会已用完' }}
-              </span>
             </div>
 
             <h3 class="exm-card__title">{{ exam.title }}</h3>
@@ -120,7 +119,6 @@
             <div class="exm-card__meta">
               <span>时间: <strong>{{ exam.timeWindow }}</strong></span>
               <span>时长: <strong>{{ exam.durationMinutes }} 分钟 · 满分 {{ exam.totalScore }}</strong></span>
-              <span>考试机会: <strong>{{ exam.attemptsUsed }} / {{ exam.attemptsAllowed }} 已用</strong></span>
             </div>
           </div>
 
@@ -131,7 +129,7 @@
               v-if="exam.status === 'in_progress'"
               type="button"
               class="exm-btn exm-btn--primary"
-              @click="$emit('start-exam', exam)"
+              @click.stop="$emit('start-exam', exam)"
             >
               <FileCheck2 class="exm-icon exm-icon--sm" />
               <span>{{ exam.attemptsUsed > 0 ? '重新作答' : '开始考试' }}</span>
@@ -173,7 +171,7 @@
               v-if="latestAttemptOf(exam.examId)"
               type="button"
               class="exm-btn exm-btn--ghost"
-              @click="openResult(latestAttemptOf(exam.examId))"
+              @click.stop="openResult(latestAttemptOf(exam.examId))"
             >
               <Eye class="exm-icon exm-icon--sm" />
               <span>查看成绩</span>
@@ -238,7 +236,7 @@ const props = defineProps({
   },
 });
 
-const emit = defineEmits(['start-exam', 'view-result']);
+const emit = defineEmits(['start-exam', 'view-result', 'view-exam']);
 
 const exams = ref([]);
 const pastExams = ref([]);
@@ -281,6 +279,11 @@ const pastByExam = computed(() => {
 });
 
 const latestAttemptOf = (examId) => pastByExam.value.get(Number(examId)) || null;
+
+/* 整张卡片点击进入考核详情页；卡片内按钮通过 .stop 保持原行为 */
+const handleCardClick = (exam) => {
+  if (exam?.examId != null || exam?.id != null) emit('view-exam', exam);
+};
 
 const openResult = (record) => {
   if (record?.attemptId != null) emit('view-result', record);
@@ -511,7 +514,12 @@ watch(
   border-radius: 16px;
   background: var(--app-surface);
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  cursor: pointer;
   transition: border-color 0.25s ease, background-color 0.25s ease;
+}
+.exm-card:focus-visible {
+  outline: 2px solid var(--c-sky);
+  outline-offset: 2px;
 }
 @media (min-width: 768px) {
   .exm-card {
@@ -647,11 +655,6 @@ watch(
 .exm-btn--ghost:hover {
   border-color: var(--c-sky);
   background: var(--c-blue-bg);
-}
-
-.exm-badge--chance {
-  background: var(--app-amber-soft, var(--c-blue-bg));
-  color: var(--app-amber-strong, var(--c-blue));
 }
 
 /* ============ 历史成绩 ============ */

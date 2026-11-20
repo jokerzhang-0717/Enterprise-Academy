@@ -93,7 +93,7 @@ const navItems = [
 function isItemActive(id) {
   return props.currentView === id ||
     (id === 'courses' && props.currentView === 'course-player') ||
-    (id === 'exams' && props.currentView === 'exam-taking');
+    (id === 'exams' && (props.currentView === 'exam-taking' || props.currentView === 'exam-detail'));
 }
 </script>
 

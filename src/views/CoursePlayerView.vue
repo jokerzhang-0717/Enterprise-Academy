@@ -7,9 +7,10 @@
       </button>
       <div class="top-info">
         <div class="top-eyebrow">
-        <span v-if="currentLesson" class="live"><span class="live-dot"></span>进度自动保存 · 完成本节后计入学时</span>
-        <span v-else class="live live--pending">课程内容尚未准备好</span>
-        <span class="sep">·</span>
+        <template v-if="!currentLesson">
+          <span class="live live--pending">课程内容尚未准备好</span>
+          <span class="sep">·</span>
+        </template>
         <span class="eyebrow-lesson">{{ currentLessonLabel }}</span>
         </div>
         <h1 class="page-title">{{ courseTitle }}</h1>
@@ -108,7 +109,7 @@
             <h2 class="card-title"><FileText class="icon icon-blue" /> 课程详情</h2>
             <span class="card-badge">{{ currentLesson ? '当前小节' : '待编排' }}</span>
           </div>
-          <h3 class="detail-title">{{ currentLesson ? currentLesson.name : '本课尚未编排小节' }}</h3>
+          <h3 class="detail-title">{{ currentLesson ? lessonLabel(currentLesson.name) : '本课尚未编排小节' }}</h3>
           <p class="detail-text">{{ courseSummary }}</p>
           <button
             v-if="currentLesson && !hasVideo && !currentLesson.completed"
@@ -119,109 +120,31 @@
           >
             {{ savingProgress ? '正在保存...' : '完成本节并记录学时' }}
           </button>
-          <p v-else-if="currentLesson?.completed" class="completion-note">本节已完成，学习记录已保存</p>
         </section>
       </div>
 
-      <!-- 课程目录 -->
+      <!-- 视频选集（仿哔哩哔哩：所有小节平铺在一个方框里） -->
       <aside class="col-side">
-        <div class="card">
-          <div class="syllabus-head">
-            <h2 class="card-title"><FileText class="icon icon-blue" /> 课程目录</h2>
-            <span class="syllabus-count">{{ chapters.length }} 章 · {{ totalLessons }} 节</span>
+        <div class="bili-panel">
+          <div class="bili-panel-head">
+            <h2 class="bili-head-title">视频选集</h2>
+            <span v-if="totalLessons" class="bili-head-count">{{ currentGlobalIndex }}/{{ totalLessons }}</span>
           </div>
 
-          <div v-if="totalLessons" class="progress-block">
-            <div class="progress-meta">
-              <span>学习进度</span>
-              <strong>{{ progressPercent }}%</strong>
-            </div>
-            <div class="progress-track">
-              <div class="progress-fill" :style="{ width: `${progressPercent}%` }"></div>
-            </div>
-          </div>
-
-          <p v-if="!chapters.length" class="empty">
-            这门课还没有章节，请到管理端 · 课程管理里编排目录。
+          <p v-if="!flatLessons.length" class="bili-empty">
+            这门课还没有小节，请到管理端 · 课程管理里编排目录。
           </p>
 
-          <div
-            v-for="(chapter, ci) in chapters"
-            :key="chapter.id"
-            class="chapter"
-            :class="{
-              'chapter-active': chapterState(ci) === 'active',
-              'chapter-locked': chapterState(ci) === 'locked'
-            }"
-          >
+          <div ref="episodesBox" class="bili-episodes">
             <div
-              class="chapter-head"
-              :class="{ 'chapter-head-active': chapterState(ci) === 'active' }"
-              @click="toggleChapter(ci)"
+              v-for="item in flatLessons"
+              :key="item.lesson.id"
+              class="bili-episode"
+              :class="{ 'bili-episode-active': isCurrent(item.ci, item.li) }"
+              @click="handleLessonClick(item.ci, item.li)"
             >
-              <div class="chapter-name">
-                <CheckCircle2 v-if="chapterState(ci) === 'done'" class="icon icon-green" />
-                <span v-else-if="chapterState(ci) === 'active'" class="chapter-bar"></span>
-                <Lock v-else class="icon icon-small" />
-                <span
-                  class="chapter-title"
-                  :class="{ 'chapter-title-active': chapterState(ci) === 'active' }"
-                >{{ chapter.title }}</span>
-              </div>
-
-              <div class="chapter-stat">
-                <span v-if="chapterState(ci) === 'locked'">待解锁</span>
-                <template v-else>
-                  <span :class="{ 'chapter-stat-done': chapterState(ci) === 'done' }">
-                    {{ chapterState(ci) === 'done'
-                      ? `${lessonsOf(ci).length}/${lessonsOf(ci).length}`
-                      : `${doneInChapter(ci)}/${lessonsOf(ci).length} 学习中` }}
-                  </span>
-                  <ChevronUp v-if="expandedChapter === ci" class="icon icon-small" />
-                  <ChevronDown v-else class="icon icon-small" />
-                </template>
-              </div>
-            </div>
-
-            <div v-if="expandedChapter === ci" class="lesson-list">
-              <p v-if="!lessonsOf(ci).length" class="empty empty-small">本章还没有小节</p>
-              <div
-                v-for="(lesson, li) in lessonsOf(ci)"
-                :key="lesson.id"
-                class="lesson"
-                :class="{ 'lesson-active': isCurrent(ci, li) }"
-                @click="handleLessonClick(ci, li)"
-              >
-                <div>
-                  <div class="lesson-name">
-                    <CheckCircle2 v-if="lessonState(ci, li) === 'done'" class="icon icon-small icon-green" />
-                    <span v-else-if="!isCurrent(ci, li)" class="ring"></span>
-                    <span v-else class="lesson-current-indicator" aria-hidden="true"></span>
-                    <span :class="isCurrent(ci, li) ? 'lesson-title' : 'lesson-label'">
-                      {{ lessonLabel(lesson.name, ci, li) }}
-                    </span>
-                    <span v-if="isCurrent(ci, li) && isPlaying" class="playing-tag">播放中</span>
-                    <span v-else-if="isCurrent(ci, li) && elapsedSeconds > 0" class="playing-tag playing-tag--paused">已暂停</span>
-                  </div>
-                  <div v-if="isCurrent(ci, li)" class="lesson-meta">
-                    时长 {{ lesson.duration || '未填' }}
-                    <template v-if="!lesson.url"> · 管理端尚未上传视频</template>
-                  </div>
-                </div>
-                <button
-                  v-if="isCurrent(ci, li)"
-                  class="lesson-toggle"
-                  type="button"
-                  :aria-label="isPlaying ? '暂停本节课程' : '播放本节课程'"
-                  :title="isPlaying ? '暂停' : '播放'"
-                  :disabled="lesson.completed"
-                  @click.stop="togglePlayback"
-                >
-                  <Pause v-if="isPlaying" class="icon icon-small" />
-                  <Play v-else class="icon icon-small" />
-                </button>
-                <span v-if="!isCurrent(ci, li)" class="lesson-dur">{{ lesson.duration }}</span>
-              </div>
+              <span class="bili-episode-name">{{ lessonLabel(item.lesson.name) }}</span>
+              <span class="bili-episode-dur">{{ episodeDuration(item.lesson) }}</span>
             </div>
           </div>
         </div>
@@ -240,11 +163,7 @@ import {
   RotateCw,
   Volume2,
   Maximize2,
-  FileText,
-  CheckCircle2,
-  ChevronDown,
-  ChevronUp,
-  Lock
+  FileText
 } from 'lucide-vue-next';
 import { learnerStore } from '../learnerStore.js';
 import {
@@ -317,8 +236,25 @@ const lessonsOf = (ci) => chapters.value[ci]?.lessons || [];
 const totalLessons = computed(() =>
   chapters.value.reduce((n, ch) => n + (ch.lessons || []).length, 0)
 );
+/* 仿哔哩哔哩：所有小节跨章平铺到同一个列表，不带章节分组 */
+const flatLessons = computed(() => {
+  const items = [];
+  chapters.value.forEach((chapter, ci) => {
+    (chapter.lessons || []).forEach((lesson, li) => {
+      items.push({ lesson, ci, li });
+    });
+  });
+  return items;
+});
+/* 仿哔哩哔哩选集头部：当前小节在整门课中的序号 */
+const currentGlobalIndex = computed(() => {
+  if (!totalLessons.value) return 0;
+  let count = 0;
+  for (let ci = 0; ci < playing.value.ci; ci += 1) count += lessonsOf(ci).length;
+  return count + playing.value.li + 1;
+});
 
-/* 学习位置：进度落在哪一节，决定章/节的 已完成·学习中·待解锁 三态 */
+/* 学习位置：进度落在哪一节，所有小节均可直接点开观看，不受进度限制 */
 const positionOfProgress = () => {
   if (!chapters.value.length) return { ci: 0, li: 0 };
   const pct = Math.min(100, Math.max(0, Number(course.value?.progress) || 0));
@@ -332,11 +268,11 @@ const positionOfProgress = () => {
   return { ci: lastCi, li: Math.max(0, lessonsOf(lastCi).length - 1) };
 };
 
-/* progress = 学到哪一节（三态依据），playing = 正在播哪一节：
+/* progress = 学到哪一节，playing = 正在播哪一节：
    回看已完成小节不会把进度倒退回滚 */
 const progress = ref(positionOfProgress());
 const playing = ref({ ...progress.value });
-const expandedChapter = ref(progress.value.ci);
+const episodesBox = ref(null);
 
 const clampSpot = (spot) => {
   if (!chapters.value.length) return { ci: 0, li: 0 };
@@ -348,7 +284,6 @@ const clampSpot = (spot) => {
 watch(chapters, () => {
   progress.value = clampSpot(progress.value);
   playing.value = clampSpot(playing.value);
-  if (expandedChapter.value >= chapters.value.length) expandedChapter.value = progress.value.ci;
 });
 
 /* 目录是异步补进来的，到位后按课程进度重算学习位置 */
@@ -356,7 +291,6 @@ const syncPosition = () => {
   const spot = positionOfProgress();
   progress.value = spot;
   playing.value = { ...spot };
-  expandedChapter.value = spot.ci;
 };
 
 watch(
@@ -392,12 +326,6 @@ const watermarkText = computed(() => {
   return employeeId ? `云舒艺境 · ${name} · 工号 ${employeeId}` : `云舒艺境 · ${name}`;
 });
 
-const progressPercent = computed(() => {
-  if (!totalLessons.value) return 0;
-  const value = Number(course.value?.progress ?? course.value?.progressPercent ?? 0);
-  if (!Number.isFinite(value)) return 0;
-  return Math.min(100, Math.max(0, Math.round(value)));
-});
 const currentDuration = computed(() => currentLesson.value?.duration || '未定时长');
 /* 顶栏状态胶囊与真实播放状态保持一致 */
 const playerStatusLabel = computed(() => {
@@ -409,7 +337,7 @@ const playerStatusLabel = computed(() => {
 const currentLessonLabel = computed(() => {
   const lesson = currentLesson.value;
   if (!lesson) return '本课尚未编排小节';
-  return `第 ${playing.value.ci + 1} 章 · 第 ${playing.value.li + 1} 节: ${lesson.name}`;
+  return `第 ${playing.value.ci + 1} 章 · 第 ${playing.value.li + 1} 节: ${lessonLabel(lesson.name)}`;
 });
 const elapsedLabel = computed(() => {
   const minutes = Math.floor(elapsedSeconds.value / 60);
@@ -598,9 +526,32 @@ const handleVideoPause = async (event) => {
   }
 };
 
-const handleVideoEnded = () => {
+const handleVideoEnded = async () => {
   isPlaying.value = false;
-  void completeCurrentLesson();
+  await completeCurrentLesson();
+  await playNextLesson();
+};
+
+/* 视频播完后自动切到下一小节继续播放；只切换播放器，不重复保存进度 */
+const playNextLesson = async () => {
+  const { ci, li } = playing.value;
+  let nextCi = ci;
+  let nextLi = li + 1;
+  if (nextLi >= lessonsOf(ci).length) {
+    nextCi = ci + 1;
+    nextLi = 0;
+  }
+  if (nextCi >= chapters.value.length) return; // 已是最后一节
+  playing.value = { ci: nextCi, li: nextLi };
+  videoErrorLessonId = '';
+  await nextTick();
+  if (videoEl.value) {
+    try {
+      await videoEl.value.play();
+    } catch {
+      /* 浏览器拦截自动播放时，保留手动点击播放即可 */
+    }
+  }
 };
 
 let videoErrorLessonId = '';
@@ -634,7 +585,6 @@ const completeCurrentLesson = async () => {
       } else {
         progress.value = { ...playing.value };
       }
-      showToast('本节已完成，学习时长已记录。', 'success');
     }
   } finally {
     completionInProgress = false;
@@ -643,30 +593,18 @@ const completeCurrentLesson = async () => {
 
 const isCurrent = (ci, li) => playing.value.ci === ci && playing.value.li === li;
 
-const chapterState = (ci) => {
-  if (ci < progress.value.ci) return 'done';
-  if (ci === progress.value.ci) return 'active';
-  return 'locked';
+/* 仿哔哩哔哩：选集标题只显示小节名，去掉数据里自带的 "3.1" 章节编号 */
+const lessonLabel = (name) => String(name || '').replace(/^\d+\.\d+\s*/, '');
+
+/* 仿哔哩哔哩：选集时长直接取 duration_seconds（已与 MP4 真实时长同步） */
+const formatDuration = (seconds) => {
+  const total = Number(seconds);
+  if (!Number.isFinite(total) || total <= 0) return '--:--';
+  const minutes = Math.floor(total / 60);
+  const secs = Math.round(total % 60);
+  return `${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
 };
-
-const lessonState = (ci, li) => {
-  if (lessonsOf(ci)[li]?.completed) return 'done';
-  if (isCurrent(ci, li)) return 'current';
-  if (ci < progress.value.ci || (ci === progress.value.ci && li < progress.value.li)) return 'done';
-  return 'todo';
-};
-
-const doneInChapter = (ci) =>
-  ci === progress.value.ci ? progress.value.li : lessonsOf(ci).length;
-
-/* 管理端手填的小节名一般不带编号，这里补；数据里已带 "3.1" 的不再重复 */
-const lessonLabel = (name, ci, li) =>
-  /^\d+\.\d+/.test(name) ? name : `${ci + 1}.${li + 1} ${name}`;
-
-const toggleChapter = (ci) => {
-  if (chapterState(ci) === 'locked') return;
-  expandedChapter.value = expandedChapter.value === ci ? -1 : ci;
-};
+const episodeDuration = (lesson) => formatDuration(lesson.durationSeconds);
 
 const openLesson = async (ci, li) => {
   if (savingProgress.value || completionInProgress) return;
@@ -677,7 +615,6 @@ const openLesson = async (ci, li) => {
     await saveCurrentProgress(false, elapsedSeconds.value);
   }
   playing.value = { ci, li };
-  expandedChapter.value = ci;
   videoErrorLessonId = '';
   /* 点击小节等同于按下播放键：切到该小节后直接开始播放 */
   await nextTick();
@@ -698,16 +635,30 @@ const handleLessonClick = (ci, li) => {
   void openLesson(ci, li);
 };
 
+/* 播放或切换到别的课时，把当前选集对齐到选集方框顶部（只滚方框，不影响整页） */
+const revealActiveEpisode = async () => {
+  await nextTick();
+  const box = episodesBox.value;
+  const active = box?.querySelector('.bili-episode-active');
+  if (!box || !active) return;
+  const boxRect = box.getBoundingClientRect();
+  const activeRect = active.getBoundingClientRect();
+  const top = box.scrollTop + activeRect.top - boxRect.top - 4;
+  box.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+};
+
 watch(
   () => currentLesson.value?.id,
   () => {
     elapsedSeconds.value = Number(currentLesson.value?.watchedSeconds) || 0;
     lastProgressSavedAt = 0;
+    void revealActiveEpisode();
   },
-  { immediate: true },
+  { immediate: true, flush: 'post' },
 );
 
 watch(isPlaying, (playingNow) => {
+  if (playingNow) void revealActiveEpisode();
   stopPlaybackTimer();
   if (!playingNow || !currentLesson.value || currentLesson.value.completed) {
     void stopStudySession();
@@ -747,11 +698,6 @@ onBeforeUnmount(() => {
 @keyframes fade-in {
   from { opacity: 0; transform: translateY(4px); }
   to   { opacity: 1; transform: none; }
-}
-
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50%      { opacity: 0.35; }
 }
 
 /* ===== 图标 ===== */
@@ -838,15 +784,6 @@ onBeforeUnmount(() => {
   white-space: nowrap;
 }
 .live--pending { color: var(--app-text-4); }
-
-.live-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--app-emerald-solid);
-  box-shadow: 0 0 0 3px var(--app-emerald-bg);
-  animation: pulse 1.8s ease infinite;
-}
 
 .chip {
   display: inline-flex;
@@ -1242,268 +1179,82 @@ onBeforeUnmount(() => {
   box-shadow: none;
 }
 
-.completion-note {
-  margin: 14px 0 0;
-  color: var(--app-emerald-fg);
-  font-size: 12px;
-  font-weight: 600;
-}
-
-/* ===== 课程目录 ===== */
-.syllabus-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  margin-bottom: 14px;
-}
-.syllabus-head .card-title { margin: 0; }
-
-.syllabus-count {
-  padding: 3px 9px;
-  border: 1px solid var(--app-border-soft);
-  border-radius: 999px;
-  background: var(--app-surface-2);
-  font-size: 10.5px;
-  color: var(--app-text-4);
-  white-space: nowrap;
-}
-
-.progress-block {
-  margin-bottom: 16px;
-  padding: 12px 14px;
-  border: 1px solid var(--app-border-soft);
-  border-radius: 13px;
-  background: var(--app-surface-2);
-}
-
-.progress-meta {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 8px;
-  font-size: 11px;
-  color: var(--app-text-4);
-}
-.progress-meta strong {
-  font-family: 'SFMono-Regular', Consolas, monospace;
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--app-accent-deep);
-}
-
-.progress-track {
-  height: 6px;
-  overflow: hidden;
-  border-radius: 999px;
-  background: var(--app-border);
-}
-
-.progress-fill {
-  height: 100%;
-  border-radius: 999px;
-  background: linear-gradient(90deg, var(--app-accent), var(--app-accent-strong));
-  transition: width 0.45s ease;
-}
-
-.empty {
-  padding: 12px;
-  border: 1px dashed var(--app-border);
-  border-radius: 10px;
-  font-size: 12px;
-  color: var(--app-text-4);
-}
-.empty-small {
-  border: 0;
-  padding: 10px 12px 12px;
-}
-
-/* ===== 章 ===== */
-.chapter {
+/* ===== 视频选集（仿哔哩哔哩：一个方框、小节平铺） ===== */
+.bili-panel {
   overflow: hidden;
   border: 1px solid var(--app-border-soft);
   border-radius: 14px;
   background: var(--app-surface);
-  transition: border-color 0.18s ease, box-shadow 0.18s ease;
 }
-.chapter + .chapter { margin-top: 10px; }
 
-.chapter-active {
-  border-color: var(--app-accent-border);
-  box-shadow: 0 0 0 3px var(--app-accent-a10);
+.bili-panel-head {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  padding: 14px 16px 10px;
 }
-.chapter-locked { opacity: 0.72; }
+.bili-head-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--app-heading);
+}
+.bili-head-count {
+  font-family: 'SFMono-Regular', Consolas, monospace;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--app-text-3);
+}
 
-.chapter-head {
+.bili-empty {
+  padding: 12px 16px 16px;
+  font-size: 12px;
+  color: var(--app-text-4);
+}
+
+/* 单个方框内的小节列表：超过 8 条在框内滚动（仿哔哩哔哩选集） */
+.bili-episodes {
+  max-height: 312px; /* 8 行 × 37.5px + 上下内边距 */
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 4px 0 8px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--app-border) transparent;
+}
+.bili-episodes::-webkit-scrollbar { width: 6px; }
+.bili-episodes::-webkit-scrollbar-track { background: transparent; }
+.bili-episodes::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: var(--app-border);
+}
+.bili-episodes::-webkit-scrollbar-thumb:hover { background: var(--app-text-6); }
+.bili-episode {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 12px 14px;
-  background: var(--app-surface-2);
+  gap: 10px;
+  padding: 9px 16px;
+  font-size: 12.5px;
+  color: var(--app-text-3);
   cursor: pointer;
   transition: background-color 0.15s ease;
 }
-.chapter-head:hover { background: var(--app-surface-3); }
-
-.chapter-head-active { background: var(--app-accent-soft); }
-.chapter-head-active:hover { background: var(--app-accent-hover); }
-
-.chapter-name {
-  display: flex;
-  align-items: center;
-  gap: 9px;
+.bili-episode:hover { background: var(--app-surface-2); }
+.bili-episode-active { background: var(--app-accent-soft); color: var(--app-accent-deep); }
+.bili-episode-active:hover { background: var(--app-accent-soft); }
+.bili-episode-name {
+  flex: 1;
   min-width: 0;
-}
-
-.chapter-title {
-  font-size: 13px;
-  font-weight: 650;
-  color: var(--app-text-2);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.chapter-locked .chapter-title { color: var(--app-text-4); }
-.chapter-title-active { color: var(--app-accent-deep); }
-
-.chapter-bar {
-  width: 4px;
-  height: 16px;
-  border-radius: 999px;
-  background: var(--app-accent-strong);
-  flex-shrink: 0;
-}
-
-.chapter-stat {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  padding: 3px 8px;
-  border: 1px solid var(--app-border-soft);
-  border-radius: 999px;
-  background: var(--app-surface);
+.bili-episode-active .bili-episode-name { font-weight: 700; color: var(--app-accent-deep); }
+.bili-episode-dur {
   font-family: 'SFMono-Regular', Consolas, monospace;
-  font-size: 10px;
-  color: var(--app-text-4);
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-.chapter-active .chapter-stat {
-  border-color: var(--app-accent-line);
-  background: var(--app-surface);
-  color: var(--app-accent-deep);
-  font-family: inherit;
-  font-size: 10.5px;
+  font-size: 13px;
   font-weight: 600;
-}
-.chapter-stat-done { color: var(--app-emerald-fg); }
-
-/* ===== 小节 ===== */
-.lesson-list {
-  background: var(--app-surface);
-}
-
-.lesson {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 11px 14px 11px 17px;
-  font-size: 12.5px;
-  cursor: pointer;
-  transition: background-color 0.15s ease;
-}
-.lesson + .lesson { border-top: 1px solid var(--app-border-soft); }
-.lesson:hover { background: var(--app-surface-2); }
-
-.lesson-active { background: var(--app-accent-soft); }
-.lesson-active:hover { background: var(--app-accent-soft); }
-.lesson-active::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 9px;
-  bottom: 9px;
-  width: 3px;
-  border-radius: 0 999px 999px 0;
-  background: var(--app-accent-strong);
-}
-
-.lesson-name {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
-}
-.lesson-current-indicator {
-  width: 14px;
-  height: 14px;
-  flex: 0 0 14px;
-}
-.lesson > div:first-child { min-width: 0; flex: 1; }
-.lesson-toggle {
-  display: inline-flex;
-  width: 30px;
-  height: 30px;
+  color: var(--app-text-3);
   flex: 0 0 auto;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid var(--app-accent-border);
-  border-radius: 50%;
-  background: var(--app-accent-soft);
-  color: var(--app-accent-strong);
-  cursor: pointer;
-}
-.lesson-toggle:hover { background: var(--app-accent); color: var(--app-on-accent-solid); }
-.lesson-toggle:disabled { opacity: 0.5; cursor: not-allowed; }
-
-.lesson-title {
-  font-weight: 700;
-  color: var(--app-text);
-}
-.lesson-label { color: var(--app-text-3); }
-
-.playing-tag {
-  padding: 2px 7px;
-  border-radius: 999px;
-  background: var(--app-accent-strong);
-  color: var(--app-on-accent-solid);
-  font-size: 9px;
-  font-weight: 700;
-  white-space: nowrap;
-}
-
-.playing-tag--paused {
-  background: var(--app-surface-3);
-  color: var(--app-text-4);
-  font-weight: 600;
-}
-
-.lesson-meta {
-  margin-top: 4px;
-  padding-left: 22px;
-  font-size: 10.5px;
-  color: var(--app-text-4);
-}
-
-.lesson-dur {
-  padding: 2px 7px;
-  border-radius: 6px;
-  background: var(--app-surface-2);
-  font-family: 'SFMono-Regular', Consolas, monospace;
-  font-size: 10px;
-  color: var(--app-text-5);
-  flex-shrink: 0;
-}
-
-.ring {
-  width: 14px;
-  height: 14px;
-  border: 1.5px solid var(--app-text-6);
-  border-radius: 50%;
-  flex-shrink: 0;
 }
 
 @media (max-width: 640px) {

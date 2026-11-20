@@ -126,10 +126,11 @@
             <label class="field">
               <span class="field-label">分值</span>
               <input v-model.number="form.score" type="number" min="1" class="field-input" />
+              <span class="field-hint">单选 2 · 多选 5 · 判断 2 · 应用题按难度 6/8/12</span>
             </label>
             <label class="field">
               <span class="field-label">难度</span>
-              <select v-model.number="form.difficulty" class="field-input">
+              <select v-model.number="form.difficulty" class="field-input" @change="switchDifficulty">
                 <option :value="1">简单</option>
                 <option :value="2">中等</option>
                 <option :value="3">困难</option>
@@ -183,16 +184,9 @@
           <button type="button" class="modal-close" @click="closeImportModal"><Close /></button>
         </div>
         <div class="modal-body import-body">
-          <label class="field">
-            <span class="field-label">导入到</span>
-            <select v-model="importExamId" class="field-input">
-              <option value="">备用题库（推荐，组卷时再选入考试）</option>
-              <option v-for="exam in exams" :key="exam.id" :value="exam.id">
-                {{ exam.title }}
-              </option>
-            </select>
-            <span class="field-hint">导入到备用题库的题目不会自动关联考试，可在新建或编辑考试时统一组卷。</span>
-          </label>
+          <p class="import-scope-hint">
+            导入后统一进入题库，组卷时在「考试管理」中勾选入卷；同一道题可被多场考试复用。
+          </p>
 
           <div class="field">
             <div class="field-label-row">
@@ -249,7 +243,7 @@
             <button
               type="button"
               class="btn btn--primary"
-              :disabled="!parsedList.length || !importExamId || importing"
+              :disabled="!parsedList.length || importing"
               @click="confirmImport"
             >
               {{ importing ? '导入中…' : `确认导入 (${parsedList.length} 题)` }}
@@ -275,7 +269,7 @@
 </template>
 
 <script setup>
-import { computed, ref, watch } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { Plus, EditPen, Delete, Close, Upload } from '@element-plus/icons-vue';
 import { adminStore, loadExams, loadQuestions } from '../../adminStore.js';
 import {
@@ -330,16 +324,26 @@ const PAGE_SIZE = 5;
 const { page, totalPages, paged: pagedQuestions, resetPage } = usePager(filteredQuestions, PAGE_SIZE);
 watch([typeFilter, keyword], resetPage);
 
+/* 直接进入题库页时也要拉取题目与考试，否则空门店会出现「总题数 0」 */
+onMounted(() => Promise.all([loadExams(), loadQuestions()]));
+
 /* ---------- 弹窗表单 ---------- */
 const modalOpen = ref(false);
 const editingId = ref(null);
 const formError = ref('');
 const saving = ref(false);
 
+/* 分值规则：单选 2 / 多选 5 / 判断 2 / 应用题按难度（简单 6 · 中等 8 · 困难 12） */
+const defaultScoreFor = (type, difficulty = 2) => {
+  if (type === 'multiple') return 5;
+  if (type === 'application') return ({ 1: 6, 3: 12 }[Number(difficulty)] || 8);
+  return 2;
+};
+
 const emptyForm = () => ({
   examId: '',
   type: 'single',
-  score: 5,
+  score: defaultScoreFor('single'),
   difficulty: 2,
   title: '',
   options: [
@@ -387,6 +391,15 @@ const switchType = () => {
   } else if (!form.value.options.length) {
     form.value.options = emptyForm().options;
   }
+  // 分值随题型走：切换题型后按新题型的默认分值回填
+  form.value.score = defaultScoreFor(form.value.type, form.value.difficulty);
+};
+
+/* 应用题分值随难度联动（简单 6 / 中等 8 / 困难 12） */
+const switchDifficulty = () => {
+  if (form.value.type === 'application') {
+    form.value.score = defaultScoreFor('application', form.value.difficulty);
+  }
 };
 
 const typeLabelMap = { single: '单选题', multiple: '多选题', judgment: '判断题', application: '问答题' };
@@ -399,7 +412,7 @@ const toSavePayload = (source) => {
   return {
     examId: source.examId ? Number(source.examId) : 0,
     type: typeCodeMap[source.type] ?? 1,
-    score: Number(source.score) || 5,
+    score: Number(source.score) || defaultScoreFor(source.type, source.difficulty),
     title: source.title.trim(),
     difficulty: Number(source.difficulty) || 2,
     correctAnswer: objective ? String(source.answer || '').trim().toUpperCase() : '',
@@ -470,14 +483,12 @@ const removeQ = (q) => {
 
 /* ---------- 批量导入题目逻辑 ---------- */
 const importModalOpen = ref(false);
-const importExamId = ref('');
 const importRawText = ref('');
 const importFileInputRef = ref(null);
 const parsedList = ref([]);
 const importing = ref(false);
 
 const openImportModal = () => {
-  importExamId.value = '';
   importRawText.value = '';
   parsedList.value = [];
   importModalOpen.value = true;
@@ -495,7 +506,7 @@ const fillSampleJSON = () => {
       type: 'single',
       typeLabel: '单选题',
       title: '在企业级微服务架构中，服务注册中心的核心功能是什么？',
-      score: 5,
+      score: 2,
       options: [
         { key: 'A', text: '服务地址的管理、健康检查与动态发现' },
         { key: 'B', text: '分布式数据库事务持久化管理' },
@@ -521,7 +532,7 @@ const fillSampleJSON = () => {
       type: 'judgment',
       typeLabel: '判断题',
       title: 'Vue 3 的 Composition API 可以有效提升复杂大型组件的逻辑复用与代码可维护性。',
-      score: 5,
+      score: 2,
       options: [
         { key: 'A', text: '正确' },
         { key: 'B', text: '错误' }
@@ -534,14 +545,14 @@ const fillSampleJSON = () => {
 };
 
 const fillSampleText = () => {
-  importRawText.value = `1. [单选题] Spring Boot 3 最低要求的 JDK 版本是？ (5分)
+  importRawText.value = `1. [单选题] Spring Boot 3 最低要求的 JDK 版本是？ (2分)
 A. JDK 8
 B. JDK 11
 C. JDK 17
 D. JDK 21
 答案: C
 
-2. [判断题] Redis 默认是单线程模型处理网络请求和命令执行。 (5分)
+2. [判断题] Redis 默认是单线程模型处理网络请求和命令执行。 (2分)
 A. 正确
 B. 错误
 答案: A`;
@@ -563,7 +574,7 @@ const parseQuestions = () => {
         type: item.type || 'single',
         typeLabel: typeLabelMap[item.type || 'single'] || '单选题',
         title: item.title || '',
-        score: Number(item.score) || 5,
+        score: Number(item.score) || defaultScoreFor(item.type || 'single', item.difficulty),
         options: item.options || [
           { key: 'A', text: '选项 A' },
           { key: 'B', text: '选项 B' }
@@ -584,7 +595,7 @@ const parseQuestions = () => {
     if (!lines.length) continue;
     let titleLine = lines[0].replace(/^\d+[\.、\s]*/, '');
     let type = 'single';
-    let score = 5;
+    let score = 0;
     if (titleLine.includes('多选')) type = 'multiple';
     else if (titleLine.includes('判断')) type = 'judgment';
     else if (titleLine.includes('问答')) type = 'application';
@@ -595,6 +606,8 @@ const parseQuestions = () => {
       score = parseInt(scoreMatch[1], 10);
       titleLine = titleLine.replace(/[\(（]\d+分[\)）]/, '').trim();
     }
+    // 未写“(N分)”时按题型默认分值兜底
+    if (!score) score = defaultScoreFor(type);
 
     const options = [];
     let answer = '';
@@ -657,7 +670,7 @@ const confirmImport = async () => {
   const failures = [];
   for (const item of parsedList.value) {
     try {
-      await createAdminQuestion(toSavePayload({ ...item, examId: importExamId.value }));
+      await createAdminQuestion(toSavePayload({ ...item, examId: '' }));
     } catch (error) {
       failures.push(error?.message || '未知错误');
     }
@@ -669,7 +682,7 @@ const confirmImport = async () => {
   if (failures.length) {
     showToast(`导入完成：成功 ${done} 题，失败 ${failures.length} 题。${failures[0]}`, 'error');
   } else {
-    showToast(`已成功导入 ${done} 道新题目！`, 'success');
+    showToast(`已成功导入 ${done} 道新题目到统一题库，可在考试管理组卷时选取！`, 'success');
     closeImportModal();
   }
 };
@@ -1157,6 +1170,17 @@ button { cursor: pointer; }
 
 .import-body {
   gap: 14px;
+}
+
+.import-scope-hint {
+  margin: 0;
+  padding: 10px 12px;
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--app-text-3, #64748b);
+  background: var(--app-surface-2, #f5f7fa);
+  border: 1px solid var(--app-border-soft, #eef2f6);
+  border-radius: 8px;
 }
 
 .field-label-row {

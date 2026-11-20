@@ -224,7 +224,14 @@
 
           <label class="field">
             <span class="field-label">及格分</span>
-            <input v-model.number="form.passScore" type="number" min="0" class="field-input" />
+            <input
+              v-model.number="form.passScore"
+              type="number"
+              min="0"
+              class="field-input"
+              @input="passScoreTouched = true"
+            />
+            <span class="field-hint">卷面总分 {{ selectedTotalScore }} 分，默认取总分 60%</span>
           </label>
           <section class="paper-builder" aria-label="试卷组卷">
             <div class="paper-builder-head">
@@ -235,7 +242,7 @@
               <div class="paper-summary">
                 <strong>{{ selectedQuestions.length }} 题</strong>
                 <span :class="{ 'paper-summary__over-limit': selectedTotalScore > 100 }">
-                  总分 {{ selectedTotalScore }} / 100 分
+                  总分 {{ selectedTotalScore }} 分（上限 100 分）
                 </span>
                 <span>还可选 {{ Math.max(0, 100 - selectedTotalScore) }} 分</span>
               </div>
@@ -289,8 +296,6 @@
                   </span>
                   <span class="builder-question-title">{{ question.title }}</span>
                 </span>
-                <span v-if="question.examId && question.examId !== editingId" class="builder-source">复制自其他试卷</span>
-                <span v-else-if="!question.examId" class="builder-source">备用题</span>
               </label>
             </div>
             <div v-else class="builder-empty">
@@ -504,6 +509,15 @@ const form = ref({
   passScore: 80
 });
 
+/* 及格分默认跟卷面总分走（60%），管理员手动改过之后不再自动覆盖 */
+const passScoreTouched = ref(false);
+const syncDefaultPassScore = () => {
+  if (passScoreTouched.value) return;
+  const total = Number(selectedTotalScore.value) || 0;
+  form.value.passScore = total > 0 ? Math.round(total * 0.6) : 0;
+};
+watch(selectedTotalScore, syncDefaultPassScore);
+
 const toMinutes = (hhmm) => {
   const [h, m] = String(hhmm || '').split(':').map(Number);
   return (h || 0) * 60 + (m || 0);
@@ -530,6 +544,7 @@ const openCreate = async () => {
   selectedQuestionIds.value = [];
   resetBuilderFilters();
   formError.value = '';
+  passScoreTouched.value = false;
   form.value = {
     title: '',
     organizer: '',
@@ -537,7 +552,7 @@ const openCreate = async () => {
     startTime: '14:00',
     endTime: '15:30',
     status: 1,
-    passScore: 80
+    passScore: 0
   };
   modalOpen.value = true;
 };
@@ -582,6 +597,8 @@ const openEdit = async (exam) => {
     .map((question) => question.numericId);
   resetBuilderFilters();
   formError.value = '';
+  // 编辑已有考试：保留其及格分，仅在手动修改后才覆盖
+  passScoreTouched.value = true;
   form.value = {
     title: exam.title,
     organizer: exam.organizer,
@@ -1324,8 +1341,7 @@ th.ops, td.ops { text-align: right; }
   gap: 4px;
 }
 
-.builder-question-meta,
-.builder-source {
+.builder-question-meta {
   color: var(--app-text-4);
   font-size: 11px;
 }
@@ -1336,7 +1352,6 @@ th.ops, td.ops { text-align: right; }
   line-height: 1.5;
 }
 
-.builder-source { flex-shrink: 0; }
 .builder-empty {
   padding: 22px 10px;
   color: var(--app-text-4);
@@ -1353,6 +1368,11 @@ th.ops, td.ops { text-align: right; }
 .field-label {
   font-size: 12px;
   font-weight: 600;
+  color: var(--app-text-3);
+}
+
+.field-hint {
+  font-size: 11px;
   color: var(--app-text-3);
 }
 
@@ -1421,6 +1441,5 @@ th.ops, td.ops { text-align: right; }
   .builder-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .builder-random { flex-wrap: wrap; }
   .builder-result { margin-left: 0; }
-  .builder-source { display: none; }
 }
 </style>

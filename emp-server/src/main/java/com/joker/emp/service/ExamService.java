@@ -109,11 +109,18 @@ public class ExamService {
     exam.setStatus(request.status() == null ? 1 : request.status());
     exam.setDurationMinutes(request.durationMinutes() == null ? 60 : request.durationMinutes());
     exam.setTotalScore(request.totalScore() == null ? BigDecimal.valueOf(100) : request.totalScore());
-    exam.setPassScore(request.passScore() == null ? BigDecimal.valueOf(60) : request.passScore());
+    if (request.passScore() != null) {
+      exam.setPassScore(request.passScore());
+    }
     exam.setCreatedBy(com.joker.emp.security.AuthContext.userId());
     examMapper.insert(exam);
     if (request.questionIds() != null) {
       updateQuestionSet(exam, request.questionIds());
+    }
+    // 未显式给及格分时按总分 60% 兜底，避免小分值试卷出现“及格分高于卷面总分”
+    if (exam.getPassScore() == null) {
+      exam.setPassScore(roundScore(exam.getTotalScore().multiply(BigDecimal.valueOf(0.6))));
+      examMapper.updateById(exam);
     }
     logService.record("exam", "新增考试 " + exam.getTitle(), "exam", exam.getId());
     return detail(exam.getId());
@@ -160,6 +167,11 @@ public class ExamService {
     return questionService.questionsOf(examId).stream()
         .map(question -> question.getScore() == null ? BigDecimal.ZERO : question.getScore())
         .reduce(BigDecimal.ZERO, BigDecimal::add);
+  }
+
+  /** 及格分等派生分值统一保留 1 位小数，与 DECIMAL(5,1) 列一致。 */
+  private BigDecimal roundScore(BigDecimal value) {
+    return value == null ? null : value.setScale(1, java.math.RoundingMode.HALF_UP);
   }
 
   @Transactional
@@ -534,6 +546,9 @@ public class ExamService {
     int used = assignment.getAttemptsUsed() == null ? 0 : assignment.getAttemptsUsed();
     if (used >= allowed) {
       throw new BizException("已达到允许的考试次数");
+    }
+    if (questionService.countByExam(examId) == 0) {
+      throw new BizException("该考试尚未配置试题，请联系管理员完成组卷");
     }
     ExamAttempt attempt = new ExamAttempt();
     attempt.setExamId(examId);

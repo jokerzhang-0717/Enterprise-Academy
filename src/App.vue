@@ -142,6 +142,17 @@
                 :search-target-id="searchTargetId"
                 @start-exam="handleStartExam"
                 @view-result="handleViewResult"
+                @view-exam="handleViewExam"
+              />
+
+              <ExamDetailView
+                v-else-if="currentView === 'exam-detail'"
+                :exam-id="selectedExamId"
+                :assignment="detailAssignment"
+                :past-record="detailPastRecord"
+                @back="handleNavigate('exams')"
+                @start-exam="handleStartExam"
+                @view-result="handleViewResult"
               />
 
               <ExamTakingView
@@ -240,6 +251,7 @@ import HomeView from './views/HomeView.vue';
 import CoursesView from './views/CoursesView.vue';
 import CoursePlayerView from './views/CoursePlayerView.vue';
 import ExamsView from './views/ExamsView.vue';
+import ExamDetailView from './views/ExamDetailView.vue';
 import ExamTakingView from './views/ExamTakingView.vue';
 import ExamResultView from './views/ExamResultView.vue';
 import ExamResultDetailView from './views/ExamResultDetailView.vue';
@@ -456,6 +468,12 @@ const searchResults = computed(() => {
     .slice(0, 10);
 });
 
+/* 考核详情页直接复用考评中心已加载的安排/成绩数据，避免重复请求 */
+const detailAssignment = computed(() =>
+  searchAssignments.value.find(item => String(item.examId) === String(selectedExamId.value)) || null);
+const detailPastRecord = computed(() =>
+  searchPastExams.value.find(item => String(item.examId) === String(selectedExamId.value)) || null);
+
 const handleNavigate = (view, { searchTargetId: targetId = '' } = {}) => {
   searchTargetId.value = '';
   const courseId = selectedCourseId.value || learnerStore.courses[0]?.id;
@@ -620,6 +638,11 @@ const handleOpenCertificate = (certId) => {
     return;
   }
   selectedCert.value = found;
+};
+
+const handleViewExam = (exam) => {
+  selectedExamId.value = exam?.examId ?? exam?.id ?? '';
+  handleNavigate('exam-detail');
 };
 
 const handleStartExam = (exam) => {

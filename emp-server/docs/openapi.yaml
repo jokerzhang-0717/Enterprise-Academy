@@ -1553,7 +1553,7 @@ paths:
               examId: 1
               questionNo: 26
               type: 1
-              score: 5
+              score: 2
               title: 微服务中用于服务发现与配置管理的组件是？
               correctAnswer: A
               referenceAnswer: null
@@ -2765,8 +2765,8 @@ components:
           type: number
           format: double
           nullable: true
-          description: 默认 5
-          example: 5
+          description: 单选 2 / 多选 5 / 判断 2 / 应用题按难度 6（简单）·8（中等）·12（困难）；未显式给分时按此规则兜底
+          example: 2
         title:
           type: string
           example: 微服务中用于服务发现与配置管理的组件是？

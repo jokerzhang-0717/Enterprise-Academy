@@ -339,9 +339,25 @@ public class QuestionService {
     }
     if (request.referenceAnswer() != null) question.setReferenceAnswer(request.referenceAnswer());
     if (request.analysis() != null) question.setAnalysis(request.analysis());
-    if (question.getScore() == null) question.setScore(BigDecimal.valueOf(5));
     if (question.getDifficulty() == null) question.setDifficulty(2);
+    if (question.getScore() == null) question.setScore(defaultScore(question.getType(), question.getDifficulty()));
     if (question.getQuestionNo() == null) question.setQuestionNo(0);
+  }
+
+  /**
+   * 分值规则：单选 2 分 / 多选 5 分 / 判断 2 分 / 应用题按难度（简单 6 · 中等 8 · 困难 12）。
+   * 管理端与批量导入未显式给分时按此兜底，保证新建题目与题库口径一致。
+   */
+  private BigDecimal defaultScore(Integer type, Integer difficulty) {
+    return switch (type == null ? 1 : type) {
+      case 2 -> BigDecimal.valueOf(5);
+      case 4 -> BigDecimal.valueOf(switch (difficulty == null ? 2 : difficulty) {
+        case 1 -> 6;
+        case 3 -> 12;
+        default -> 8;
+      });
+      default -> BigDecimal.valueOf(2);
+    };
   }
 
   private int nextQuestionNo(Long examId) {

@@ -19,7 +19,6 @@ import com.joker.emp.mapper.CourseMapper;
 import com.joker.emp.mapper.EnrollmentMapper;
 import com.joker.emp.mapper.InstructorMapper;
 import com.joker.emp.mapper.LessonProgressMapper;
-import com.joker.emp.mapper.StudySessionMapper;
 import com.joker.emp.security.AuthContext;
 import java.math.BigDecimal;
 import java.time.Duration;
@@ -44,14 +43,12 @@ public class CourseService {
   private final InstructorMapper instructorMapper;
   private final EnrollmentMapper enrollmentMapper;
   private final LessonProgressMapper lessonProgressMapper;
-  private final StudySessionMapper studySessionMapper;
   private final OperationLogService logService;
 
   public CourseService(CourseMapper courseMapper, CourseCategoryMapper categoryMapper,
       CourseChapterMapper chapterMapper, CourseLessonMapper lessonMapper,
       InstructorMapper instructorMapper, EnrollmentMapper enrollmentMapper,
-      LessonProgressMapper lessonProgressMapper,
-      StudySessionMapper studySessionMapper, OperationLogService logService) {
+      LessonProgressMapper lessonProgressMapper, OperationLogService logService) {
     this.courseMapper = courseMapper;
     this.categoryMapper = categoryMapper;
     this.chapterMapper = chapterMapper;
@@ -59,7 +56,6 @@ public class CourseService {
     this.instructorMapper = instructorMapper;
     this.enrollmentMapper = enrollmentMapper;
     this.lessonProgressMapper = lessonProgressMapper;
-    this.studySessionMapper = studySessionMapper;
     this.logService = logService;
   }
 
@@ -434,18 +430,7 @@ public class CourseService {
         .eq(LessonProgress::getLessonId, lessonId)
         .last("LIMIT 1"));
 
-    long trustedSeconds = studySessionMapper.selectStudySecondsByLesson(userId, lessonId)
-        .longValue();
-    boolean newlyCompleted = Boolean.TRUE.equals(completed)
-        && (progress == null || !Boolean.TRUE.equals(progress.getIsCompleted()));
-    if (newlyCompleted) {
-      long requiredSeconds = requiredStudySeconds(lesson);
-      if (trustedSeconds < requiredSeconds) {
-        throw new BizException("学习时长不足：本课时需累计学习 "
-            + formatStudyMinutes(requiredSeconds) + "，当前 "
-            + formatStudyMinutes(trustedSeconds));
-      }
-    }
+    /* 不做最低学习时长校验：学员看多少就记录多少，看完即可标记完成 */
     int safeWatchedSeconds = clampWatchedSeconds(watchedSeconds, lesson);
 
     if (progress == null) {
@@ -652,26 +637,12 @@ public class CourseService {
     return "未开始";
   }
 
-  /**
-   * 完成课时所需的服务端学习时长：默认取课时时长的一半，限制在 30 秒到 30 分钟之间；
-   * 课时未配置时长时要求至少学习 60 秒。
-   */
-  private long requiredStudySeconds(CourseLesson lesson) {
-    Integer duration = lesson.getDurationSeconds();
-    long required = duration == null || duration <= 0 ? 60L : Math.round(duration * 0.5d);
-    return Math.min(1800L, Math.max(30L, required));
-  }
-
-  /** 客户端上报的观看进度仅用于断点续播，限制在合法范围内，不作为完成依据。 */
+  /** 观看进度直接记录学员实际上报的秒数，仅在无时长上限时做基本非负处理。 */
   private int clampWatchedSeconds(Integer watchedSeconds, CourseLesson lesson) {
     int value = watchedSeconds == null ? 0 : Math.max(0, watchedSeconds);
     Integer duration = lesson.getDurationSeconds();
     int upperBound = duration == null || duration <= 0 ? 86_400 : duration;
     return Math.min(value, upperBound);
-  }
-
-  private String formatStudyMinutes(long seconds) {
-    return Math.max(1, (seconds + 59) / 60) + " 分钟";
   }
 
   private String relativeTime(LocalDateTime time) {
