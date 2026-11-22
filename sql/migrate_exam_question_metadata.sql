@@ -1,3 +1,15 @@
 -- Existing databases: run this once after backing up the database.
-ALTER TABLE exam_question
-  ADD COLUMN difficulty TINYINT NOT NULL DEFAULT 2 COMMENT '难度：1 简单 2 中等 3 困难' AFTER title;
+-- Removes the legacy difficulty classification from the question bank.
+-- Safe to re-run: the column is only dropped when it still exists.
+SET @drop_difficulty_sql = (
+  SELECT IF(COUNT(*) > 0,
+           'ALTER TABLE exam_question DROP COLUMN difficulty',
+           'SELECT 1')
+  FROM information_schema.COLUMNS
+  WHERE TABLE_SCHEMA = DATABASE()
+    AND TABLE_NAME = 'exam_question'
+    AND COLUMN_NAME = 'difficulty'
+);
+PREPARE drop_difficulty_stmt FROM @drop_difficulty_sql;
+EXECUTE drop_difficulty_stmt;
+DEALLOCATE PREPARE drop_difficulty_stmt;

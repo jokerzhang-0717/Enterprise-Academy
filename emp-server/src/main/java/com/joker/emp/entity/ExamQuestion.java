@@ -33,9 +33,6 @@ public class ExamQuestion {
 
   private String title;
 
-  /** 1 简单 2 中等 3 困难 */
-  private Integer difficulty;
-
   /** 客观题答案：单选/判断 "A"，多选 "ABD"；主观题为空 */
   private String correctAnswer;
 

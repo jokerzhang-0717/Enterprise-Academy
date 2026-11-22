@@ -42,13 +42,12 @@ public class QuestionService {
   }
 
   public List<Map<String, Object>> list(Long examId, Integer type, String keyword,
-      boolean standalone, Integer difficulty) {
+      boolean standalone) {
     String keywordFilter = keyword == null ? null : keyword.trim();
     List<ExamQuestion> questions = questionMapper.selectList(Wrappers.<ExamQuestion>lambdaQuery()
         .eq(standalone, ExamQuestion::getExamId, null)
         .eq(!standalone && examId != null, ExamQuestion::getExamId, examId)
         .eq(type != null, ExamQuestion::getType, type)
-        .eq(difficulty != null, ExamQuestion::getDifficulty, difficulty)
         .and(keywordFilter != null && !keywordFilter.isBlank(), w -> w
             .like(ExamQuestion::getTitle, keywordFilter))
         .orderByAsc(ExamQuestion::getQuestionNo)
@@ -58,11 +57,6 @@ public class QuestionService {
     return questions.stream()
         .map(q -> toItem(q, options.getOrDefault(q.getId(), List.of()), true))
         .toList();
-  }
-
-  public List<Map<String, Object>> list(Long examId, Integer type, String keyword,
-      boolean standalone) {
-    return list(examId, type, keyword, standalone, null);
   }
 
   public Map<String, Object> detail(Long id) {
@@ -115,10 +109,6 @@ public class QuestionService {
       if (requestedExamId != null) {
         assertExamEditable(requestedExamId);
       }
-    }
-    if (request.difficulty() != null
-        && (request.difficulty() < 1 || request.difficulty() > 3)) {
-      throw new BizException("难度只能是 1 简单 / 2 中等 / 3 困难");
     }
     apply(question, request);
     questionMapper.updateById(question);
@@ -185,7 +175,6 @@ public class QuestionService {
         copy.setType(source.getType());
         copy.setScore(source.getScore());
         copy.setTitle(source.getTitle());
-        copy.setDifficulty(source.getDifficulty());
         copy.setCorrectAnswer(source.getCorrectAnswer());
         copy.setReferenceAnswer(source.getReferenceAnswer());
         copy.setAnalysis(source.getAnalysis());
@@ -311,10 +300,6 @@ public class QuestionService {
     if (request.type() == null || request.type() < 1 || request.type() > 4) {
       throw new BizException("题型只能是 1 单选 / 2 多选 / 3 判断 / 4 应用简答");
     }
-    if (request.difficulty() != null
-        && (request.difficulty() < 1 || request.difficulty() > 3)) {
-      throw new BizException("难度只能是 1 简单 / 2 中等 / 3 困难");
-    }
     if (request.type() <= 3
         && (request.correctAnswer() == null || request.correctAnswer().isBlank())) {
       throw new BizException("客观题必须设置正确答案");
@@ -332,30 +317,24 @@ public class QuestionService {
     if (request.type() != null) question.setType(request.type());
     if (request.score() != null) question.setScore(request.score());
     if (request.title() != null) question.setTitle(request.title());
-    if (request.difficulty() != null) question.setDifficulty(request.difficulty());
     if (request.correctAnswer() != null) {
       question.setCorrectAnswer(request.correctAnswer().isBlank()
           ? null : request.correctAnswer().trim().toUpperCase());
     }
     if (request.referenceAnswer() != null) question.setReferenceAnswer(request.referenceAnswer());
     if (request.analysis() != null) question.setAnalysis(request.analysis());
-    if (question.getDifficulty() == null) question.setDifficulty(2);
-    if (question.getScore() == null) question.setScore(defaultScore(question.getType(), question.getDifficulty()));
+    if (question.getScore() == null) question.setScore(defaultScore(question.getType()));
     if (question.getQuestionNo() == null) question.setQuestionNo(0);
   }
 
   /**
-   * 分值规则：单选 2 分 / 多选 5 分 / 判断 2 分 / 应用题按难度（简单 6 · 中等 8 · 困难 12）。
+   * 分值规则：单选 2 分 / 多选 5 分 / 判断 2 分 / 应用题 8 分。
    * 管理端与批量导入未显式给分时按此兜底，保证新建题目与题库口径一致。
    */
-  private BigDecimal defaultScore(Integer type, Integer difficulty) {
+  private BigDecimal defaultScore(Integer type) {
     return switch (type == null ? 1 : type) {
       case 2 -> BigDecimal.valueOf(5);
-      case 4 -> BigDecimal.valueOf(switch (difficulty == null ? 2 : difficulty) {
-        case 1 -> 6;
-        case 3 -> 12;
-        default -> 8;
-      });
+      case 4 -> BigDecimal.valueOf(8);
       default -> BigDecimal.valueOf(2);
     };
   }
@@ -380,8 +359,6 @@ public class QuestionService {
     item.put("typeLabel", typeLabel(question.getType()));
     item.put("score", question.getScore());
     item.put("title", question.getTitle());
-    item.put("difficulty", question.getDifficulty() == null ? 2 : question.getDifficulty());
-    item.put("difficultyLabel", difficultyLabel(question.getDifficulty()));
     List<Map<String, Object>> optionItems = new ArrayList<>();
     for (QuestionOption option : options) {
       Map<String, Object> oi = new LinkedHashMap<>();
@@ -422,14 +399,6 @@ public class QuestionService {
     };
   }
 
-  private String difficultyLabel(Integer difficulty) {
-    return switch (difficulty == null ? 2 : difficulty) {
-      case 1 -> "简单";
-      case 3 -> "困难";
-      default -> "中等";
-    };
-  }
-
   private String truncate(String title) {
     if (title == null) {
       return "";
@@ -439,7 +408,7 @@ public class QuestionService {
 
   public record QuestionSaveRequest(Long examId, Integer questionNo, Integer type,
       BigDecimal score, String title, String correctAnswer, String referenceAnswer,
-      String analysis, List<OptionSaveRequest> options, Integer difficulty) {
+      String analysis, List<OptionSaveRequest> options) {
   }
 
   public record OptionSaveRequest(String key, String content, String explanation,

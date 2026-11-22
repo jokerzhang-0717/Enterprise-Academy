@@ -33,10 +33,9 @@ public class AdminQuestionController {
       @RequestParam(required = false) Long examId,
       @RequestParam(required = false) Integer type,
       @RequestParam(required = false) String keyword,
-      @RequestParam(required = false) Integer difficulty,
       @RequestParam(defaultValue = "false") boolean standalone) {
     return ApiResponse.ok(
-        questionService.list(examId, type, keyword, standalone, difficulty));
+        questionService.list(examId, type, keyword, standalone));
   }
 
   @GetMapping("/{id}")

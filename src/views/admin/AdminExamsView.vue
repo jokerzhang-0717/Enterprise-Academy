@@ -257,12 +257,6 @@
                   {{ type.label }}
                 </option>
               </select>
-              <select v-model.number="builderDifficultyFilter" class="field-input" aria-label="按难度筛选">
-                <option :value="0">全部难度</option>
-                <option :value="1">简单</option>
-                <option :value="2">中等</option>
-                <option :value="3">困难</option>
-              </select>
             </div>
             <div class="builder-random">
               <span>按当前筛选随机抽取</span>
@@ -292,7 +286,7 @@
                 />
                 <span class="builder-question-main">
                   <span class="builder-question-meta">
-                    {{ question.typeLabel }} · {{ question.score }} 分 · {{ question.difficultyLabel }}
+                    {{ question.typeLabel }} · {{ question.score }} 分
                   </span>
                   <span class="builder-question-title">{{ question.title }}</span>
                 </span>
@@ -460,7 +454,6 @@ const saving = ref(false);
 const editingExam = ref(null);
 const selectedQuestionIds = ref([]);
 const builderTypeFilter = ref('');
-const builderDifficultyFilter = ref(0);
 const randomPickCount = ref(5);
 
 const questionTypes = [
@@ -477,8 +470,7 @@ const canEditQuestionSet = computed(() =>
 
 const filteredQuestionPool = computed(() =>
   adminStore.questions.filter((question) =>
-    (!builderTypeFilter.value || question.type === builderTypeFilter.value)
-      && (!builderDifficultyFilter.value || question.difficulty === builderDifficultyFilter.value),
+    !builderTypeFilter.value || question.type === builderTypeFilter.value,
   ),
 );
 
@@ -559,7 +551,6 @@ const openCreate = async () => {
 
 const resetBuilderFilters = () => {
   builderTypeFilter.value = '';
-  builderDifficultyFilter.value = 0;
   randomPickCount.value = 5;
 };
 

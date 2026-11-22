@@ -141,7 +141,7 @@ mysql -uroot -p enterprise_academy < sql/seed.sql
 
 > `schema.sql` 会重建表结构，已有数据的环境请先备份，不要直接重复执行。
 >
-> 已有数据库升级题库知识点/难度字段时，备份后执行：
+> 已有数据库需移除历史题库难度字段时，备份后执行：
 >
 > ```bash
 > mysql -uroot -p enterprise_academy < sql/migrate_exam_question_metadata.sql

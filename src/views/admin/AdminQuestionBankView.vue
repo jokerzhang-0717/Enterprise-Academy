@@ -80,7 +80,6 @@
             <span class="q-score">{{ q.score }} 分</span>
             <span class="q-exam">{{ examTitle(q.examId) }}</span>
             <span v-if="isQuestionLocked(q)" class="q-exam" title="该考试已发布或已有作答，仍可编辑并同步到试卷与学员端">已发布</span>
-            <span class="q-exam">难度：{{ q.difficultyLabel }}</span>
             <span v-if="q.answer" class="q-answer mono">答案:{{ q.answer }}</span>
           </div>
           <p class="q-title">{{ q.title }}</p>
@@ -122,21 +121,11 @@
               <option v-for="t in qTypeOptions" :key="t.id" :value="t.id">{{ t.label }}</option>
             </select>
           </label>
-          <div class="field-row">
-            <label class="field">
-              <span class="field-label">分值</span>
-              <input v-model.number="form.score" type="number" min="1" class="field-input" />
-              <span class="field-hint">单选 2 · 多选 5 · 判断 2 · 应用题按难度 6/8/12</span>
-            </label>
-            <label class="field">
-              <span class="field-label">难度</span>
-              <select v-model.number="form.difficulty" class="field-input" @change="switchDifficulty">
-                <option :value="1">简单</option>
-                <option :value="2">中等</option>
-                <option :value="3">困难</option>
-              </select>
-            </label>
-          </div>
+          <label class="field">
+            <span class="field-label">分值</span>
+            <input v-model.number="form.score" type="number" min="1" class="field-input" />
+            <span class="field-hint">单选 2 · 多选 5 · 判断 2 · 应用题 8</span>
+          </label>
           <label class="field">
             <span class="field-label">题干</span>
             <textarea v-model.trim="form.title" rows="3" class="field-input field-textarea" placeholder="请输入题目内容"></textarea>
@@ -333,10 +322,10 @@ const editingId = ref(null);
 const formError = ref('');
 const saving = ref(false);
 
-/* 分值规则：单选 2 / 多选 5 / 判断 2 / 应用题按难度（简单 6 · 中等 8 · 困难 12） */
-const defaultScoreFor = (type, difficulty = 2) => {
+/* 分值规则：单选 2 / 多选 5 / 判断 2 / 应用题 8 */
+const defaultScoreFor = (type) => {
   if (type === 'multiple') return 5;
-  if (type === 'application') return ({ 1: 6, 3: 12 }[Number(difficulty)] || 8);
+  if (type === 'application') return 8;
   return 2;
 };
 
@@ -344,7 +333,6 @@ const emptyForm = () => ({
   examId: '',
   type: 'single',
   score: defaultScoreFor('single'),
-  difficulty: 2,
   title: '',
   options: [
     { key: 'A', text: '' }, { key: 'B', text: '' },
@@ -370,7 +358,6 @@ const openEdit = (q) => {
     examId: q.examId,
     type: q.type,
     score: q.score,
-    difficulty: q.difficulty || 2,
     title: q.title,
     options: (q.options && q.options.length) ? q.options.map(o => ({ ...o })) : emptyForm().options,
     answer: q.answer || ''
@@ -392,14 +379,7 @@ const switchType = () => {
     form.value.options = emptyForm().options;
   }
   // 分值随题型走：切换题型后按新题型的默认分值回填
-  form.value.score = defaultScoreFor(form.value.type, form.value.difficulty);
-};
-
-/* 应用题分值随难度联动（简单 6 / 中等 8 / 困难 12） */
-const switchDifficulty = () => {
-  if (form.value.type === 'application') {
-    form.value.score = defaultScoreFor('application', form.value.difficulty);
-  }
+  form.value.score = defaultScoreFor(form.value.type);
 };
 
 const typeLabelMap = { single: '单选题', multiple: '多选题', judgment: '判断题', application: '问答题' };
@@ -412,9 +392,8 @@ const toSavePayload = (source) => {
   return {
     examId: source.examId ? Number(source.examId) : 0,
     type: typeCodeMap[source.type] ?? 1,
-    score: Number(source.score) || defaultScoreFor(source.type, source.difficulty),
+    score: Number(source.score) || defaultScoreFor(source.type),
     title: source.title.trim(),
-    difficulty: Number(source.difficulty) || 2,
     correctAnswer: objective ? String(source.answer || '').trim().toUpperCase() : '',
     options: objective
       ? source.options
@@ -574,7 +553,7 @@ const parseQuestions = () => {
         type: item.type || 'single',
         typeLabel: typeLabelMap[item.type || 'single'] || '单选题',
         title: item.title || '',
-        score: Number(item.score) || defaultScoreFor(item.type || 'single', item.difficulty),
+        score: Number(item.score) || defaultScoreFor(item.type || 'single'),
         options: item.options || [
           { key: 'A', text: '选项 A' },
           { key: 'B', text: '选项 B' }
@@ -1103,12 +1082,6 @@ button { cursor: pointer; }
   padding: 20px;
 }
 
-.field-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-}
-
 .field {
   display: flex;
   flex-direction: column;
@@ -1310,6 +1283,5 @@ button { cursor: pointer; }
 
 @media (max-width: 640px) {
   .stat-strip { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .field-row { grid-template-columns: 1fr; }
 }
 </style>

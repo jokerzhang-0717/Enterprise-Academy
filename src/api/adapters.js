@@ -282,8 +282,6 @@ export const adaptExamQuestion = (question) => {
     typeLabel: question.typeLabel,
     score: Number(question.score || 0),
     title: question.title,
-    difficulty: Number(question.difficulty || 2),
-    difficultyLabel: question.difficultyLabel || '中等',
     options,
     answer,
     correctAnswer: answer,
