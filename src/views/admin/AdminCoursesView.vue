@@ -35,7 +35,7 @@
       </div>
       <select v-model="categoryFilter" class="select">
         <option value="">全部分类</option>
-        <option v-for="cat in categories" :key="cat.id" :value="cat.id">{{ cat.label }}</option>
+        <option v-for="cat in categories" :key="cat.id" :value="cat.code">{{ cat.label }}</option>
       </select>
       <select v-model="publishFilter" class="select">
         <option value="">全部状态</option>
@@ -138,7 +138,7 @@
                 <label class="field">
                   <span class="field-label">所属分类</span>
                   <select v-model="form.category" class="field-input" @change="syncCategoryLabel">
-                    <option v-for="cat in categories" :key="cat.id" :value="cat.id">{{ cat.label }}</option>
+                    <option v-for="cat in categories" :key="cat.id" :value="cat.code">{{ cat.label }}</option>
                   </select>
                 </label>
                 <label class="field">
@@ -294,7 +294,7 @@ const keyword = ref('');
 const categoryFilter = ref('');
 const publishFilter = ref('');
 
-/* 分类与讲师取自接口；/admin/course-categories 的 id 是 code，写入接口要的是数字主键 */
+/* 分类项的 id 为数字主键，code 为业务编码；筛选与表单用 code，写入课程用 id */
 const categories = ref([]);
 const instructors = ref([]);
 
@@ -309,10 +309,10 @@ onMounted(async () => {
 
 const onlineCount = computed(() => courses.filter(c => c.published).length);
 
-/* 分类 code → course_category.id：从已有课程的 categoryId/categoryCode 对照中取 */
+/* 分类 code → course_category.id：直接使用字典接口返回的数字主键 */
 const categoryIdOf = (code) => {
-  const hit = courses.find(c => (c.categoryCode || c.category) === code && c.categoryId != null);
-  return hit ? hit.categoryId : null;
+  const hit = categories.value.find(c => c.code === code);
+  return hit ? Number(hit.id) : null;
 };
 
 const resolveInstructorId = async (name) => {
@@ -362,7 +362,7 @@ const lessonCount = computed(() =>
 );
 
 const syncCategoryLabel = () => {
-  form.value.categoryLabel = categories.value.find(c => c.id === form.value.category)?.label || '';
+  form.value.categoryLabel = categories.value.find(c => c.code === form.value.category)?.label || '';
 };
 
 const toEditorChapters = (chapters = []) => chapters.map(ch => ({
@@ -475,7 +475,7 @@ const saveCourse = async () => {
 
   const categoryId = categoryIdOf(form.value.category);
   if (categoryId == null) {
-    formError.value = '未找到该分类的课程编号，请先在该分类下建课或由后端补全分类接口。';
+    formError.value = '未找到该分类的编号，请刷新页面后重试。';
     return;
   }
 

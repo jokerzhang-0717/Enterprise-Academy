@@ -197,7 +197,13 @@
       </div>
 
       <div v-if="pastExams.length" class="exm-history__list">
-        <article v-for="record in pastExams" :key="record.attemptId" class="exm-history__row">
+        <article
+          v-for="record in pastExams"
+          :id="`past-exam-${record.attemptId}`"
+          :key="record.attemptId"
+          class="exm-history__row"
+          :class="{ 'exm-history__row--search-target': searchTargetId === `past-exam-${record.attemptId}` }"
+        >
           <div class="exm-history__main">
             <div class="exm-history__title">{{ record.title }}</div>
             <div class="exm-history__meta">
@@ -305,23 +311,23 @@ let lastScrolledId = '';
 
 const scrollToTarget = (targetId) => {
   if (!targetId) return;
-  // 同一个目标不重复滚动，打断 watch <-> 状态 闭环
+  // 同一个目标不重复滚动；目标节点尚未渲染时不锁定，等列表数据到达后重试
   if (lastScrolledId === targetId) return;
-  lastScrolledId = targetId;
 
   nextTick(() => {
-    requestAnimationFrame(() => {
-      const el = document.getElementById(targetId);
-      if (el && typeof el.scrollIntoView === 'function') {
-        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }
-    });
+    // 不用 rAF：后台标签页/无头浏览器中 rAF 可能不触发，导致搜索定位失效
+    const el = document.getElementById(targetId);
+    if (el && typeof el.scrollIntoView === 'function') {
+      lastScrolledId = targetId;
+      // 搜索定位用即时滚动，避免平滑动画在部分环境下不生效
+      el.scrollIntoView({ behavior: 'auto', block: 'center' });
+    }
   });
 };
 
 watch(
-  [() => props.searchTargetId, exams],
-  ([targetId, records]) => {
+  [() => props.searchTargetId, exams, pastExams],
+  ([targetId]) => {
     if (!targetId) return;
 
     // 只在当前筛选不包含目标时才重置，且重置后值不变就不再赋值
@@ -329,7 +335,7 @@ watch(
       filterTab.value = 'all';
     }
 
-    if (records.length) scrollToTarget(targetId);
+    scrollToTarget(targetId);
   },
   { immediate: true, deep: true },
 );
@@ -676,6 +682,10 @@ watch(
   border: 1px solid var(--c-border);
   border-radius: 12px;
   background: var(--app-surface);
+}
+.exm-history__row--search-target {
+  border-color: var(--c-sky);
+  box-shadow: 0 0 0 3px var(--app-accent-soft);
 }
 @media (min-width: 768px) {
   .exm-history__row {

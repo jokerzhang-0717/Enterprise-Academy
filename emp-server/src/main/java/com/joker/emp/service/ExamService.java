@@ -100,7 +100,7 @@ public class ExamService {
 
   @Transactional
   public Map<String, Object> create(ExamSaveRequest request) {
-    validate(request);
+    validateSave(request, null);
     if (request.status() != null && request.status() != 1) {
       throw new BizException("新建考试只能保存为待发布状态");
     }
@@ -112,7 +112,7 @@ public class ExamService {
     exam.setStatus(request.status() == null ? 1 : request.status());
     exam.setDurationMinutes(request.durationMinutes() == null ? 60 : request.durationMinutes());
     exam.setTotalScore(request.totalScore() == null ? BigDecimal.valueOf(100) : request.totalScore());
-    // 及格分系统固定为 60，管理端不再设置，忽略请求中的 passScore
+    // 及格分系统固定为 60，管理端不再设置；validateSave 已拒绝其它取值
     exam.setPassScore(PASS_SCORE_FIXED);
     exam.setCreatedBy(com.joker.emp.security.AuthContext.userId());
     examMapper.insert(exam);
@@ -126,6 +126,13 @@ public class ExamService {
   @Transactional
   public Map<String, Object> update(Long id, ExamSaveRequest request) {
     Exam exam = requireExam(id);
+    // 整表保存必须做必填校验；仅改状态/组卷的局部更新沿用库内已有字段，避免历史数据无法编辑
+    if (isExamSaveRequest(request)) {
+      validateSave(request, id);
+    } else if (request.passScore() != null
+        && request.passScore().compareTo(PASS_SCORE_FIXED) != 0) {
+      throw new BizException("及格分固定为 60 分，不支持自定义");
+    }
     if (request.questionIds() != null) {
       questionService.replaceExamQuestions(id, request.questionIds());
     }
@@ -133,7 +140,7 @@ public class ExamService {
     if (request.status() != null) exam.setStatus(request.status());
     if (request.durationMinutes() != null) exam.setDurationMinutes(request.durationMinutes());
     if (request.totalScore() != null) exam.setTotalScore(request.totalScore());
-    // 及格分系统固定为 60，管理端不再设置，忽略请求中的 passScore
+    // 及格分系统固定为 60，管理端不再设置；validateSave 已拒绝其它取值
     exam.setPassScore(PASS_SCORE_FIXED);
     if (request.questionIds() != null) {
       exam.setTotalScore(totalQuestionScore(id));
@@ -823,17 +830,48 @@ public class ExamService {
     return exam;
   }
 
-  private void validate(ExamSaveRequest request) {
+  /** 是否是一次完整的考试信息保存（而非仅改状态或组卷的局部更新）。 */
+  private boolean isExamSaveRequest(ExamSaveRequest request) {
+    return request.title() != null || request.organizer() != null
+        || request.startAt() != null || request.endAt() != null
+        || request.durationMinutes() != null;
+  }
+
+  /** 服务端按前端保存规则校验整表；excludeId 用于更新时排除自身编号。 */
+  private void validateSave(ExamSaveRequest request, Long excludeId) {
     if (request.title() == null || request.title().isBlank()) {
       throw new BizException("考试标题不能为空");
     }
-    if (request.code() == null || request.code().isBlank()) {
-      return;
+    if (request.organizer() == null || request.organizer().isBlank()) {
+      throw new BizException("组织方不能为空");
     }
-    long duplicate = examMapper.selectCount(Wrappers.<Exam>lambdaQuery()
-        .eq(Exam::getCode, request.code().trim()));
-    if (duplicate > 0) {
-      throw new BizException(409, "考试编号已存在");
+    if (request.startAt() == null) {
+      throw new BizException("请选择考试开始时间");
+    }
+    if (request.endAt() == null) {
+      throw new BizException("请选择考试结束时间");
+    }
+    if (!request.endAt().isAfter(request.startAt())) {
+      throw new BizException("结束时间需要晚于开始时间");
+    }
+    if (request.durationMinutes() == null || request.durationMinutes() <= 0) {
+      throw new BizException("考试时长必须大于 0 分钟");
+    }
+    if (request.totalScore() != null
+        && request.totalScore().compareTo(BigDecimal.valueOf(100)) != 0) {
+      throw new BizException("试卷总分固定为 100 分");
+    }
+    if (request.passScore() != null && request.passScore().compareTo(PASS_SCORE_FIXED) != 0) {
+      throw new BizException("及格分固定为 60 分，不支持自定义");
+    }
+    if (request.code() != null && !request.code().isBlank()) {
+      var query = Wrappers.<Exam>lambdaQuery().eq(Exam::getCode, request.code().trim());
+      if (excludeId != null) {
+        query.ne(Exam::getId, excludeId);
+      }
+      if (examMapper.selectCount(query) > 0) {
+        throw new BizException(409, "考试编号已存在");
+      }
     }
   }
 

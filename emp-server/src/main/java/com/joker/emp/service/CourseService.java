@@ -489,7 +489,8 @@ public class CourseService {
             .orderByAsc(CourseCategory::getId)).stream()
         .map(c -> {
           Map<String, Object> item = new LinkedHashMap<>();
-          item.put("id", c.getCode());
+          // id 返回分类主键，code 保留业务编码；管理端新建课程不再依赖反查已有课程
+          item.put("id", c.getId());
           item.put("code", c.getCode());
           item.put("label", c.getLabel());
           item.put("sortNo", c.getSortNo());

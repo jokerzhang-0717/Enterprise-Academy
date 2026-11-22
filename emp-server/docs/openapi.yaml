@@ -2689,7 +2689,7 @@ components:
           type: number
           format: double
           nullable: true
-          description: 已忽略，及格分由系统固定为 60，传入值不会生效
+          description: 及格分由系统固定为 60；仅允许传 60，其它值返回 400
           example: 60
 
     AssignRequest:
