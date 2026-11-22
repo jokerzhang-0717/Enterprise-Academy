@@ -102,6 +102,8 @@ const navItems = [
 ];
 
 function isItemActive(id) {
+  // 组卷页属于考试管理的子页面，侧栏保持「考试管理」高亮
+  if (id === 'admin-exams' && props.currentView === 'admin-exam-paper') return true;
   return props.currentView === id;
 }
 </script>

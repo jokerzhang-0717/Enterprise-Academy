@@ -16,6 +16,10 @@ public interface ExamMapper extends BaseMapper<Exam> {
   @Select("SELECT * FROM exam WHERE id = #{id}")
   Exam selectByIdIncludingDeleted(@Param("id") Long id);
 
+  /** 生成考试编号时需统计含软删除记录，否则会撞上仍存在的唯一索引 */
+  @Select("SELECT COUNT(*) FROM exam WHERE code LIKE CONCAT(#{prefix}, '%')")
+  long countCodesIncludingDeleted(@Param("prefix") String prefix);
+
   @Select("""
       <script>
       SELECT id, code, title, status, pass_score AS passScore,

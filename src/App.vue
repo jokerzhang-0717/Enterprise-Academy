@@ -85,6 +85,8 @@
                 @navigate="handleNavigate"
               />
 
+              <AdminExamPaperView v-else-if="currentView === 'admin-exam-paper'" />
+
               <AdminQuestionBankView
                 v-else-if="currentView === 'admin-question-bank'"
               />
@@ -266,6 +268,7 @@ import AdminStudentsView from './views/admin/AdminStudentsView.vue';
 import AdminDepartmentsView from './views/admin/AdminDepartmentsView.vue';
 import AdminCoursesView from './views/admin/AdminCoursesView.vue';
 import AdminExamsView from './views/admin/AdminExamsView.vue';
+import AdminExamPaperView from './views/admin/AdminExamPaperView.vue';
 import AdminQuestionBankView from './views/admin/AdminQuestionBankView.vue';
 import AdminLeaveApprovalView from './views/admin/AdminLeaveApprovalView.vue';
 import AdminCheckinRecordsView from './views/admin/AdminCheckinRecordsView.vue';

@@ -781,13 +781,12 @@ public class ExamService {
 
   private String generateExamCode() {
     String prefix = "EXAM-" + Year.now().getValue() + "-";
-    long sequence = examMapper.selectCount(Wrappers.<Exam>lambdaQuery()
-        .likeRight(Exam::getCode, prefix)) + 1;
+    // 软删除记录的编号仍占用唯一索引，必须一并统计，否则新建会撞唯一键
+    long sequence = examMapper.countCodesIncludingDeleted(prefix) + 1;
     String code;
     do {
       code = prefix + String.format("%03d", sequence++);
-    } while (examMapper.selectCount(Wrappers.<Exam>lambdaQuery()
-        .eq(Exam::getCode, code)) > 0);
+    } while (examMapper.countCodesIncludingDeleted(code) > 0);
     return code;
   }
 

@@ -45,6 +45,7 @@ const routes = [
   { path: '/admin/departments', name: 'admin-departments', component: Empty, meta: { adminOnly: true } },
   { path: '/admin/courses', name: 'admin-courses', component: Empty, meta: { adminOnly: true } },
   { path: '/admin/exams', name: 'admin-exams', component: Empty, meta: { adminOnly: true } },
+  { path: '/admin/exams/:examId/paper', name: 'admin-exam-paper', component: Empty, meta: { adminOnly: true } },
   { path: '/admin/question-bank', name: 'admin-question-bank', component: Empty, meta: { adminOnly: true } },
   { path: '/admin/leave', name: 'admin-leave', component: Empty, meta: { adminOnly: true } },
   { path: '/admin/checkin', name: 'admin-checkin', component: Empty, meta: { adminOnly: true } },
