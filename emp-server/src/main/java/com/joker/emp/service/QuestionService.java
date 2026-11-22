@@ -155,8 +155,9 @@ public class QuestionService {
     BigDecimal selectedTotalScore = selected.stream()
         .map(question -> question.getScore() == null ? BigDecimal.ZERO : question.getScore())
         .reduce(BigDecimal.ZERO, BigDecimal::add);
-    if (selectedTotalScore.compareTo(BigDecimal.valueOf(100)) > 0) {
-      throw new BizException("试卷总分不能超过 100 分");
+    if (selectedTotalScore.compareTo(BigDecimal.valueOf(100)) != 0) {
+      throw new BizException("试卷总分必须恰好为 100 分，当前为 "
+          + selectedTotalScore.stripTrailingZeros().toPlainString() + " 分");
     }
 
     List<ExamQuestion> current = questionsOf(examId);
@@ -221,6 +222,11 @@ public class QuestionService {
     BigDecimal totalScore = questions.stream()
         .map(question -> question.getScore() == null ? BigDecimal.ZERO : question.getScore())
         .reduce(BigDecimal.ZERO, BigDecimal::add);
+    // 题库侧改题/删题同样必须维持满分 100，避免静默破坏试卷约束
+    if (totalScore.compareTo(BigDecimal.valueOf(100)) != 0) {
+      throw new BizException("试卷总分必须恰好为 100 分，当前为 "
+          + totalScore.stripTrailingZeros().toPlainString() + " 分");
+    }
     Exam update = new Exam();
     update.setId(examId);
     update.setTotalScore(totalScore);

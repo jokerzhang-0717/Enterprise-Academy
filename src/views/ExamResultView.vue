@@ -85,6 +85,8 @@
             <span>{{ retryLabel }}</span>
           </button>
 
+          <p v-if="retryClosedTip" class="retry-closed-tip">{{ retryClosedTip }}</p>
+
           <button class="btn btn-secondary" @click="close">
             <span>返回考评中心</span>
             <span class="icon-arrow">→</span>
@@ -145,8 +147,10 @@ const close = () => router.push({ name: 'exams' });
 /* 答题明细独立成页：整页展示逐题作答 */
 const goDetails = () => router.push({ name: 'exam-result-details', params: { attemptId } });
 
-/* 还有机会就直接开新一次作答；待评分期间同样允许（交卷已扣次数，后端 start 会放行） */
+/* 还有机会且考试仍在进行中才允许重考；已结束/未开始考试直接隐藏入口 */
+const examRetryAllowed = ref(null);
 const canRetry = computed(() => {
+  if (examRetryAllowed.value === false) return false;
   if (remainingAttempts.value !== null) return remainingAttempts.value > 0;
   return !data.value.pendingReview && !data.value.isPassed;
 });
@@ -154,6 +158,9 @@ const retryLabel = computed(() =>
   remainingAttempts.value !== null
     ? `再考一次（剩余 ${remainingAttempts.value} 次机会）`
     : '重新作答'
+);
+const retryClosedTip = computed(() =>
+  examRetryAllowed.value === false ? '该考试已结束或未开放，暂不能重新作答。' : ''
 );
 const retryExam = () => {
   if (!data.value.examId) {
@@ -204,14 +211,29 @@ onMounted(async () => {
     loading.value = false;
   }
 
-  /* 读取剩余考试机会：有待评分记录也要能直接开始下一次作答 */
+  /* 读取剩余考试机会与考试开放状态；已结束/未开始考试禁止重考入口 */
   if (data.value.examId) {
     try {
       const examsData = await fetchExams();
       const assignment = (examsData?.assignments || []).find(
         (item) => String(item.examId) === String(data.value.examId)
       );
-      if (assignment) remainingAttempts.value = Number(assignment.remainingAttempts ?? 0);
+      if (assignment) {
+        remainingAttempts.value = Number(assignment.remainingAttempts ?? 0);
+        const parseTime = (value) => {
+          if (!value) return null;
+          const time = new Date(String(value).replace(' ', 'T'));
+          return Number.isNaN(time.getTime()) ? null : time;
+        };
+        const endAt = parseTime(assignment.endAt);
+        const deadlineAt = parseTime(assignment.deadlineAt);
+        const now = Date.now();
+        const expired = (endAt && now > endAt.getTime())
+          || (deadlineAt && now > deadlineAt.getTime());
+        examRetryAllowed.value = assignment.status === 'in_progress' && !expired;
+      } else {
+        examRetryAllowed.value = false;
+      }
     } catch {
       /* 机会数获取失败时退回原逻辑，不影响成绩展示 */
     }
@@ -505,6 +527,7 @@ const detailSummary = computed(() => {
 }
 .btn-retry { flex: 1; background: var(--app-accent); color: var(--app-on-accent-solid); }
 .btn-retry:hover { background: var(--app-accent-hover-strong); }
+.retry-closed-tip { flex: 1; margin: 0; font-size: 12px; color: var(--app-text-3); }
 .btn-secondary { background: var(--app-surface); color: var(--app-text-3); border: 1px solid var(--app-border); }
 .btn-secondary:hover { background: var(--app-surface-2); }
 .icon-retry, .icon-arrow { font-size: 15px; line-height: 1; }
