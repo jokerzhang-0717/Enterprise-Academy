@@ -30,7 +30,7 @@ emp-server/
    └─ resources/application.yml
 ```
 
-数据库脚本位于仓库根目录：`../sql/schema.sql`（30 表 + 7 视图）与 `../sql/seed.sql`（演示数据）。
+数据库脚本位于仓库根目录：`../sql/schema.sql`（30 表 + 7 视图）、`../sql/seed.sql`（演示数据）以及 `../sql/migrate_*.sql`（已有库迁移，均可重复执行）。新库按 schema → seed 初始化即可；迁移脚本说明见根目录 README。
 
 ## 环境要求
 
@@ -209,4 +209,4 @@ npm run build
 - MyBatis-Plus 已开启分页、逻辑删除、创建/更新时间自动填充；实体逻辑删除字段为 `deleted_at`。
 - 所有日期时间按 `Asia/Shanghai` 序列化，日期时间格式为 ISO-8601（如 `2026-11-06T09:30:00`），日期格式为 `yyyy-MM-dd`。
 - Controller 已启用 `-parameters` 编译参数，避免参数名解析告警。
-- 前端 API 对接尚未切换，本服务当前以独立后端形式运行。
+- 前端 API 已切换到本服务：开发态由 Vite 代理 `/api` → `http://127.0.0.1:8080`，生产态将 `VITE_API_BASE_URL` 指向本服务的 `/api` 前缀即可。

@@ -54,51 +54,7 @@
             </p>
           </template>
 
-          <button
-            v-if="currentLesson && !hasVideo"
-            class="play-btn"
-            type="button"
-            :disabled="currentLesson.completed"
-            :aria-label="isPlaying ? '暂停本节课程' : '播放本节课程'"
-            :title="isPlaying ? '暂停' : '播放'"
-            @click="togglePlayback"
-          >
-            <Pause v-if="isPlaying" class="play-icon" fill="currentColor" />
-            <Play v-else class="play-icon" fill="currentColor" />
-          </button>
-
-          <!-- 演示控制条：仅在没有真实视频时显示 -->
-          <div v-if="currentLesson && !hasVideo" class="controls">
-            <div class="scrub">
-              <div class="scrub-fill"></div>
-              <div class="scrub-thumb"></div>
-            </div>
-            <div class="controls-row">
-              <div class="controls-group">
-                <button class="control-btn" type="button" :disabled="!currentLesson || currentLesson.completed" @click="togglePlayback">
-                  <Pause v-if="isPlaying" class="icon" />
-                  <Play v-else class="icon" />
-                </button>
-                <button class="control-btn" type="button" title="后退10秒"><RotateCcw class="icon icon-small" /></button>
-                <button class="control-btn" type="button" title="快进10秒"><RotateCw class="icon icon-small" /></button>
-                <div class="volume">
-                  <Volume2 class="icon" />
-                  <div class="volume-bar"><div class="volume-fill"></div></div>
-                </div>
-                <span class="time">{{ elapsedLabel }} / {{ currentDuration }}</span>
-              </div>
-              <div class="controls-group">
-                <span class="quality">1080P 高清</span>
-                <select v-model="playbackSpeed" class="speed-select">
-                  <option value="1.0x">1.0x</option>
-                  <option value="1.25x">1.25x</option>
-                  <option value="1.5x">1.5x</option>
-                  <option value="2.0x">2.0x</option>
-                </select>
-                <button class="control-btn" type="button" title="全屏"><Maximize2 class="icon icon-small" /></button>
-              </div>
-            </div>
-          </div>
+          <!-- 没有片源时不展示任何模拟控制条；有片源时统一使用浏览器原生控件 -->
         </div>
 
         <section class="card detail-card">
@@ -112,7 +68,7 @@
             v-if="currentLesson && !hasVideo && !currentLesson.completed"
             class="complete-button"
             type="button"
-            :disabled="!elapsedSeconds || savingProgress"
+            :disabled="savingProgress"
             @click="completeCurrentLesson"
           >
             {{ savingProgress ? '正在保存...' : '完成本节并记录学时' }}
@@ -152,16 +108,7 @@
 
 <script setup>
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
-import {
-  ArrowLeft,
-  Play,
-  Pause,
-  RotateCcw,
-  RotateCw,
-  Volume2,
-  Maximize2,
-  FileText
-} from 'lucide-vue-next';
+import { ArrowLeft, FileText } from 'lucide-vue-next';
 import { learnerStore } from '../learnerStore.js';
 import {
   fetchCourse,
@@ -187,11 +134,9 @@ defineEmits(['back', 'navigate']);
 
 const isPlaying = ref(false);
 const videoEl = ref(null);
-const playbackSpeed = ref('1.25x');
 const elapsedSeconds = ref(0);
 const savingProgress = ref(false);
 const { show: showToast } = useToast();
-let playbackTimer = null;
 let lastProgressSavedAt = 0;
 let heartbeatTimer = null;
 let heartbeatInFlight = false;
@@ -323,7 +268,6 @@ const watermarkText = computed(() => {
   return employeeId ? `云舒艺境 · ${name} · 工号 ${employeeId}` : `云舒艺境 · ${name}`;
 });
 
-const currentDuration = computed(() => currentLesson.value?.duration || '未定时长');
 /* 顶栏状态胶囊：不展示播放/暂停标签 */
 const playerStatusLabel = computed(() => {
   if (!currentLesson.value) return '待编排';
@@ -334,18 +278,6 @@ const currentLessonLabel = computed(() => {
   if (!lesson) return '本课尚未编排小节';
   return lessonLabel(lesson.name);
 });
-const elapsedLabel = computed(() => {
-  const minutes = Math.floor(elapsedSeconds.value / 60);
-  const seconds = elapsedSeconds.value % 60;
-  return `${minutes}:${String(seconds).padStart(2, '0')}`;
-});
-
-const stopPlaybackTimer = () => {
-  if (playbackTimer !== null) {
-    window.clearInterval(playbackTimer);
-    playbackTimer = null;
-  }
-};
 
 const saveCurrentProgress = async (completed = false, seconds = elapsedSeconds.value) => {
   if (savingProgress.value) {
@@ -493,11 +425,7 @@ const handleVideoPlay = () => {
 };
 
 const togglePlayback = async () => {
-  if (!currentLesson.value || currentLesson.value.completed) return;
-  if (!hasVideo.value) {
-    isPlaying.value = !isPlaying.value;
-    return;
-  }
+  if (!currentLesson.value || currentLesson.value.completed || !hasVideo.value) return;
   const video = videoEl.value;
   if (!video) return;
   if (video.paused || video.ended) {
@@ -566,7 +494,6 @@ const handleVideoError = () => {
 const completeCurrentLesson = async () => {
   if (!currentLesson.value || currentLesson.value.completed || completionInProgress) return;
   completionInProgress = true;
-  stopPlaybackTimer();
   isPlaying.value = false;
   try {
     await stopStudySession();
@@ -603,7 +530,6 @@ const episodeDuration = (lesson) => formatDuration(lesson.durationSeconds);
 
 const openLesson = async (ci, li) => {
   if (savingProgress.value || completionInProgress) return;
-  stopPlaybackTimer();
   isPlaying.value = false;
   await stopStudySession();
   if (elapsedSeconds.value > 0) {
@@ -624,7 +550,8 @@ const openLesson = async (ci, li) => {
 
 const handleLessonClick = (ci, li) => {
   if (isCurrent(ci, li)) {
-    void togglePlayback();
+    // 有片源时点当前小节等同于播放/暂停；无片源时保持选中即可
+    if (hasVideo.value) void togglePlayback();
     return;
   }
   void openLesson(ci, li);
@@ -654,24 +581,14 @@ watch(
 
 watch(isPlaying, (playingNow) => {
   if (playingNow) void revealActiveEpisode();
-  stopPlaybackTimer();
   if (!playingNow || !currentLesson.value || currentLesson.value.completed) {
     void stopStudySession();
     return;
   }
   void startStudySession();
-  /* 真实视频由 timeupdate 驱动 elapsedSeconds，只有演示模式才需要本地计时器 */
-  if (hasVideo.value) return;
-  playbackTimer = window.setInterval(() => {
-    elapsedSeconds.value += 1;
-    if (Date.now() - lastProgressSavedAt >= 15000) {
-      saveCurrentProgress(false, elapsedSeconds.value);
-    }
-  }, 1000);
 });
 
 onBeforeUnmount(() => {
-  stopPlaybackTimer();
   void stopStudySession();
   if (elapsedSeconds.value > 0 && currentLesson.value && !currentLesson.value.completed) {
     saveCurrentProgress(false, elapsedSeconds.value);
@@ -926,159 +843,6 @@ onBeforeUnmount(() => {
   line-height: 1.6;
 }
 
-.play-btn {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  z-index: 10;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 48px;
-  height: 48px;
-  border: 1px solid rgba(255, 255, 255, 0.45);
-  border-radius: 50%;
-  background: linear-gradient(135deg, rgba(56, 189, 248, 0.92), rgba(37, 99, 235, 0.92));
-  color: #ffffff;
-  cursor: pointer;
-  transform: translate(-50%, -50%);
-  box-shadow: 0 14px 26px -12px rgba(14, 116, 233, 0.85);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-.play-btn:hover {
-  transform: translate(-50%, -50%) scale(1.08);
-  box-shadow: 0 18px 32px -12px rgba(14, 116, 233, 0.95);
-}
-.play-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-  transform: translate(-50%, -50%);
-}
-
-.play-icon {
-  width: 22px;
-  height: 22px;
-}
-
-/* ===== 演示控制条 ===== */
-.controls {
-  position: absolute;
-  right: 0;
-  bottom: 0;
-  left: 0;
-  z-index: 10;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding: 16px 18px 18px;
-  background: linear-gradient(to top, rgba(3, 8, 20, 0.94), rgba(3, 8, 20, 0.56) 58%, transparent);
-  color: #f8fafc;
-}
-
-.scrub {
-  position: relative;
-  width: 100%;
-  height: 5px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.24);
-  cursor: pointer;
-}
-
-.scrub-fill {
-  width: 66%;
-  height: 100%;
-  border-radius: 999px;
-  background: linear-gradient(90deg, #38bdf8, #7dd3fc);
-}
-
-.scrub-thumb {
-  position: absolute;
-  left: 66%;
-  top: 50%;
-  width: 13px;
-  height: 13px;
-  border-radius: 50%;
-  background: #ffffff;
-  box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.28);
-  transform: translate(-50%, -50%) scale(0);
-  transition: transform 0.18s ease;
-}
-.scrub:hover .scrub-thumb { transform: translate(-50%, -50%) scale(1); }
-
-.controls-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  font-size: 12px;
-}
-
-.controls-group {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.control-btn {
-  display: flex;
-  border: 0;
-  padding: 0;
-  background: none;
-  color: inherit;
-  cursor: pointer;
-  transition: color 0.18s ease, transform 0.18s ease;
-}
-.control-btn:hover { color: #7dd3fc; transform: translateY(-1px); }
-
-.volume {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  transition: color 0.18s ease;
-}
-.volume:hover { color: #7dd3fc; }
-
-.volume-bar {
-  width: 56px;
-  height: 4px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.28);
-}
-
-.volume-fill {
-  width: 80%;
-  height: 100%;
-  border-radius: 999px;
-  background: #ffffff;
-}
-
-.time {
-  font-family: 'SFMono-Regular', Consolas, monospace;
-  font-size: 11px;
-  color: rgba(255, 255, 255, 0.82);
-}
-
-.quality {
-  padding: 2px 7px;
-  border-radius: 6px;
-  background: rgba(255, 255, 255, 0.14);
-  font-size: 10px;
-  color: rgba(255, 255, 255, 0.85);
-}
-
-.speed-select {
-  padding: 3px 7px;
-  border: 0;
-  border-radius: 6px;
-  background: rgba(255, 255, 255, 0.14);
-  color: #f8fafc;
-  font-size: 12px;
-  outline: none;
-  cursor: pointer;
-}
-.speed-select:hover { background: rgba(255, 255, 255, 0.22); }
-.speed-select option { color: #0f172a; }
-
 /* ===== 卡片 ===== */
 .card {
   padding: 20px 22px;
@@ -1240,6 +1004,5 @@ onBeforeUnmount(() => {
   .eyebrow-lesson { display: none; }
   .chip { display: none; }
   .card { padding: 16px; }
-  .controls-row { flex-wrap: wrap; }
 }
 </style>

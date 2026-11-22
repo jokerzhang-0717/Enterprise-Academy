@@ -168,6 +168,14 @@ paths:
       responses:
         '200': { $ref: '#/components/responses/Ok' }
         '401': { $ref: '#/components/responses/Unauthorized' }
+  /auth/onboarding/complete:
+    post:
+      tags: [认证与个人]
+      summary: 完成入职手册阅读
+      description: 记录当前用户已阅读入职手册；重复调用保持首次完成时间不变，并返回最新用户信息。
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
   /auth/password:
     put:
       tags: [认证与个人]
@@ -322,8 +330,7 @@ paths:
       summary: 上报课时学习进度
       description: >-
         watchedSeconds 仅用于断点续播，服务端会按课时时长截断且不作为完成依据。
-        标记 completed=true 时，服务端按 study_session 累计学习时长校验，未达到课时时长一半
-        （最少 30 秒、最多 30 分钟；未配置时长时要求 60 秒）会返回 400。
+        标记 completed=true 时服务端不校验最低学习时长；是否需要完成由前端学习交互决定。
       parameters:
         - $ref: '#/components/parameters/IdPath'
         - $ref: '#/components/parameters/LessonIdPath'
@@ -435,8 +442,8 @@ paths:
                       timeWindow: 2025-04-18 14:00 ~ 2025-04-18 15:30
                       durationMinutes: 90
                       questionCount: 25
-                      totalScore: 100.0
-                      passScore: 60.0
+                      totalScore: 100
+                      passScore: 60
                       attemptsAllowed: 2
                       attemptsUsed: 0
                       inProgressAttemptId: null
@@ -630,17 +637,10 @@ paths:
         '200': { $ref: '#/components/responses/Ok' }
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
-  /certificates:
-    get:
-      tags: [学员端-证书]
-      summary: 我的证书
-      responses:
-        '200': { $ref: '#/components/responses/Ok' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
   /certificates/my:
     get:
       tags: [学员端-证书]
-      summary: 我的证书（别名）
+      summary: 我的证书
       responses:
         '200': { $ref: '#/components/responses/Ok' }
         '401': { $ref: '#/components/responses/Unauthorized' }
@@ -1330,8 +1330,8 @@ paths:
         - name: status
           in: query
           required: false
-          description: 1 草稿 / 2 未开始 / 3 进行中 / 4 已结束 / 5 随时可考
-          schema: { type: integer, enum: [1, 2, 3, 4, 5] }
+          description: 1 草稿 / 2 未开始 / 3 进行中 / 4 已结束
+          schema: { type: integer, enum: [1, 2, 3, 4] }
       responses:
         '200': { $ref: '#/components/responses/Ok' }
         '401': { $ref: '#/components/responses/Unauthorized' }
@@ -2369,7 +2369,7 @@ components:
           example: 600
         completed:
           type: boolean
-          description: 是否完成本课时；服务端会校验累计学习时长，不足时返回 400
+          description: 是否完成本课时；服务端不校验最低学习时长
           example: true
 
     StudySessionRequest:
@@ -2662,7 +2662,7 @@ components:
         status:
           type: integer
           nullable: true
-          description: 1 草稿 / 2 未开始 / 3 进行中 / 4 已结束 / 5 随时可考
+          description: 1 草稿 / 2 未开始 / 3 进行中 / 4 已结束
           example: 1
         startAt:
           type: string

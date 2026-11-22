@@ -1,6 +1,7 @@
--- Existing databases: run this once after backing up the database.
--- Removes the legacy difficulty classification from the question bank.
--- Safe to re-run: the column is only dropped when it still exists.
+-- 已有库迁移：移除题库的历史难度分类字段（题目难度分类已下线）。
+-- 新库无需执行：schema.sql 不再包含 difficulty 字段。
+-- 可重复执行：仅当字段存在时才删除。
+SET NAMES utf8mb4;
 SET @drop_difficulty_sql = (
   SELECT IF(COUNT(*) > 0,
            'ALTER TABLE exam_question DROP COLUMN difficulty',

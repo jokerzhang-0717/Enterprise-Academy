@@ -19,11 +19,6 @@ public class CertificateController {
     this.certificateService = certificateService;
   }
 
-  @GetMapping
-  public ApiResponse<List<Map<String, Object>>> myCertificates() {
-    return ApiResponse.ok(certificateService.myCertificates());
-  }
-
   @GetMapping("/my")
   public ApiResponse<List<Map<String, Object>>> my() {
     return ApiResponse.ok(certificateService.myCertificates());

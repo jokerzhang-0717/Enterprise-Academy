@@ -263,6 +263,23 @@
         }
       }
     },
+    "/auth/onboarding/complete": {
+      "post": {
+        "tags": [
+          "认证与个人"
+        ],
+        "summary": "完成入职手册阅读",
+        "description": "记录当前用户已阅读入职手册；重复调用保持首次完成时间不变，并返回最新用户信息。",
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Ok"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    },
     "/auth/password": {
       "put": {
         "tags": [
@@ -563,6 +580,7 @@
           "学员端-课程"
         ],
         "summary": "上报课时学习进度",
+        "description": "watchedSeconds 仅用于断点续播，服务端会按课时时长截断且不作为完成依据。 标记 completed=true 时服务端不校验最低学习时长；是否需要完成由前端学习交互决定。",
         "parameters": [
           {
             "$ref": "#/components/parameters/IdPath"
@@ -1194,28 +1212,12 @@
         }
       }
     },
-    "/certificates": {
-      "get": {
-        "tags": [
-          "学员端-证书"
-        ],
-        "summary": "我的证书",
-        "responses": {
-          "200": {
-            "$ref": "#/components/responses/Ok"
-          },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
-          }
-        }
-      }
-    },
     "/certificates/my": {
       "get": {
         "tags": [
           "学员端-证书"
         ],
-        "summary": "我的证书（别名）",
+        "summary": "我的证书",
         "responses": {
           "200": {
             "$ref": "#/components/responses/Ok"
@@ -1232,7 +1234,7 @@
           "学员端-证书"
         ],
         "summary": "证书验真（公开）",
-        "description": "按证书编号查询签发信息，无需登录。",
+        "description": "按证书编号查询签发信息，无需登录。仅当证书已发放、未撤销且未过期时 valid=true， 并同时返回 issued、expired 与可读 message。",
         "security": [],
         "parameters": [
           {
@@ -1241,10 +1243,50 @@
         ],
         "responses": {
           "200": {
-            "$ref": "#/components/responses/Ok"
-          },
-          "404": {
-            "$ref": "#/components/responses/NotFound"
+            "description": "验真结果",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "ok"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "valid": {
+                          "type": "boolean",
+                          "example": true
+                        },
+                        "issued": {
+                          "type": "boolean",
+                          "example": true
+                        },
+                        "expired": {
+                          "type": "boolean",
+                          "example": false
+                        },
+                        "message": {
+                          "type": "string",
+                          "example": "证书有效"
+                        },
+                        "certificate": {
+                          "type": "object",
+                          "nullable": true,
+                          "additionalProperties": true
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       }
@@ -1252,7 +1294,7 @@
     "/announcements": {
       "get": {
         "tags": [
-          "学员端-公告与通知"
+          "学员端-公告"
         ],
         "summary": "已发布公告（分页）",
         "parameters": [
@@ -1279,7 +1321,7 @@
     "/announcements/read-all": {
       "put": {
         "tags": [
-          "学员端-公告与通知"
+          "学员端-公告"
         ],
         "summary": "全部公告标记已读",
         "description": "将当前用户所有已发布公告标记为已读，返回本次新增的已读数量。",
@@ -1296,7 +1338,7 @@
     "/announcements/{id}": {
       "get": {
         "tags": [
-          "学员端-公告与通知"
+          "学员端-公告"
         ],
         "summary": "公告详情",
         "description": "学员端访问会记录已读并增加阅读量。",
@@ -1324,7 +1366,7 @@
           "文件"
         ],
         "summary": "上传文件（服务端转发）",
-        "description": "multipart/form-data；适合头像、图片、PDF 等小文件。",
+        "description": "multipart/form-data；适合头像、图片、PDF 等小文件。\n仅允许图片、音视频、PDF、Office、txt、zip、rar 等受支持扩展名；HTML/SVG/脚本会被拒绝。\nvideo / cover / courseware 目录仅管理员可写。",
         "requestBody": {
           "required": true,
           "content": {
@@ -1341,7 +1383,7 @@
                   },
                   "folder": {
                     "type": "string",
-                    "description": "自定义目录，如 avatar / course / attachment"
+                    "description": "目录，仅支持 avatar / cover / video / courseware / attachment / notice / common / misc"
                   }
                 }
               },
@@ -1394,8 +1436,8 @@
         "tags": [
           "文件"
         ],
-        "summary": "获取直传预签名地址",
-        "description": "大文件（课程视频）由前端直接 PUT 到返回的 uploadUrl，再把 objectName 保存到业务表。",
+        "summary": "获取直传预签名地址（管理员）",
+        "description": "大文件（课程视频）由前端直接 PUT 到返回的 uploadUrl，再把 objectName 保存到业务表。\n仅管理员可用，文件扩展名与 Content-Type 由服务端校验。",
         "requestBody": {
           "required": true,
           "content": {
@@ -1406,7 +1448,7 @@
               "example": {
                 "fileName": "course-video.mp4",
                 "contentType": "video/mp4",
-                "folder": "course"
+                "folder": "video"
               }
             }
           }
@@ -1429,7 +1471,7 @@
         "tags": [
           "文件"
         ],
-        "summary": "获取下载预签名地址",
+        "summary": "获取下载预签名地址（管理员）",
         "parameters": [
           {
             "$ref": "#/components/parameters/ObjectNameQuery"
@@ -1453,7 +1495,7 @@
         "tags": [
           "文件"
         ],
-        "summary": "删除文件",
+        "summary": "删除文件（管理员）",
         "parameters": [
           {
             "$ref": "#/components/parameters/ObjectNameQuery"
@@ -2648,15 +2690,14 @@
             "name": "status",
             "in": "query",
             "required": false,
-            "description": "1 草稿 / 2 未开始 / 3 进行中 / 4 已结束 / 5 随时可考",
+            "description": "1 草稿 / 2 未开始 / 3 进行中 / 4 已结束",
             "schema": {
               "type": "integer",
               "enum": [
                 1,
                 2,
                 3,
-                4,
-                5
+                4
               ]
             }
           }
@@ -4698,12 +4739,13 @@
         "properties": {
           "watchedSeconds": {
             "type": "integer",
-            "description": "已观看秒数",
+            "minimum": 0,
+            "description": "已观看秒数，仅用于断点续播；服务端按课时时长截断，不作为完成依据",
             "example": 600
           },
           "completed": {
             "type": "boolean",
-            "description": "是否完成本课时",
+            "description": "是否完成本课时；服务端不校验最低学习时长",
             "example": true
           }
         }
@@ -5093,7 +5135,7 @@
           "status": {
             "type": "integer",
             "nullable": true,
-            "description": "1 草稿 / 2 未开始 / 3 进行中 / 4 已结束 / 5 随时可考",
+            "description": "1 草稿 / 2 未开始 / 3 进行中 / 4 已结束",
             "example": 1
           },
           "startAt": {

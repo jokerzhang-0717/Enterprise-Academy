@@ -139,13 +139,27 @@ mysql -uroot -p enterprise_academy < sql/schema.sql
 mysql -uroot -p enterprise_academy < sql/seed.sql
 ```
 
-> `schema.sql` 会重建表结构，已有数据的环境请先备份，不要直接重复执行。
->
-> 已有数据库需移除历史题库难度字段时，备份后执行：
->
-> ```bash
-> mysql -uroot -p enterprise_academy < sql/migrate_exam_question_metadata.sql
-> ```
+> `schema.sql` 会重建表结构，`seed.sql` 会先 TRUNCATE 再写入演示数据；两者只适合初始化新库，已有数据的环境请先备份，不要重复执行。
+
+**已有库迁移脚本（均带重复执行保护，可按需单独执行）**
+
+| 脚本 | 用途 |
+| --- | --- |
+| `sql/migrate_p0_batch3.sql` | 为 `study_session(user_id, lesson_id)` 补索引，避免按课时聚合学习时长时回表扫描 |
+| `sql/migrate_onboarding.sql` | 为 `sys_user` 增加 `onboarding_completed_at`，支持入职手册阅读状态 |
+| `sql/migrate_exam_question_metadata.sql` | 移除历史题库的 `difficulty` 字段（题目难度分类已下线） |
+
+执行前先备份数据库，再按需执行：
+
+```bash
+mysql -uroot -p enterprise_academy < sql/migrate_p0_batch3.sql
+mysql -uroot -p enterprise_academy < sql/migrate_onboarding.sql
+mysql -uroot -p enterprise_academy < sql/migrate_exam_question_metadata.sql
+```
+
+新环境按 `schema.sql` → `seed.sql` 初始化即可，不需要再执行迁移脚本；脚本中的字段与索引已包含在 `schema.sql` 中。
+
+> 注意：`schema.sql` 与 `seed.sql` 内部写死了 `USE enterprise_academy;`。如需导入到其它库名，请先复制脚本并替换该行，否则即使命令行指定了库名，脚本仍会切换到 `enterprise_academy` 执行。
 
 ### 3. 启动依赖服务
 

@@ -393,7 +393,7 @@ export const adaptAdminDepartment = (dept) => {
 };
 
 const examStateFromCode = (code) => {
-  const map = { 1: 'draft', 2: 'scheduled', 3: 'running', 4: 'ended', 5: 'scheduled' };
+  const map = { 1: 'draft', 2: 'scheduled', 3: 'running', 4: 'ended' };
   return map[code] || 'draft';
 };
 

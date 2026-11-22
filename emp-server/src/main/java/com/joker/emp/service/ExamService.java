@@ -942,7 +942,6 @@ public class ExamService {
       case 2 -> "未开始";
       case 3 -> "进行中";
       case 4 -> "已结束";
-      case 5 -> "未开始";
       default -> "草稿";
     };
   }

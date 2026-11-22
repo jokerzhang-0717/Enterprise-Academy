@@ -85,16 +85,19 @@
         <button
           v-else
           type="button"
-          class="att-punch__card att-punch__btn is-active"
+          class="att-punch__card att-punch__btn"
+          :class="isCheckedIn ? 'is-active' : 'is-disabled'"
+          :disabled="!isCheckedIn || punching"
+          :title="isCheckedIn ? '点击签退' : '请先完成签到'"
           @click="handlePunchOut"
         >
           <span class="att-punch__btn-main">
-            <span class="att-punch__badge is-active">
+            <span class="att-punch__badge" :class="{ 'is-active': isCheckedIn }">
               <LogOut class="att-icon" aria-hidden="true" />
             </span>
             <span class="att-punch__btn-text">
               <span class="att-punch__state">完成今日培训</span>
-              <span class="att-punch__time">点击签退</span>
+              <span class="att-punch__time">{{ isCheckedIn ? '点击签退' : '请先完成签到' }}</span>
             </span>
           </span>
           <ChevronRight class="att-icon att-punch__arrow" aria-hidden="true" />
@@ -396,7 +399,7 @@ onUnmounted(() => {
 const punching = ref(false);
 
 const handlePunchOut = async () => {
-  if (isCheckedOut.value || punching.value) return;
+  if (!isCheckedIn.value || isCheckedOut.value || punching.value) return;
   punching.value = true;
   try {
     await checkOut();
@@ -793,6 +796,18 @@ const clearNotice = () => {
 .att-punch__btn.is-active:hover { background: var(--c-sky-hover); }
 .att-punch__btn.is-active .att-punch__state,
 .att-punch__btn.is-active .att-punch__time { color: var(--app-on-accent-solid); }
+
+.att-punch__btn.is-disabled {
+  border-color: var(--app-border-soft);
+  background: var(--app-surface-3);
+  color: var(--c-muted);
+  cursor: not-allowed;
+  opacity: 0.75;
+}
+.att-punch__btn.is-disabled:hover { background: var(--app-surface-3); }
+.att-punch__btn.is-disabled .att-punch__state,
+.att-punch__btn.is-disabled .att-punch__time { color: var(--c-muted); }
+.att-punch__btn.is-disabled .att-punch__arrow { color: var(--c-muted); }
 
 .att-punch__btn.is-done {
   border-color: var(--app-blue-line-200);

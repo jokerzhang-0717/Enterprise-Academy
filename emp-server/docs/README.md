@@ -100,7 +100,7 @@ Authorization: Bearer {{token}}
 11. `POST /exams/attempts/{attemptId}/submit` → 交卷。
 12. `GET /leaves`、`POST /leaves` → 请假。
 13. `GET /checkins/today`、`POST /checkins/check-in`、`POST /checkins/check-out` → 签到。
-14. `GET /certificates` → 我的证书。
+14. `GET /certificates/my` → 我的证书。
 15. `GET /announcements` → 已发布公告。
 16. `POST /files/upload`（multipart，字段 `file`）→ 文件上传。
 
