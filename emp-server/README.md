@@ -30,7 +30,7 @@ emp-server/
    └─ resources/application.yml
 ```
 
-数据库脚本位于仓库根目录：`../sql/schema.sql`（23 表 + 6 视图）、`../sql/seed.sql`（演示数据）以及 `../sql/migrate_*.sql`（已有库迁移，均可重复执行）。新库按 schema → seed 初始化即可；迁移脚本说明见根目录 README。
+数据库脚本位于仓库根目录：`../sql/database.sql`，单文件包含建库、23 张业务表、6 个视图和演示数据。结构说明见根目录 `DATABASE_SCHEMA.md`。
 
 ## 环境要求
 
@@ -42,18 +42,10 @@ emp-server/
 ## 初始化数据库
 
 ```bash
-mysql -uroot -p -e "CREATE DATABASE IF NOT EXISTS enterprise_academy DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
-mysql -uroot -p enterprise_academy < ../sql/schema.sql
-mysql -uroot -p enterprise_academy < ../sql/seed.sql
+mysql -uroot -p < ../sql/database.sql
 ```
 
-> `schema.sql` 会重建表，已有数据的环境请勿重复执行。
-
-已有数据库需移除历史题库难度字段时，备份数据库后执行一次：
-
-```bash
-mysql -uroot -p enterprise_academy < ../sql/migrate_exam_question_metadata.sql
-```
+> 脚本内置 `CREATE DATABASE` 与 `USE`，命令行不需要再指定库名。执行会 `DROP` 全部业务表并重新写入演示数据，仅用于新环境初始化或演示环境重建；已有数据的环境请勿重复执行。
 
 考试创建/编辑时会将所选题目复制到该考试的试卷中；发布后或产生作答记录后，试卷题目不可再修改。
 
@@ -111,7 +103,7 @@ mvn spring-boot:run
 7. 无需登录的白名单：`/auth/login`、`/auth/register`、`/auth/refresh`、`/auth/logout`、`/files/view/**`、`/certificates/verify/**`。
 8. 登录 / 注册带 Redis 限流：同一工号 15 分钟内连续失败 5 次，或同一 IP 注册过于频繁，会返回 429。
 
-演示账号（`seed.sql`）：
+演示账号（`sql/database.sql`）：
 
 | 角色 | 工号 | 密码 |
 | --- | --- | --- |

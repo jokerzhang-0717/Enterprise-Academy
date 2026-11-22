@@ -1,7 +1,7 @@
 # 云舒艺境 · 数据库表结构文档
 
 > 生成日期：2026-11-22  
-> 数据源：[`sql/schema.sql`](./sql/schema.sql)（唯一基准）  
+> 数据源：[`sql/database.sql`](./sql/database.sql) 的 DDL 部分（唯一基准）  
 > 数据库：`enterprise_academy`，MySQL 8.0+ / InnoDB / utf8mb4
 
 本文档描述当前生产结构的最终状态：**23 张业务表 + 6 个在用视图**。历史统计视图 `v_department_stats` 因无任何代码引用已删除；部门/学员统计由管理端接口直接查询业务表获得。
@@ -859,6 +859,7 @@ SELECT
 
 ## 六、变更记录
 
-- 2026-11-22：删除未被引用的统计视图 `v_department_stats`；`schema.sql` 增加旧库重建时的 `DROP VIEW IF EXISTS` 保护；`seed.sql` 清理相关过时注释与验证语句。
-- 题目难度分类 `exam_question.difficulty` 已通过 `sql/migrate_exam_question_metadata.sql` 移除，当前结构不再包含该字段。
-- 入职手册完成时间 `sys_user.onboarding_completed_at` 已纳入 `schema.sql`，旧库通过 `sql/migrate_onboarding.sql` 添加。
+- 2026-11-22：删除未被引用的统计视图 `v_department_stats`；DDL 增加重建时的 `DROP VIEW IF EXISTS` 保护。
+- 2026-11-23：`sql/schema.sql`、`sql/seed.sql`、3 个 `migrate_*.sql` 与 `add_exam_questions.sql` 合并为唯一的 `sql/database.sql`，一次执行完成建库、建表和演示数据写入。
+- 题目难度分类 `exam_question.difficulty` 已从结构中移除，当前表不包含该字段。
+- 入职手册完成时间 `sys_user.onboarding_completed_at` 已纳入 `sys_user` 表结构。

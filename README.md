@@ -126,40 +126,17 @@ flowchart LR
 
 ### 2. 初始化数据库
 
-先创建数据库：
+导入表结构、视图和演示数据（脚本内置 `CREATE DATABASE` 与 `USE`）：
 
 ```bash
-mysql -uroot -p -e "CREATE DATABASE IF NOT EXISTS enterprise_academy DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+mysql -uroot -p < sql/database.sql
 ```
 
-导入表结构和演示数据：
-
-```bash
-mysql -uroot -p enterprise_academy < sql/schema.sql
-mysql -uroot -p enterprise_academy < sql/seed.sql
-```
-
-> `schema.sql` 会重建表结构，`seed.sql` 会先 TRUNCATE 再写入演示数据；两者只适合初始化新库，已有数据的环境请先备份，不要重复执行。
-
-**已有库迁移脚本（均带重复执行保护，可按需单独执行）**
-
-| 脚本 | 用途 |
-| --- | --- |
-| `sql/migrate_p0_batch3.sql` | 为 `study_session(user_id, lesson_id)` 补索引，避免按课时聚合学习时长时回表扫描 |
-| `sql/migrate_onboarding.sql` | 为 `sys_user` 增加 `onboarding_completed_at`，支持入职手册阅读状态 |
-| `sql/migrate_exam_question_metadata.sql` | 移除历史题库的 `difficulty` 字段（题目难度分类已下线） |
-
-执行前先备份数据库，再按需执行：
-
-```bash
-mysql -uroot -p enterprise_academy < sql/migrate_p0_batch3.sql
-mysql -uroot -p enterprise_academy < sql/migrate_onboarding.sql
-mysql -uroot -p enterprise_academy < sql/migrate_exam_question_metadata.sql
-```
-
-新环境按 `schema.sql` → `seed.sql` 初始化即可，不需要再执行迁移脚本；脚本中的字段与索引已包含在 `schema.sql` 中。
-
-> 注意：`schema.sql` 与 `seed.sql` 内部写死了 `USE enterprise_academy;`。如需导入到其它库名，请先复制脚本并替换该行，否则即使命令行指定了库名，脚本仍会切换到 `enterprise_academy` 执行。
+> `sql/database.sql` 是仓库中唯一的 SQL 脚本，包含 23 张业务表、6 个视图和全部演示数据。
+>
+> 执行会 `DROP` 全部业务表并重新写入演示数据，仅用于新环境初始化或演示环境重建；已有数据的环境请先备份，不要重复执行。
+>
+> 脚本内库名写死为 `enterprise_academy`。如需导入到其它库名，请先复制该文件并替换其中的 `CREATE DATABASE ... enterprise_academy` 与 `USE enterprise_academy;`，否则即使命令行指定了库名，脚本仍会切换到 `enterprise_academy` 执行。
 
 ### 3. 启动依赖服务
 
@@ -233,7 +210,7 @@ npm run dev
 | 管理员 | `admin` | `123456` | 学员端 + `/api/admin/**` |
 | 学员 | `EMP-2024098` | `123456` | 学员端 |
 
-> 演示账号仅用于本地体验。`seed.sql` 中的种子用户 `password_hash` 为空时，后端会按演示口令 `123456` 校验；正式环境请立即修改密码并移除演示数据。
+> 演示账号仅用于本地体验。`sql/database.sql` 中的种子用户 `password_hash` 为空时，后端会按演示口令 `123456` 校验；正式环境请立即修改密码并移除演示数据。
 
 ### 7. 验证登录
 
@@ -441,7 +418,7 @@ mvn test
 
 **登录返回 401 / 工号或密码错误**
 
-- 确认已执行 `sql/schema.sql` 和 `sql/seed.sql`。
+- 确认已执行 `sql/database.sql`。
 - 确认使用演示账号 `admin / 123456` 或 `EMP-2024098 / 123456`。
 - 若数据库中的 `password_hash` 已被修改，请使用修改后的密码，或重新导入种子数据。
 
