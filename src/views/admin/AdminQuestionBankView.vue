@@ -156,6 +156,27 @@
               </select>
             </label>
           </template>
+          <template v-else>
+            <label class="field">
+              <span class="field-label">参考答案</span>
+              <textarea
+                v-model.trim="form.referenceAnswer"
+                rows="4"
+                class="field-input field-textarea"
+                placeholder="请填写应用题参考答案，作为人工阅卷依据"
+              ></textarea>
+              <span class="field-hint">人工阅卷时展示给评分管理员，学员答题明细不展示</span>
+            </label>
+            <label class="field">
+              <span class="field-label">解析</span>
+              <textarea
+                v-model.trim="form.analysis"
+                rows="3"
+                class="field-input field-textarea"
+                placeholder="请填写答题要点与解析（可选）"
+              ></textarea>
+            </label>
+          </template>
           <p v-if="formError" class="form-error">{{ formError }}</p>
           <div class="modal-actions">
             <button type="button" class="btn btn--ghost" @click="closeModal">取消</button>
@@ -338,7 +359,9 @@ const emptyForm = () => ({
     { key: 'A', text: '' }, { key: 'B', text: '' },
     { key: 'C', text: '' }, { key: 'D', text: '' }
   ],
-  answer: ''
+  answer: '',
+  referenceAnswer: '',
+  analysis: ''
 });
 const form = ref(emptyForm());
 
@@ -360,7 +383,9 @@ const openEdit = (q) => {
     score: q.score,
     title: q.title,
     options: (q.options && q.options.length) ? q.options.map(o => ({ ...o })) : emptyForm().options,
-    answer: q.answer || ''
+    answer: q.answer || '',
+    referenceAnswer: q.referenceAnswer || '',
+    analysis: q.analysis || ''
   };
   modalOpen.value = true;
 };
@@ -371,15 +396,28 @@ const closeModal = () => {
 };
 
 const switchType = () => {
-  if (form.value.type === 'judgment') {
+  const type = form.value.type;
+  if (type === 'judgment') {
     form.value.options = [{ key: 'A', text: '正确' }, { key: 'B', text: '错误' }];
-  } else if (form.value.type === 'application') {
+  } else if (type === 'application') {
     form.value.answer = '';
-  } else if (!form.value.options.length) {
-    form.value.options = emptyForm().options;
+  } else {
+    // 单选/多选始终保证 A/B/C/D；从判断题切回时清掉「正确/错误」文案，其余保留已填文本
+    const fromJudgment = form.value.options.length === 2
+      && form.value.options[0]?.text === '正确'
+      && form.value.options[1]?.text === '错误';
+    const existing = new Map(form.value.options.map(o => [o.key, o.text || '']));
+    form.value.options = ['A', 'B', 'C', 'D'].map(key => ({
+      key,
+      text: fromJudgment ? '' : (existing.get(key) || '')
+    }));
   }
+  // 切换题型后答案必须属于当前选项集合，否则清空，避免残留非法答案
+  const keys = form.value.options.map(o => o.key);
+  const picked = String(form.value.answer || '').toUpperCase().split('').filter(Boolean);
+  if (picked.some(k => !keys.includes(k))) form.value.answer = '';
   // 分值随题型走：切换题型后按新题型的默认分值回填
-  form.value.score = defaultScoreFor(form.value.type);
+  form.value.score = defaultScoreFor(type);
 };
 
 const typeLabelMap = { single: '单选题', multiple: '多选题', judgment: '判断题', application: '问答题' };
@@ -389,7 +427,7 @@ const typeCodeMap = { single: 1, multiple: 2, judgment: 3, application: 4 };
 
 const toSavePayload = (source) => {
   const objective = source.type !== 'application';
-  return {
+  const payload = {
     examId: source.examId ? Number(source.examId) : 0,
     type: typeCodeMap[source.type] ?? 1,
     score: Number(source.score) || defaultScoreFor(source.type),
@@ -399,8 +437,14 @@ const toSavePayload = (source) => {
       ? source.options
           .filter(opt => (opt.text || '').trim())
           .map((opt, i) => ({ key: opt.key, content: opt.text.trim(), sortNo: i + 1 }))
-      : []
+      : [],
+    analysis: String(source.analysis || '').trim()
   };
+  // 应用题的评分依据是参考答案；客观题不提交该字段，避免覆盖历史数据
+  if (!objective) {
+    payload.referenceAnswer = String(source.referenceAnswer || '').trim();
+  }
+  return payload;
 };
 
 const saveQ = async () => {
@@ -411,6 +455,14 @@ const saveQ = async () => {
     if (!form.value.answer.trim()) {
       formError.value = form.value.type === 'multiple' ? '请填写答案(如 ABD)。' : '请选择答案。';
       return;
+    }
+    if (form.value.type === 'multiple') {
+      const keys = form.value.options.map(o => o.key);
+      const picked = [...new Set(String(form.value.answer).toUpperCase().split(''))].filter(Boolean);
+      if (picked.some(k => !keys.includes(k))) {
+        formError.value = `多选题答案只能包含 ${keys.join('/')}。`;
+        return;
+      }
     }
   }
 
@@ -517,6 +569,14 @@ const fillSampleJSON = () => {
         { key: 'B', text: '错误' }
       ],
       answer: 'A'
+    },
+    {
+      type: 'application',
+      typeLabel: '问答题',
+      title: '请简述分布式系统中消息队列可能带来的一致性问题及应对措施。',
+      score: 8,
+      referenceAnswer: '覆盖消息丢失、重复消费、顺序性与消息积压；对应措施为生产端确认、消费端幂等、分区键保序与积压监控扩容。',
+      analysis: '按问题识别、应对措施、监控告警三个层次给分。'
     }
   ];
   importRawText.value = JSON.stringify(sample, null, 2);
@@ -534,7 +594,11 @@ D. JDK 21
 2. [判断题] Redis 默认是单线程模型处理网络请求和命令执行。 (2分)
 A. 正确
 B. 错误
-答案: A`;
+答案: A
+
+3. [问答题] 简述接口幂等性的常见实现思路。 (8分)
+参考答案: 使用唯一请求号配合去重表或分布式锁，保证同一请求只处理一次。
+解析: 按幂等键设计、去重存储、重试策略三个层次给分。`;
   parseQuestions();
 };
 
@@ -558,7 +622,9 @@ const parseQuestions = () => {
           { key: 'A', text: '选项 A' },
           { key: 'B', text: '选项 B' }
         ],
-        answer: String(item.answer || '').toUpperCase()
+        answer: (item.type || 'single') === 'application' ? '' : String(item.answer || '').toUpperCase(),
+        referenceAnswer: item.referenceAnswer || '',
+        analysis: item.analysis || ''
       })).filter(q => q.title.trim());
       return;
     } catch (e) {
@@ -590,10 +656,16 @@ const parseQuestions = () => {
 
     const options = [];
     let answer = '';
+    let referenceAnswer = '';
+    let analysis = '';
     for (let i = 1; i < lines.length; i++) {
       const line = lines[i];
-      if (/^(答案|参考答案)[:：\s]*/i.test(line)) {
-        answer = line.replace(/^(答案|参考答案)[:：\s]*/i, '').trim().toUpperCase();
+      if (/^答案[:：\s]*/i.test(line)) {
+        answer = line.replace(/^答案[:：\s]*/i, '').trim().toUpperCase();
+      } else if (/^参考答案[:：\s]*/i.test(line)) {
+        referenceAnswer = line.replace(/^参考答案[:：\s]*/i, '').trim();
+      } else if (/^(解析|答案解析)[:：\s]*/i.test(line)) {
+        analysis = line.replace(/^(解析|答案解析)[:：\s]*/i, '').trim();
       } else {
         const optMatch = line.match(/^([A-D])[\.、\s]+(.*)$/);
         if (optMatch) {
@@ -616,7 +688,9 @@ const parseQuestions = () => {
           { key: 'A', text: '选项 A' },
           { key: 'B', text: '选项 B' }
         ],
-        answer: answer || 'A'
+        answer: type === 'application' ? '' : (answer || 'A'),
+        referenceAnswer,
+        analysis
       });
     }
   }
