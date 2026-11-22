@@ -105,8 +105,8 @@
                 <button class="text-btn text-btn--primary" @click="openGrading(exam)">
                   阅卷
                 </button>
-                <button class="text-btn text-btn--primary" @click="openQuickStatus(exam)">
-                  调整状态
+                <button class="icon-btn" title="调整状态" @click="openQuickStatus(exam)">
+                  <Refresh />
                 </button>
                 <button class="text-btn text-btn--primary" @click="goPaper(exam)">
                   组卷
@@ -271,7 +271,7 @@
 <script setup>
 import { computed, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
-import { Plus, EditPen, Delete, Close } from '@element-plus/icons-vue';
+import { Plus, EditPen, Delete, Close, Refresh } from '@element-plus/icons-vue';
 import { adminStore, loadExams, loadQuestions, questionCount } from '../../adminStore.js';
 import {
   createAdminExam,
