@@ -15,7 +15,19 @@
     <template v-else>
       <!-- 头部：标题与状态 -->
       <section class="exd-hero">
-        <span class="exd-badge" :class="statusClass">{{ statusText }}</span>
+        <div class="exd-hero__top">
+          <span class="exd-badge" :class="statusClass">{{ statusText }}</span>
+          <!-- 已考过仍可重考：主入口放在顶部，无需滚动到页面底部 -->
+          <button
+            v-if="hasAttempt && canStart"
+            type="button"
+            class="exd-btn exd-btn--primary exd-btn--compact"
+            @click="$emit('start-exam', exam)"
+          >
+            <FileCheck2 class="exd-icon exd-icon--sm" />
+            <span>{{ startLabel }}</span>
+          </button>
+        </div>
         <h1 class="exd-hero__title">{{ exam.title }}</h1>
         <p class="exd-hero__sub">
           <template v-if="exam.code">考试编号 {{ exam.code }}</template>
@@ -128,17 +140,6 @@
         </section>
       </div>
 
-      <!-- 已考过仍可重考时，保留次要入口；首次考试入口在上方 -->
-      <div v-if="hasAttempt && canStart" class="exd-actions">
-        <button
-          type="button"
-          class="exd-btn exd-btn--ghost"
-          @click="$emit('start-exam', exam)"
-        >
-          <FileCheck2 class="exd-icon exd-icon--sm" />
-          <span>{{ startLabel }}</span>
-        </button>
-      </div>
     </template>
   </div>
 </template>
@@ -312,6 +313,14 @@ const typeGroups = computed(() => {
   background: var(--app-surface);
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
 }
+.exd-hero__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  gap: 12px;
+}
+.exd-btn--compact { padding: 8px 16px; }
 .exd-badge {
   padding: 3px 10px;
   border-radius: 999px;
