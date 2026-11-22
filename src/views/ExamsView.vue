@@ -122,9 +122,9 @@
             </div>
           </div>
 
-          <!-- 右侧操作 -->
+          <!-- 右侧操作：始终只显示一个按钮 -->
           <div class="exm-card__actions">
-            <!-- 进行中 / 仍有重考机会 -->
+            <!-- 还有作答机会：开始 / 继续 / 重新作答 -->
             <button
               v-if="exam.status === 'in_progress'"
               type="button"
@@ -132,7 +132,22 @@
               @click.stop="$emit('start-exam', exam)"
             >
               <FileCheck2 class="exm-icon exm-icon--sm" />
-              <span>{{ exam.attemptsUsed > 0 ? '重新作答' : '开始考试' }}</span>
+              <span>
+                {{ exam.inProgressAttemptId
+                  ? '继续作答'
+                  : (exam.attemptsUsed > 0 ? '重新作答' : '开始考试') }}
+              </span>
+            </button>
+
+            <!-- 次数用完或考核已结束：有成绩记录就直接查看成绩 -->
+            <button
+              v-else-if="latestAttemptOf(exam.examId)"
+              type="button"
+              class="exm-btn exm-btn--primary"
+              @click.stop="openResult(latestAttemptOf(exam.examId))"
+            >
+              <Eye class="exm-icon exm-icon--sm" />
+              <span>查看成绩</span>
             </button>
 
             <!-- 未开始 -->
@@ -146,7 +161,7 @@
               <span>暂未开放</span>
             </button>
 
-            <!-- 已完成 -->
+            <!-- 已完成但没有成绩记录 -->
             <button
               v-else-if="exam.status === 'completed'"
               type="button"
@@ -165,16 +180,6 @@
             >
               <Clock class="exm-icon exm-icon--sm" />
               <span>暂不可考</span>
-            </button>
-
-            <button
-              v-if="latestAttemptOf(exam.examId)"
-              type="button"
-              class="exm-btn exm-btn--ghost"
-              @click.stop="openResult(latestAttemptOf(exam.examId))"
-            >
-              <Eye class="exm-icon exm-icon--sm" />
-              <span>查看成绩</span>
             </button>
           </div>
         </article>
