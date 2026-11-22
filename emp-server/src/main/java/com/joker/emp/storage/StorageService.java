@@ -11,18 +11,20 @@ import io.minio.RemoveObjectArgs;
 import io.minio.SetBucketPolicyArgs;
 import io.minio.StatObjectArgs;
 import io.minio.StatObjectResponse;
+import io.minio.errors.ErrorResponseException;
 import io.minio.http.Method;
 import jakarta.annotation.PostConstruct;
 import java.io.InputStream;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
+import java.security.DigestInputStream;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.HexFormat;
 import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
-import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -104,26 +106,50 @@ public class StorageService {
       throw new BizException("请选择要上传的文件");
     }
     String contentType = resolveContentType(file.getOriginalFilename());
-    String objectName = buildObjectName(file.getOriginalFilename(), folder);
-    try (InputStream in = file.getInputStream()) {
-      client.putObject(PutObjectArgs.builder()
-          .bucket(properties.getBucket())
-          .object(objectName)
-          .stream(in, file.getSize(), -1)
-          .contentType(contentType)
-          .build());
-    } catch (Exception ex) {
-      log.error("文件上传失败 object={}", objectName, ex);
-      throw new BizException(500, "文件上传失败，请稍后重试");
+    normalizeFolder(folder);
+    String sha256 = sha256(file);
+    String objectName = buildObjectName(file.getOriginalFilename(), sha256, file.getSize());
+    boolean deduplicated = reuseExisting(objectName, file.getSize());
+    if (!deduplicated) {
+      try (InputStream in = file.getInputStream()) {
+        client.putObject(PutObjectArgs.builder()
+            .bucket(properties.getBucket())
+            .object(objectName)
+            .stream(in, file.getSize(), -1)
+            .contentType(contentType)
+            .build());
+      } catch (Exception ex) {
+        log.error("文件上传失败 object={}", objectName, ex);
+        throw new BizException(500, "文件上传失败，请稍后重试");
+      }
     }
-    return describe(objectName, file.getOriginalFilename(), file.getSize(),
+    Map<String, Object> result = describe(objectName, file.getOriginalFilename(), file.getSize(),
         contentType, publicBaseUrl);
+    result.put("sha256", sha256);
+    result.put("deduplicated", deduplicated);
+    return result;
   }
 
+  /**
+   * 预签名直传。sha256 与 size 由前端计算并传入；若服务端已有同一内容，直接返回复用结果，
+   * 不再下发 uploadUrl，前端应跳过 PUT。
+   */
   public Map<String, Object> presignUpload(String fileName, String contentType, String folder,
-      String publicBaseUrl) {
+      String sha256, Long size, String publicBaseUrl) {
     String resolvedContentType = resolveContentType(fileName);
-    String objectName = buildObjectName(fileName, folder);
+    normalizeFolder(folder);
+    String normalizedSha256 = normalizeSha256(sha256);
+    long fileSize = requireSize(size);
+    String objectName = buildObjectName(fileName, normalizedSha256, fileSize);
+    boolean deduplicated = reuseExisting(objectName, fileSize);
+
+    Map<String, Object> result = describe(objectName, fileName, fileSize, resolvedContentType,
+        publicBaseUrl);
+    result.put("sha256", normalizedSha256);
+    result.put("deduplicated", deduplicated);
+    if (deduplicated) {
+      return result;
+    }
     try {
       String uploadUrl = client.getPresignedObjectUrl(GetPresignedObjectUrlArgs.builder()
           .method(Method.PUT)
@@ -131,8 +157,6 @@ public class StorageService {
           .object(objectName)
           .expiry(properties.getPresignExpiryMinutes(), TimeUnit.MINUTES)
           .build());
-      Map<String, Object> result = describe(objectName, fileName, null, resolvedContentType,
-          publicBaseUrl);
       result.put("uploadUrl", uploadUrl);
       result.put("method", "PUT");
       return result;
@@ -162,6 +186,11 @@ public class StorageService {
       return;
     }
     String safeObjectName = requireObjectName(objectName);
+    // 去重对象的 objectName 由内容哈希生成，可能被多条业务记录共用；删除任一引用都不能移除物理文件。
+    if (isDeduplicatedObject(safeObjectName)) {
+      log.info("跳过删除共享内容对象 object={}", safeObjectName);
+      return;
+    }
     try {
       client.removeObject(RemoveObjectArgs.builder()
           .bucket(properties.getBucket())
@@ -257,11 +286,82 @@ public class StorageService {
     return result;
   }
 
-  private String buildObjectName(String originalName, String folder) {
+  /**
+   * 内容寻址对象名：sha256/前两位/<完整哈希>-<字节数><扩展名>。
+   * 同一内容 + 同一扩展名在整个存储桶内只有一个对象；扩展名参与 key 是为了保证 Content-Type
+   * 与内联展示策略可按后缀正确解析。
+   */
+  private String buildObjectName(String originalName, String sha256, long size) {
     String ext = extension(originalName);
-    String safeFolder = normalizeFolder(folder);
-    return safeFolder + "/" + LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy/MM")) + "/"
-        + UUID.randomUUID().toString().replace("-", "") + ext;
+    return "sha256/" + sha256.substring(0, 2) + "/" + sha256 + "-" + size + ext;
+  }
+
+  /** 已存在同内容对象时直接复用；大小不一致视为对象损坏或哈希冲突，禁止覆盖共享文件。 */
+  private boolean reuseExisting(String objectName, long expectedSize) {
+    StatObjectResponse existing = findObject(objectName);
+    if (existing == null) {
+      return false;
+    }
+    if (existing.size() != expectedSize) {
+      throw new BizException(409, "文件内容校验冲突，请重试或联系管理员");
+    }
+    log.info("复用已有内容对象 object={} size={}", objectName, expectedSize);
+    return true;
+  }
+
+  /** 返回 null 表示对象不存在；其它 MinIO 错误按 500 处理，避免把网络故障当成未上传。 */
+  private StatObjectResponse findObject(String objectName) {
+    try {
+      return client.statObject(StatObjectArgs.builder()
+          .bucket(properties.getBucket())
+          .object(objectName)
+          .build());
+    } catch (ErrorResponseException ex) {
+      if ("NoSuchKey".equals(ex.errorResponse().code())) {
+        return null;
+      }
+      log.error("检查文件是否存在失败 object={}", objectName, ex);
+      throw new BizException(500, "检查文件是否存在失败，请稍后重试");
+    } catch (Exception ex) {
+      log.error("检查文件是否存在失败 object={}", objectName, ex);
+      throw new BizException(500, "检查文件是否存在失败，请稍后重试");
+    }
+  }
+
+  private String sha256(MultipartFile file) {
+    try {
+      MessageDigest digest = MessageDigest.getInstance("SHA-256");
+      try (InputStream in = new DigestInputStream(file.getInputStream(), digest)) {
+        byte[] buffer = new byte[8192];
+        while (in.read(buffer) != -1) {
+          // 仅计算摘要，不暂存文件
+        }
+      }
+      return HexFormat.of().formatHex(digest.digest());
+    } catch (NoSuchAlgorithmException ex) {
+      throw new BizException(500, "服务端不支持 SHA-256，无法完成去重校验");
+    } catch (Exception ex) {
+      log.error("计算文件摘要失败", ex);
+      throw new BizException(500, "计算文件摘要失败，请稍后重试");
+    }
+  }
+
+  private String normalizeSha256(String sha256) {
+    if (sha256 == null || !sha256.matches("(?i)[0-9a-f]{64}")) {
+      throw new BizException("sha256 必须为 64 位十六进制字符串");
+    }
+    return sha256.toLowerCase(Locale.ROOT);
+  }
+
+  private long requireSize(Long size) {
+    if (size == null || size <= 0) {
+      throw new BizException("缺少有效的文件大小");
+    }
+    return size;
+  }
+
+  private boolean isDeduplicatedObject(String objectName) {
+    return objectName.startsWith("sha256/");
   }
 
   private String normalizeFolder(String folder) {

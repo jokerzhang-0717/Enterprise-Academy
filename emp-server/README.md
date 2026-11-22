@@ -176,10 +176,12 @@ python docs/validate_openapi.py
 ## 文件存储
 
 - 小文件：`POST /api/files/upload`（multipart，字段 `file`，可选 `folder`）。
-- 大文件：`POST /api/files/presign-upload` 获取预签名 PUT 地址，前端直传 MinIO。
+- 大文件：`POST /api/files/presign-upload` 获取预签名 PUT 地址，前端直传 MinIO；请求需带 `sha256`（文件内容 SHA-256）和 `size`（字节数）。
 - 稳定访问：`GET /api/files/view/{objectName}`（公开，可直接用于 `<img>` / `<video>` / 下载链接）。
 - 预签名下载：`GET /api/files/presign?objectName=...`。
-- 删除：`DELETE /api/files?objectName=...`。
+- 删除：`DELETE /api/files?objectName=...`；`sha256/` 目录下的去重对象可能被多处引用，删除引用时不会移除物理文件。
+
+两种上传方式都按 `SHA-256 + 字节数 + 扩展名` 生成对象名（`sha256/前两位/<哈希>-<字节数><扩展名>`）。同内容重复上传时直接复用已有对象，响应 `deduplicated=true`，服务端不再写入 MinIO，直传场景也不会返回 `uploadUrl`。共享对象保留是为了避免删除某个业务记录时破坏其它引用。前端直传可直接使用 `src/api/index.js` 导出的 `presignUploadFile`，它会自动计算 SHA-256 并在复用时跳过 PUT。
 
 启动时自动创建 `MINIO_BUCKET`；默认 `MINIO_PUBLIC_READ=false`，不为桶设置公共只读策略。注意 `/files/view/**` 是鉴权白名单中的公开稳定地址（供 `<img>` / `<video>` 直接访问），敏感文件应改用短时预签名 URL，不要把 MinIO 控制台暴露到公网。
 

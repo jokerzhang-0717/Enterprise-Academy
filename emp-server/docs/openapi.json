@@ -807,11 +807,11 @@
                         "score": 60.0,
                         "objectiveScore": 60.0,
                         "totalScore": 100.0,
+                        "examTotalScore": 100.0,
                         "passScore": 80.0,
                         "answeredCount": 27,
                         "questionCount": 30,
-                        "completionDate": "2026-11-08T15:09:30",
-                        "examTotalScore": 100.0
+                        "completionDate": "2026-11-08T15:09:30"
                       }
                     ]
                   }
@@ -1366,7 +1366,7 @@
           "文件"
         ],
         "summary": "上传文件（服务端转发）",
-        "description": "multipart/form-data；适合头像、图片、PDF 等小文件。\n仅允许图片、音视频、PDF、Office、txt、zip、rar 等受支持扩展名；HTML/SVG/脚本会被拒绝。\nvideo / cover / courseware 目录仅管理员可写。",
+        "description": "multipart/form-data；适合头像、图片、PDF 等小文件。\n仅允许图片、音视频、PDF、Office、txt、zip、rar 等受支持扩展名；HTML/SVG/脚本会被拒绝。\nvideo / cover / courseware 目录仅管理员可写。\n服务端按文件内容 SHA-256 + 字节数 + 扩展名生成对象名；同一内容重复上传时复用已有对象，不再写入 MinIO，响应 deduplicated=true。",
         "requestBody": {
           "required": true,
           "content": {
@@ -1407,13 +1407,15 @@
                   "code": 0,
                   "message": "ok",
                   "data": {
-                    "objectName": "avatar/2026/11/897480d845904a88976368c26a7e7367.png",
+                    "objectName": "sha256/9f/9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08-20480.png",
                     "fileName": "avatar.png",
                     "size": 20480,
                     "contentType": "image/png",
-                    "url": "http://127.0.0.1:8080/api/files/view/avatar/2026/11/897480d845904a88976368c26a7e7367.png",
-                    "directUrl": "http://127.0.0.1:9000/emp-academy/avatar/2026/11/897480d845904a88976368c26a7e7367.png",
-                    "presignedUrl": "http://127.0.0.1:9000/emp-academy/avatar/2026/11/897480d845904a88976368c26a7e7367.png?X-Amz-Algorithm=..."
+                    "sha256": "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+                    "deduplicated": false,
+                    "url": "http://127.0.0.1:8080/api/files/view/sha256/9f/9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08-20480.png",
+                    "directUrl": "http://127.0.0.1:9000/emp-academy/sha256/9f/9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08-20480.png",
+                    "presignedUrl": "http://127.0.0.1:9000/emp-academy/sha256/9f/9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08-20480.png?X-Amz-Algorithm=..."
                   }
                 }
               }
@@ -1437,7 +1439,7 @@
           "文件"
         ],
         "summary": "获取直传预签名地址（管理员）",
-        "description": "大文件（课程视频）由前端直接 PUT 到返回的 uploadUrl，再把 objectName 保存到业务表。\n仅管理员可用，文件扩展名与 Content-Type 由服务端校验。",
+        "description": "大文件（课程视频）由前端先计算 SHA-256 与字节数，服务端据此生成内容寻址对象名。\n若同一内容已存在，响应 deduplicated=true 且不返回 uploadUrl，前端应跳过 PUT。\n仅管理员可用，文件扩展名与 Content-Type 由服务端校验。",
         "requestBody": {
           "required": true,
           "content": {
@@ -1448,14 +1450,38 @@
               "example": {
                 "fileName": "course-video.mp4",
                 "contentType": "video/mp4",
-                "folder": "video"
+                "folder": "video",
+                "size": 10485760,
+                "sha256": "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08"
               }
             }
           }
         },
         "responses": {
           "200": {
-            "$ref": "#/components/responses/Ok"
+            "description": "预签名成功；内容已存在时复用，不返回 uploadUrl",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                },
+                "example": {
+                  "code": 0,
+                  "message": "ok",
+                  "data": {
+                    "objectName": "sha256/9f/9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08-10485760.mp4",
+                    "fileName": "course-video.mp4",
+                    "size": 10485760,
+                    "contentType": "video/mp4",
+                    "sha256": "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+                    "deduplicated": false,
+                    "uploadUrl": "http://127.0.0.1:9000/emp-academy/sha256/9f/9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08-10485760.mp4?X-Amz-Algorithm=...",
+                    "method": "PUT",
+                    "url": "http://127.0.0.1:8080/api/files/view/sha256/9f/9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08-10485760.mp4"
+                  }
+                }
+              }
+            }
           },
           "400": {
             "$ref": "#/components/responses/BadRequest"
@@ -1496,6 +1522,7 @@
           "文件"
         ],
         "summary": "删除文件（管理员）",
+        "description": "去重对象的 objectName 以 sha256/ 开头，可能被多条业务记录共用，删除引用时保留物理文件；旧的非去重对象仍按原逻辑删除。",
         "parameters": [
           {
             "$ref": "#/components/parameters/ObjectNameQuery"
@@ -4841,7 +4868,11 @@
       "PresignUploadRequest": {
         "type": "object",
         "required": [
-          "fileName"
+          "fileName",
+          "contentType",
+          "folder",
+          "sha256",
+          "size"
         ],
         "properties": {
           "fileName": {
@@ -4850,14 +4881,26 @@
           },
           "contentType": {
             "type": "string",
-            "nullable": true,
-            "example": "video/mp4"
+            "example": "video/mp4",
+            "description": "仅作记录，服务端按扩展名重新解析受信任的 Content-Type"
           },
           "folder": {
             "type": "string",
-            "nullable": true,
-            "description": "自定义目录，如 avatar / course / attachment",
-            "example": "course"
+            "description": "目录，仅支持 avatar / cover / video / courseware / attachment / notice / common / misc",
+            "example": "video"
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-fA-F]{64}$",
+            "description": "文件内容 SHA-256（十六进制），用于去重",
+            "example": "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08"
+          },
+          "size": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1,
+            "description": "文件字节数，与 SHA-256 一起构成去重键",
+            "example": 10485760
           }
         }
       },
@@ -5119,9 +5162,9 @@
         "properties": {
           "code": {
             "type": "string",
+            "nullable": true,
             "description": "考试编号，全局唯一；不传时后端自动生成 EXAM-年份-序号",
-            "example": "EXAM-2026-001",
-            "nullable": true
+            "example": "EXAM-2026-001"
           },
           "title": {
             "type": "string",
@@ -5222,6 +5265,7 @@
               "required": [
                 "scoreGained"
               ],
+              "description": "answerId 与 questionId 二选一；未作答的主观题传 questionId 后由服务端补建答卷行",
               "properties": {
                 "answerId": {
                   "type": "integer",
@@ -5239,8 +5283,7 @@
                   "format": "double",
                   "example": 5
                 }
-              },
-              "description": "answerId 与 questionId 二选一；未作答的主观题传 questionId 后由服务端补建答卷行"
+              }
             }
           }
         }

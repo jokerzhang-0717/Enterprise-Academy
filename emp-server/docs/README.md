@@ -135,12 +135,13 @@ Authorization: Bearer {{token}}
 - 小文件上传：`POST /files/upload`，`multipart/form-data`，字段 `file`，可选 `folder`。
   - `folder` 仅支持 `avatar` / `cover` / `video` / `courseware` / `attachment` / `notice` / `common` / `misc`；`video`、`cover`、`courseware` 仅管理员可写。
   - 仅允许常见图片、音视频、PDF、Office、txt、zip、rar 扩展名，HTML/SVG/脚本等类型会被拒绝。
-- 大文件直传：`POST /files/presign-upload`（管理员）获取 `uploadUrl`，前端直接 `PUT` 到 MinIO。
+  - 服务端计算 SHA-256；相同内容重复上传时复用已有对象，响应 `deduplicated=true`，不重复写入 MinIO。
+- 大文件直传：`POST /files/presign-upload`（管理员），请求体需带 `fileName`、`contentType`、`folder`、`sha256`（64 位十六进制）、`size`（字节数）。若内容已存在，响应 `deduplicated=true` 且不带 `uploadUrl`，前端应跳过 PUT；否则用返回的 `uploadUrl` 直接 `PUT` 到 MinIO。
 - 稳定访问：`GET /files/view/{objectName}`（公开，可直接用于 `<img>` / `<video>`）。
   - 响应会根据对象扩展名重新确定 `Content-Type`，并带 `X-Content-Type-Options: nosniff`；只有图片、音视频和 PDF 内联展示，其他类型强制按附件下载。
   - 注意：`objectName` 含 `/` 时，部分客户端会把 `/` 编码成 `%2F`，Tomcat 会返回 400。测试时直接使用上传接口返回的完整 `url`，或改用预签名下载地址即可。
 - 预签名下载：`GET /files/presign?objectName=...`（管理员）。
-- 删除：`DELETE /files?objectName=...`（管理员）。
+- 删除：`DELETE /files?objectName=...`（管理员）。去重对象的 `objectName` 以 `sha256/` 开头，可能被多条记录共用，删除引用时保留物理文件。
 
 文件接口依赖 MinIO 正常运行（默认 `http://127.0.0.1:9000`，桶 `emp-academy`）。
 

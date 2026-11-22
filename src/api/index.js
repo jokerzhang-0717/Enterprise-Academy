@@ -1,7 +1,7 @@
 /**
  * 后端接口封装（与 emp-server/docs/openapi.yaml 一一对应）
  */
-import { getRefreshToken, http } from './client.js';
+import { ApiError, getRefreshToken, http } from './client.js';
 import {
   adaptAdminAnnouncement,
   adaptAdminCertificate,
@@ -334,4 +334,38 @@ export const uploadFile = async (file, folder = 'common') => {
   formData.append('file', file);
   formData.append('folder', folder);
   return http.upload('/files/upload', formData);
+};
+
+/** 浏览器侧计算文件 SHA-256，用于预签名直传的服务端去重判定。 */
+export const sha256Hex = async (file) => {
+  if (!window.crypto?.subtle) {
+    throw new Error('当前浏览器不支持 Web Crypto，无法计算文件摘要');
+  }
+  const buffer = await file.arrayBuffer();
+  const digest = await window.crypto.subtle.digest('SHA-256', buffer);
+  return Array.from(new Uint8Array(digest), (byte) =>
+    byte.toString(16).padStart(2, '0')).join('');
+};
+
+/** 大文件直传：内容已存在时服务端不返回 uploadUrl，这里直接跳过 PUT。 */
+export const presignUploadFile = async (file, folder = 'common') => {
+  const sha256 = await sha256Hex(file);
+  const result = await http.post('/files/presign-upload', {
+    fileName: file.name,
+    contentType: file.type || 'application/octet-stream',
+    folder,
+    sha256,
+    size: file.size,
+  });
+  if (result.deduplicated) return result;
+
+  const response = await fetch(result.uploadUrl, {
+    method: 'PUT',
+    headers: { 'Content-Type': result.contentType || file.type || 'application/octet-stream' },
+    body: file,
+  });
+  if (!response.ok) {
+    throw new ApiError('文件直传失败，请稍后重试', -1, response.status, null);
+  }
+  return result;
 };

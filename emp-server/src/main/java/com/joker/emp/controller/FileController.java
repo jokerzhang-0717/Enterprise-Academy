@@ -9,6 +9,9 @@ import io.minio.StatObjectResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Positive;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
@@ -65,8 +68,8 @@ public class FileController {
   @PostMapping("/presign-upload")
   public ApiResponse<Map<String, Object>> presignUpload(@Valid @RequestBody PresignUploadRequest request) {
     String baseUrl = ServletUriComponentsBuilder.fromCurrentContextPath().build().toUriString();
-    return ApiResponse.ok(storageService.presignUpload(
-        request.fileName(), request.contentType(), request.folder(), baseUrl));
+    return ApiResponse.ok(storageService.presignUpload(request.fileName(), request.contentType(),
+        request.folder(), request.sha256(), request.size(), baseUrl));
   }
 
   @AdminOnly
@@ -175,6 +178,13 @@ public class FileController {
 
   public record PresignUploadRequest(@NotBlank(message = "缺少文件名") String fileName,
                                      @NotBlank(message = "缺少文件类型") String contentType,
-                                     String folder) {
+                                     String folder,
+                                     @NotBlank(message = "缺少文件摘要")
+                                     @Pattern(regexp = "(?i)[0-9a-f]{64}",
+                                         message = "sha256 必须为 64 位十六进制字符串")
+                                     String sha256,
+                                     @NotNull(message = "缺少文件大小")
+                                     @Positive(message = "文件大小必须大于 0")
+                                     Long size) {
   }
 }
