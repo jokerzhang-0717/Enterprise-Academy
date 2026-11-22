@@ -5,7 +5,7 @@
     <div class="page-head">
       <div>
         <h1 class="page-title">题库管理</h1>
-        <p class="page-sub">统一维护题库 · 组卷时复制为独立试卷，修改后同步试卷与学员端</p>
+        <p class="page-sub">统一维护题库 · 组卷时从题库选题，修改后同步试卷与学员端</p>
       </div>
       <div class="page-head-actions">
         <button class="btn btn--secondary" @click="openImportModal">

@@ -170,7 +170,7 @@
         { label: '考试时间', value: detailExam.timeWindow, wide: true },
         { label: '考试时长', value: `${detailExam.durationMinutes} 分钟` },
         { label: '题目数量', value: `${questionCount(detailExam.id)} 道` },
-        { label: '总分 / 及格分', value: `${detailExam.totalScore} / ${detailExam.passScore}` },
+        { label: '试卷满分', value: `${detailExam.totalScore} 分` },
         { label: '当前状态', value: stateLabel(detailExam.state) }
       ]"
       @close="detailExam = null"

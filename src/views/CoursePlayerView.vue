@@ -15,10 +15,7 @@
         </div>
         <h1 class="page-title">{{ courseTitle }}</h1>
       </div>
-      <span
-        class="chip"
-        :class="{ 'chip--playing': isPlaying, 'chip--paused': !isPlaying && elapsedSeconds > 0 }"
-      >
+      <span class="chip">
         <span class="chip-dot"></span>{{ playerStatusLabel }}
       </span>
     </header>
@@ -327,17 +324,15 @@ const watermarkText = computed(() => {
 });
 
 const currentDuration = computed(() => currentLesson.value?.duration || '未定时长');
-/* 顶栏状态胶囊与真实播放状态保持一致 */
+/* 顶栏状态胶囊：不展示播放/暂停标签 */
 const playerStatusLabel = computed(() => {
   if (!currentLesson.value) return '待编排';
-  if (isPlaying.value) return '播放中';
-  if (elapsedSeconds.value > 0) return '已暂停';
   return '课程学习中';
 });
 const currentLessonLabel = computed(() => {
   const lesson = currentLesson.value;
   if (!lesson) return '本课尚未编排小节';
-  return `第 ${playing.value.ci + 1} 章 · 第 ${playing.value.li + 1} 节: ${lessonLabel(lesson.name)}`;
+  return lessonLabel(lesson.name);
 });
 const elapsedLabel = computed(() => {
   const minutes = Math.floor(elapsedSeconds.value / 60);
@@ -808,23 +803,6 @@ onBeforeUnmount(() => {
   background: var(--app-accent-strong);
 }
 
-/* 状态胶囊跟随视频真实播放状态：播放中(绿) / 已暂停(灰) */
-.chip--playing {
-  border-color: var(--app-emerald-line);
-  background: var(--app-emerald-soft);
-  color: var(--app-emerald-fg);
-}
-.chip--playing .chip-dot {
-  background: var(--app-emerald-solid);
-  animation: pulse 1.8s ease infinite;
-}
-
-.chip--paused {
-  border-color: var(--app-border);
-  background: var(--app-surface-2);
-  color: var(--app-text-4);
-}
-.chip--paused .chip-dot { background: var(--app-text-6); }
 
 /* ===== 布局 ===== */
 .layout {
