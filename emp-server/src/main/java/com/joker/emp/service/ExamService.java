@@ -362,6 +362,15 @@ public class ExamService {
     if (attempt.getStatus() == null || attempt.getStatus() == 1) {
       throw new BizException("该答卷尚未交卷");
     }
+    if (Integer.valueOf(3).equals(attempt.getStatus())) {
+      throw new BizException("该答卷已评分，不能重复评分");
+    }
+    Map<Long, ExamQuestion> examQuestions = questionService.questionsOf(attempt.getExamId())
+        .stream().collect(Collectors.toMap(ExamQuestion::getId, Function.identity()));
+    BigDecimal maxSubjective = examQuestions.values().stream()
+        .filter(q -> Integer.valueOf(4).equals(q.getType()))
+        .map(q -> q.getScore() == null ? BigDecimal.ZERO : q.getScore())
+        .reduce(BigDecimal.ZERO, BigDecimal::add);
     BigDecimal subjective = BigDecimal.ZERO;
     if (request.answers() != null) {
       for (AnswerGrade grade : request.answers()) {
@@ -390,13 +399,27 @@ public class ExamService {
         if (answer == null) {
           continue;
         }
+        ExamQuestion question = answer.getQuestionId() == null
+            ? null : examQuestions.get(answer.getQuestionId());
+        if (question == null || !Integer.valueOf(4).equals(question.getType())) {
+          throw new BizException("只能对应用题评分");
+        }
         BigDecimal score = grade.scoreGained() == null ? BigDecimal.ZERO : grade.scoreGained();
+        BigDecimal questionMax = question.getScore() == null ? BigDecimal.ZERO : question.getScore();
+        if (score.compareTo(BigDecimal.ZERO) < 0 || score.compareTo(questionMax) > 0) {
+          throw new BizException("单题评分需在 0 到 "
+              + questionMax.stripTrailingZeros().toPlainString() + " 分之间");
+        }
         answer.setScoreGained(score);
         answerMapper.updateById(answer);
         subjective = subjective.add(score);
       }
     } else if (request.subjectiveScore() != null) {
       subjective = request.subjectiveScore();
+      if (subjective.compareTo(BigDecimal.ZERO) < 0 || subjective.compareTo(maxSubjective) > 0) {
+        throw new BizException("主观题总分需在 0 到 "
+            + maxSubjective.stripTrailingZeros().toPlainString() + " 分之间");
+      }
     }
     BigDecimal objective = attempt.getObjectiveScore() == null
         ? BigDecimal.ZERO : attempt.getObjectiveScore();

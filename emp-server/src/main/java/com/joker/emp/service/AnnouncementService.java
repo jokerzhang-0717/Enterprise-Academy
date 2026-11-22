@@ -54,6 +54,16 @@ public class AnnouncementService {
     return PageResult.of(result.getTotal(), result.getCurrent(), result.getSize(), records);
   }
 
+  /** 学员端详情：仅已发布公告可见，草稿不能凭 ID 读取或标记已读。 */
+  @Transactional
+  public Map<String, Object> learnerDetail(Long id) {
+    Announcement announcement = requireAnnouncement(id);
+    if (!Integer.valueOf(2).equals(announcement.getStatus())) {
+      throw BizException.notFound("公告不存在或未发布");
+    }
+    return detail(id, true);
+  }
+
   public Map<String, Object> detail(Long id, boolean markRead) {
     Announcement announcement = requireAnnouncement(id);
     if (markRead) {

@@ -36,6 +36,6 @@ public class AnnouncementController {
 
   @GetMapping("/{id}")
   public ApiResponse<Map<String, Object>> detail(@PathVariable Long id) {
-    return ApiResponse.ok(announcementService.detail(id, true));
+    return ApiResponse.ok(announcementService.learnerDetail(id));
   }
 }

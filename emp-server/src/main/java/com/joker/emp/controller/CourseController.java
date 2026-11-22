@@ -1,10 +1,18 @@
 package com.joker.emp.controller;
 
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.joker.emp.common.ApiResponse;
 import com.joker.emp.common.BizException;
 import com.joker.emp.common.PageResult;
+import com.joker.emp.entity.Course;
+import com.joker.emp.entity.CourseChapter;
 import com.joker.emp.entity.CourseLesson;
+import com.joker.emp.entity.Enrollment;
+import com.joker.emp.mapper.CourseChapterMapper;
+import com.joker.emp.mapper.CourseMapper;
 import com.joker.emp.mapper.CourseLessonMapper;
+import com.joker.emp.mapper.EnrollmentMapper;
+import com.joker.emp.security.AuthContext;
 import com.joker.emp.service.CourseService;
 import com.joker.emp.service.StudySessionTrackingService;
 import jakarta.validation.Valid;
@@ -27,12 +35,20 @@ public class CourseController {
 
   private final CourseService courseService;
   private final CourseLessonMapper lessonMapper;
+  private final CourseMapper courseMapper;
+  private final CourseChapterMapper chapterMapper;
+  private final EnrollmentMapper enrollmentMapper;
   private final StudySessionTrackingService studySessionTrackingService;
 
   public CourseController(CourseService courseService, CourseLessonMapper lessonMapper,
+      CourseMapper courseMapper, CourseChapterMapper chapterMapper,
+      EnrollmentMapper enrollmentMapper,
       StudySessionTrackingService studySessionTrackingService) {
     this.courseService = courseService;
     this.lessonMapper = lessonMapper;
+    this.courseMapper = courseMapper;
+    this.chapterMapper = chapterMapper;
+    this.enrollmentMapper = enrollmentMapper;
     this.studySessionTrackingService = studySessionTrackingService;
   }
 
@@ -85,6 +101,19 @@ public class CourseController {
     CourseLesson lesson = lessonMapper.selectById(lessonId);
     if (lesson == null) {
       throw BizException.notFound("课时不存在");
+    }
+    CourseChapter chapter = chapterMapper.selectById(lesson.getChapterId());
+    Course course = courseMapper.selectById(id);
+    if (chapter == null || !id.equals(chapter.getCourseId()) || course == null
+        || !Integer.valueOf(2).equals(course.getStatus())) {
+      throw BizException.notFound("课时不存在或课程未上架");
+    }
+    Enrollment enrollment = enrollmentMapper.selectOne(Wrappers.<Enrollment>lambdaQuery()
+        .eq(Enrollment::getUserId, AuthContext.userId())
+        .eq(Enrollment::getCourseId, id)
+        .last("LIMIT 1"));
+    if (enrollment == null) {
+      throw BizException.notFound("请先报名该课程");
     }
     Map<String, Object> item = new LinkedHashMap<>();
     item.put("id", lesson.getId());
