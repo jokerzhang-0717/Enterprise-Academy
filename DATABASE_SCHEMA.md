@@ -279,7 +279,7 @@ CONSTRAINT fk_chapter_course FOREIGN KEY (course_id) REFERENCES course (id) ON D
 | `chapter_id` | `BIGINT UNSIGNED NOT NULL` | 否 | 所属章节 ID |
 | `title` | `VARCHAR(200)    NOT NULL` | 否 | 小节标题 |
 | `duration_seconds` | `INT UNSIGNED    NOT NULL DEFAULT 0` | 否 | 课时时长（秒），与 video_url 指向的 MP4 真实时长一致（取整秒） |
-| `video_url` | `VARCHAR(512)    NULL` | 是 | 为空时前端走占位控制条 |
+| `video_url` | `VARCHAR(512)    NULL` | 是 | 为空时前端提示本节尚未上传视频，可手动完成并记录学时 |
 | `sort_no` | `INT             NOT NULL DEFAULT 0` | 否 | 排序序号，越小越靠前 |
 | `created_at` | `DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP` | 否 | 创建时间 |
 | `updated_at` | `DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP` | 否 | 更新时间 |

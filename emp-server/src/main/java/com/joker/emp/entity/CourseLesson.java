@@ -26,7 +26,7 @@ public class CourseLesson {
   /** 课时时长（秒），mock 的「22分」折算为 1320 */
   private Integer durationSeconds;
 
-  /** 为空时前端走占位控制条 */
+  /** 为空时前端提示本节尚未上传视频，可手动完成并记录学时 */
   private String videoUrl;
 
   private Integer sortNo;
