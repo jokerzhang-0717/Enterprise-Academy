@@ -258,7 +258,7 @@ CREATE TABLE exam_question (
   exam_id         BIGINT UNSIGNED NULL COMMENT '为空 = 未组卷的备用题',
   question_no     SMALLINT UNSIGNED NOT NULL DEFAULT 0 COMMENT '题号',
   type            TINYINT         NOT NULL DEFAULT 1 COMMENT '1 单选 2 多选 3 判断 4 应用/简答',
-  score           DECIMAL(5,1)    NOT NULL DEFAULT 2 COMMENT '题目分值：单选 2 / 多选 5 / 判断 2 / 应用题 8（应用层兜底，此为单选默认值）',
+  score           DECIMAL(5,1)    NOT NULL DEFAULT 2 COMMENT '题目分值：单选 2 / 多选 4 / 判断 2 / 应用题 8（应用层兜底，此为单选默认值）',
   title           VARCHAR(1000)   NOT NULL COMMENT '题干',
   correct_answer  VARCHAR(16)     NULL COMMENT '客观题答案：单选/判断 "A"，多选 "ABD"；主观题为空',
   reference_answer TEXT           NULL COMMENT '应用题参考答案/评分要点',

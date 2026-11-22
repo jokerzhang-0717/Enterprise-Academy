@@ -328,12 +328,12 @@ public class QuestionService {
   }
 
   /**
-   * 分值规则：单选 2 分 / 多选 5 分 / 判断 2 分 / 应用题 8 分。
+   * 分值规则：单选 2 分 / 多选 4 分 / 判断 2 分 / 应用题 8 分。
    * 管理端与批量导入未显式给分时按此兜底，保证新建题目与题库口径一致。
    */
   private BigDecimal defaultScore(Integer type) {
     return switch (type == null ? 1 : type) {
-      case 2 -> BigDecimal.valueOf(5);
+      case 2 -> BigDecimal.valueOf(4);
       case 4 -> BigDecimal.valueOf(8);
       default -> BigDecimal.valueOf(2);
     };

@@ -2765,7 +2765,7 @@ components:
           type: number
           format: double
           nullable: true
-          description: 单选 2 / 多选 5 / 判断 2 / 应用题 8；未显式给分时按此规则兜底
+          description: 单选 2 / 多选 4 / 判断 2 / 应用题 8；未显式给分时按此规则兜底
           example: 2
         title:
           type: string

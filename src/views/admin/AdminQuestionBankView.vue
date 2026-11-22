@@ -124,7 +124,7 @@
           <label class="field">
             <span class="field-label">分值</span>
             <input v-model.number="form.score" type="number" min="1" class="field-input" />
-            <span class="field-hint">单选 2 · 多选 5 · 判断 2 · 应用题 8</span>
+            <span class="field-hint">单选 2 · 多选 4 · 判断 2 · 应用题 8</span>
           </label>
           <label class="field">
             <span class="field-label">题干</span>
@@ -322,9 +322,9 @@ const editingId = ref(null);
 const formError = ref('');
 const saving = ref(false);
 
-/* 分值规则：单选 2 / 多选 5 / 判断 2 / 应用题 8 */
+/* 分值规则：单选 2 / 多选 4 / 判断 2 / 应用题 8 */
 const defaultScoreFor = (type) => {
-  if (type === 'multiple') return 5;
+  if (type === 'multiple') return 4;
   if (type === 'application') return 8;
   return 2;
 };
@@ -498,7 +498,7 @@ const fillSampleJSON = () => {
       type: 'multiple',
       typeLabel: '多选题',
       title: '在高并发系统中，常见的流量削峰与防雪崩手段包含以下哪些？',
-      score: 5,
+      score: 4,
       options: [
         { key: 'A', text: '分布式消息队列异步化处理' },
         { key: 'B', text: '令牌桶/漏桶算法限流' },
