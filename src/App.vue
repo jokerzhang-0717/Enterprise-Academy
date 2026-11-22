@@ -56,11 +56,14 @@
             'app-viewport--user': !isAdmin
           }"
         >
-          <Transition name="view" mode="out-in" @after-enter="onViewEntered">
+          <Transition name="view" mode="out-in" @before-enter="onBeforeViewEnter" @after-enter="onViewEntered">
             <div
               :key="viewTransitionKey"
               class="view-transition"
-              :class="{ 'view-transition--home': currentView === 'home' }"
+              :class="{
+                'view-transition--home': currentView === 'home',
+                'view-transition--instant': skipViewTransition,
+              }"
             >
               <AdminDashboardView
                 v-if="currentView === 'admin-dashboard'"
@@ -310,15 +313,20 @@ const currentView = ref(route.name === 'exam-taking-by-id' ? 'exam-taking' : rou
 const viewTransitionKey = computed(() => (
   currentView.value === 'exam-result' ? 'exams' : currentView.value
 ));
+/* 从详情页返回列表页时取消过渡动画，避免滚动位置被挤回顶部后再跳回 */
+const skipViewTransition = ref(false);
 
 /* 离开列表页时记住滚动位置，从详情页返回时恢复，避免又回到顶部 */
 const scrollPositions = new Map();
 const pendingScrollTop = ref(0);
-const onViewEntered = () => {
+/* 在新视图插入的第一帧就恢复位置，避免先显示顶部再跳回 */
+const applyPendingScroll = () => {
   // 带定位目标的场景交给页面自身的 scrollIntoView 处理
   if (route.query.searchTargetId) return;
   mainContent.value?.scrollTo({ top: pendingScrollTop.value, behavior: 'auto' });
 };
+const onBeforeViewEnter = applyPendingScroll;
+const onViewEntered = applyPendingScroll;
 
 // Navigation State
 const mainContent = ref(null);
@@ -365,8 +373,8 @@ watch(
       const returningFromDetail = detailToParent[leavingView] === nextView;
       const target = returningFromDetail ? (scrollPositions.get(viewGroup(nextView)) || 0) : 0;
       pendingScrollTop.value = target;
-      // 目标是顶部时立即生效；需要恢复的位置等过渡结束后再设置
-      if (target === 0) {
+      skipViewTransition.value = returningFromDetail;
+      if (target === 0 && !returningFromDetail) {
         mainContent.value?.scrollTo({ top: 0, behavior: 'auto' });
       }
     } else {
@@ -1338,6 +1346,14 @@ textarea {
 .view-enter-active {
   transition: opacity 420ms cubic-bezier(0.22, 1, 0.36, 1),
     transform 420ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+/* 从详情页返回时无等待：过渡时长归零，滚动位置在插入首帧即恢复 */
+.view-transition--instant.view-enter-active,
+.view-transition--instant.view-leave-active,
+.view-transition--instant.view-enter-from,
+.view-transition--instant.view-leave-to {
+  transition-duration: 0s !important;
+  animation-duration: 0s !important;
 }
 .view-enter-from {
   opacity: 0;
