@@ -108,9 +108,6 @@
                 <button class="icon-btn" title="调整状态" @click="openQuickStatus(exam)">
                   <Refresh />
                 </button>
-                <button class="text-btn text-btn--primary" @click="goPaper(exam)">
-                  组卷
-                </button>
                 <button class="icon-btn" title="编辑" @click="openEdit(exam)">
                   <EditPen />
                 </button>
@@ -229,7 +226,7 @@
             <div class="paper-entry-info">
               <strong>试卷组卷</strong>
               <span v-if="editingId">已选 {{ questionCount(editingId) }} 道题 · 在独立页面选题更清晰</span>
-              <span v-else>保存考试后，可在考试列表点击「组卷」进入独立页面选题</span>
+              <span v-else>保存考试后，可在编辑弹窗点击「进入组卷」选题</span>
             </div>
             <button
               v-if="editingId"
@@ -293,7 +290,6 @@ const router = useRouter();
 defineEmits(['navigate']);
 
 const goPaperById = (id) => router.push({ name: 'admin-exam-paper', params: { examId: String(id) } });
-const goPaper = (exam) => goPaperById(exam.numericId ?? exam.id);
 
 const exams = adminStore.exams;
 
