@@ -1354,7 +1354,6 @@ paths:
               endAt: '2026-12-01T15:30:00'
               durationMinutes: 90
               totalScore: 100
-              passScore: 60
       responses:
         '200': { $ref: '#/components/responses/Ok' }
         '400': { $ref: '#/components/responses/BadRequest' }
@@ -2690,7 +2689,7 @@ components:
           type: number
           format: double
           nullable: true
-          description: 默认 60
+          description: 已忽略，及格分由系统固定为 60，传入值不会生效
           example: 60
 
     AssignRequest:

@@ -34,6 +34,9 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class ExamService {
 
+  /** 所有考试及格分统一固定为 60，管理端不再提供设置项。 */
+  private static final BigDecimal PASS_SCORE_FIXED = BigDecimal.valueOf(60);
+
   private final ExamMapper examMapper;
   private final ExamAssignmentMapper assignmentMapper;
   private final ExamAttemptMapper attemptMapper;
@@ -109,18 +112,12 @@ public class ExamService {
     exam.setStatus(request.status() == null ? 1 : request.status());
     exam.setDurationMinutes(request.durationMinutes() == null ? 60 : request.durationMinutes());
     exam.setTotalScore(request.totalScore() == null ? BigDecimal.valueOf(100) : request.totalScore());
-    if (request.passScore() != null) {
-      exam.setPassScore(request.passScore());
-    }
+    // 及格分系统固定为 60，管理端不再设置，忽略请求中的 passScore
+    exam.setPassScore(PASS_SCORE_FIXED);
     exam.setCreatedBy(com.joker.emp.security.AuthContext.userId());
     examMapper.insert(exam);
     if (request.questionIds() != null) {
       updateQuestionSet(exam, request.questionIds());
-    }
-    // 未显式给及格分时按总分 60% 兜底，避免小分值试卷出现“及格分高于卷面总分”
-    if (exam.getPassScore() == null) {
-      exam.setPassScore(roundScore(exam.getTotalScore().multiply(BigDecimal.valueOf(0.6))));
-      examMapper.updateById(exam);
     }
     logService.record("exam", "新增考试 " + exam.getTitle(), "exam", exam.getId());
     return detail(exam.getId());
@@ -136,7 +133,8 @@ public class ExamService {
     if (request.status() != null) exam.setStatus(request.status());
     if (request.durationMinutes() != null) exam.setDurationMinutes(request.durationMinutes());
     if (request.totalScore() != null) exam.setTotalScore(request.totalScore());
-    if (request.passScore() != null) exam.setPassScore(request.passScore());
+    // 及格分系统固定为 60，管理端不再设置，忽略请求中的 passScore
+    exam.setPassScore(PASS_SCORE_FIXED);
     if (request.questionIds() != null) {
       exam.setTotalScore(totalQuestionScore(id));
       if (exam.getPassScore() != null && exam.getPassScore().compareTo(exam.getTotalScore()) > 0) {
@@ -167,11 +165,6 @@ public class ExamService {
     return questionService.questionsOf(examId).stream()
         .map(question -> question.getScore() == null ? BigDecimal.ZERO : question.getScore())
         .reduce(BigDecimal.ZERO, BigDecimal::add);
-  }
-
-  /** 及格分等派生分值统一保留 1 位小数，与 DECIMAL(5,1) 列一致。 */
-  private BigDecimal roundScore(BigDecimal value) {
-    return value == null ? null : value.setScale(1, java.math.RoundingMode.HALF_UP);
   }
 
   @Transactional
@@ -885,6 +878,7 @@ public class ExamService {
     };
   }
 
+  /** passScore 仅为兼容旧客户端保留，服务端固定按 60 分处理。 */
   public record ExamSaveRequest(String code, String title, String organizer,
       Integer status, LocalDateTime startAt, LocalDateTime endAt,
       Integer durationMinutes, BigDecimal totalScore, BigDecimal passScore,

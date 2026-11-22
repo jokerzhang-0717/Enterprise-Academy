@@ -222,17 +222,6 @@
             <span class="window-preview-duration">时长 {{ durationMinutes }} 分钟</span>
           </div>
 
-          <label class="field">
-            <span class="field-label">及格分</span>
-            <input
-              v-model.number="form.passScore"
-              type="number"
-              min="0"
-              class="field-input"
-              @input="passScoreTouched = true"
-            />
-            <span class="field-hint">卷面总分 {{ selectedTotalScore }} 分，默认取总分 60%</span>
-          </label>
           <section class="paper-builder" aria-label="试卷组卷">
             <div class="paper-builder-head">
               <div>
@@ -491,24 +480,15 @@ const defaultDate = () => {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 };
 
+/* 及格分固定为 60 分，不在管理端展示或修改 */
 const form = ref({
   title: '',
   organizer: '',
   examDate: defaultDate(),
   startTime: '14:00',
   endTime: '15:30',
-  status: 1,
-  passScore: 80
+  status: 1
 });
-
-/* 及格分默认跟卷面总分走（60%），管理员手动改过之后不再自动覆盖 */
-const passScoreTouched = ref(false);
-const syncDefaultPassScore = () => {
-  if (passScoreTouched.value) return;
-  const total = Number(selectedTotalScore.value) || 0;
-  form.value.passScore = total > 0 ? Math.round(total * 0.6) : 0;
-};
-watch(selectedTotalScore, syncDefaultPassScore);
 
 const toMinutes = (hhmm) => {
   const [h, m] = String(hhmm || '').split(':').map(Number);
@@ -536,15 +516,13 @@ const openCreate = async () => {
   selectedQuestionIds.value = [];
   resetBuilderFilters();
   formError.value = '';
-  passScoreTouched.value = false;
   form.value = {
     title: '',
     organizer: '',
     examDate: defaultDate(),
     startTime: '14:00',
     endTime: '15:30',
-    status: 1,
-    passScore: 0
+    status: 1
   };
   modalOpen.value = true;
 };
@@ -588,8 +566,6 @@ const openEdit = async (exam) => {
     .map((question) => question.numericId);
   resetBuilderFilters();
   formError.value = '';
-  // 编辑已有考试：保留其及格分，仅在手动修改后才覆盖
-  passScoreTouched.value = true;
   form.value = {
     title: exam.title,
     organizer: exam.organizer,
@@ -598,8 +574,7 @@ const openEdit = async (exam) => {
     endTime: win.endTime,
     status: examStatusOptions.some((state) => state.value === exam.statusCode)
       ? exam.statusCode
-      : examStatusOptions.find((state) => state.state === exam.state)?.value ?? 2,
-    passScore: exam.passScore
+      : examStatusOptions.find((state) => state.state === exam.state)?.value ?? 2
   };
   modalOpen.value = true;
 };
@@ -682,22 +657,12 @@ const saveExam = async () => {
     formError.value = '试卷总分不能超过 100 分，请减少选题。';
     return;
   }
-  if (!Number.isFinite(Number(form.value.passScore)) || Number(form.value.passScore) < 0) {
-    formError.value = '请输入有效的及格分。';
-    return;
-  }
-  if (canEditQuestionSet.value && Number(form.value.passScore) > selectedTotalScore.value) {
-    formError.value = '及格分不能超过试卷总分。';
-    return;
-  }
-
   const payload = {
     title: form.value.title,
     organizer: form.value.organizer,
     startAt: `${form.value.examDate}T${form.value.startTime}:00`,
     endAt: `${form.value.examDate}T${form.value.endTime}:00`,
     durationMinutes: durationMinutes.value,
-    passScore: form.value.passScore,
     ...(canEditQuestionSet.value
       ? {
           questionIds: selectedQuestionIds.value,
