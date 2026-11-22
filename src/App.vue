@@ -56,7 +56,7 @@
             'app-viewport--user': !isAdmin
           }"
         >
-          <Transition name="view" mode="out-in">
+          <Transition name="view" mode="out-in" @after-enter="onViewEntered">
             <div
               :key="viewTransitionKey"
               class="view-transition"
@@ -311,6 +311,15 @@ const viewTransitionKey = computed(() => (
   currentView.value === 'exam-result' ? 'exams' : currentView.value
 ));
 
+/* 离开列表页时记住滚动位置，从详情页返回时恢复，避免又回到顶部 */
+const scrollPositions = new Map();
+const pendingScrollTop = ref(0);
+const onViewEntered = () => {
+  // 带定位目标的场景交给页面自身的 scrollIntoView 处理
+  if (route.query.searchTargetId) return;
+  mainContent.value?.scrollTo({ top: pendingScrollTop.value, behavior: 'auto' });
+};
+
 // Navigation State
 const mainContent = ref(null);
 const theme = ref('cyan');
@@ -333,14 +342,35 @@ watch(
     const nextView = routeName || 'home';
     // 成绩弹窗仍叠在考评中心之上，开关弹窗不应改变滚动位置
     const viewGroup = (name) => (name === 'exam-result' ? 'exams' : name);
-    const viewChanged = viewGroup(nextView) !== viewGroup(currentView.value);
+    const leavingView = currentView.value;
+    const leavingGroup = viewGroup(leavingView);
+    // 离开当前视图前记下滚动位置
+    if (leavingView && mainContent.value) {
+      scrollPositions.set(leavingGroup, mainContent.value.scrollTop || 0);
+    }
+    const viewChanged = viewGroup(nextView) !== leavingGroup;
     currentView.value = nextView;
     selectedCourseId.value = String(route.params.courseId || '');
     selectedMessageId.value = String(route.params.messageId || '');
     selectedExamId.value = String(route.params.examId || route.query.examId || '');
     searchTargetId.value = String(route.query.searchTargetId || '');
-    if (viewChanged) {
-      mainContent.value?.scrollTo({ top: 0, behavior: 'auto' });
+    if (viewChanged && !searchTargetId.value) {
+      // 仅“详情页 → 对应列表页”的返回才恢复位置；从侧栏正常进入仍从顶部开始
+      const detailToParent = {
+        'course-player': 'courses',
+        'exam-detail': 'exams',
+        'exam-result-details': 'exams',
+        'messages-detail': 'messages',
+      };
+      const returningFromDetail = detailToParent[leavingView] === nextView;
+      const target = returningFromDetail ? (scrollPositions.get(viewGroup(nextView)) || 0) : 0;
+      pendingScrollTop.value = target;
+      // 目标是顶部时立即生效；需要恢复的位置等过渡结束后再设置
+      if (target === 0) {
+        mainContent.value?.scrollTo({ top: 0, behavior: 'auto' });
+      }
+    } else {
+      pendingScrollTop.value = mainContent.value?.scrollTop || 0;
     }
   },
   { immediate: true },
