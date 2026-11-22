@@ -75,16 +75,6 @@
 
         <!-- 操作按钮 -->
         <div class="action-bar">
-          <!-- 通过 → 查看证书（待评分时不可提前查看） -->
-          <button
-            v-if="data.isPassed && !data.pendingReview"
-            class="btn btn-primary"
-            @click="goCertificates"
-          >
-            <span class="icon-award">🏆</span>
-            <span>查看授予证书</span>
-          </button>
-
           <!-- 还有考试机会 → 直接开始下一次作答（待评分期间也可以开始） -->
           <button
             v-if="canRetry"
@@ -152,7 +142,6 @@ const apply = (payload) => {
 };
 
 const close = () => router.push({ name: 'exams' });
-const goCertificates = () => router.push({ name: 'certificates' });
 /* 答题明细独立成页：整页展示逐题作答 */
 const goDetails = () => router.push({ name: 'exam-result-details', params: { attemptId } });
 
@@ -514,13 +503,11 @@ const detailSummary = computed(() => {
   cursor: pointer;
   transition: background 0.15s, color 0.15s;
 }
-.btn-primary { flex: 1; background: var(--app-accent); color: var(--app-on-fill); }
-.btn-primary:hover { background: var(--app-accent-hover-strong); }
 .btn-retry { flex: 1; background: var(--app-accent); color: var(--app-on-accent-solid); }
 .btn-retry:hover { background: var(--app-accent-hover-strong); }
 .btn-secondary { background: var(--app-surface); color: var(--app-text-3); border: 1px solid var(--app-border); }
 .btn-secondary:hover { background: var(--app-surface-2); }
-.icon-award, .icon-retry, .icon-arrow { font-size: 15px; line-height: 1; }
+.icon-retry, .icon-arrow { font-size: 15px; line-height: 1; }
 
 @media (max-width: 640px) {
   .result-card { padding: 24px 16px; }
