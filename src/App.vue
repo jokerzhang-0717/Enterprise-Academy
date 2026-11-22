@@ -42,6 +42,7 @@
           :unread-count="unreadMessageCount"
           :search-results="searchResults"
           @navigate="handleNavigate"
+          @logout="handleLogout"
           @cycle-theme="cycleTheme"
           @search="globalSearchQuery = $event"
           @select-search-result="handleSelectSearchResult"

@@ -153,7 +153,7 @@
             <div class="dropdown-divider"></div>
             <button
               class="dropdown-action dropdown-action--logout"
-              @click="$emit('navigate', 'login'); showUserDropdown = false"
+              @click="$emit('logout'); showUserDropdown = false"
             >
               <span class="icon-switch">↩</span>
               <span>退出登录</span>
@@ -181,6 +181,7 @@ const props = defineProps({
 
 const emit = defineEmits([
   'navigate',
+  'logout',
   'cycle-theme',
   'toggle-checkin',
   'search',

@@ -447,6 +447,32 @@ public class ExamService {
     return attemptDetail(attemptId, null, true);
   }
 
+  /**
+   * 管理端「发布」把考试置为 2（未开始）。到开始时间后自动流转为 3（进行中），
+   * 若已过结束时间则流转为 4（已结束），避免学员侧在发布后永远无法开考。
+   */
+  private Integer autoAdvanceStatus(Exam exam) {
+    Integer status = exam.getStatus();
+    if (!Integer.valueOf(2).equals(status)) {
+      return status;
+    }
+    LocalDateTime now = LocalDateTime.now();
+    Integer next = null;
+    if (exam.getEndAt() != null && now.isAfter(exam.getEndAt())) {
+      next = 4;
+    } else if (exam.getStartAt() == null || !now.isBefore(exam.getStartAt())) {
+      next = 3;
+    }
+    if (next != null) {
+      Exam update = new Exam();
+      update.setId(exam.getId());
+      update.setStatus(next);
+      examMapper.updateById(update);
+      exam.setStatus(next);
+    }
+    return exam.getStatus();
+  }
+
   // ------------------------------------------------------------------ 学员端
 
   public Map<String, Object> myExams() {
@@ -455,6 +481,14 @@ public class ExamService {
     for (Map<String, Object> item : assignments) {
       // 注意：先取出原始值再覆盖 status，避免把已转成文案的字符串再强转 Integer
       Integer examStatus = Numbers.toInteger(item.get("status"));
+      // 发布后置 2 的考试到点自动开放，保证学员列表与 start() 口径一致
+      if (Integer.valueOf(2).equals(examStatus)) {
+        Exam exam = examMapper.selectById(Numbers.toLong(item.get("examId")));
+        if (exam != null) {
+          examStatus = autoAdvanceStatus(exam);
+          item.put("status", examStatus);
+        }
+      }
       Integer assignmentStatus = Numbers.toInteger(item.get("assignmentStatus"));
       item.put("statusCode", examStatus);
       item.put("examStatusCode", examStatus);
@@ -525,6 +559,7 @@ public class ExamService {
   public Map<String, Object> start(Long examId) {
     Long userId = com.joker.emp.security.AuthContext.userId();
     Exam exam = requireExam(examId);
+    autoAdvanceStatus(exam);
     if (!Integer.valueOf(3).equals(exam.getStatus())) {
       throw new BizException("该考试当前未开放");
     }

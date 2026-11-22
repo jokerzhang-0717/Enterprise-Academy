@@ -372,7 +372,8 @@ const questionTypeOrder = {
 };
 
 let timer = null;
-let textSaveTimer = null;
+/* 应用题文本延迟保存按题号独立计时，避免切题时互相取消导致漏存 */
+const textSaveTimers = new Map();
 
 const idxByQuestionId = computed(() => {
   const map = {};
@@ -446,7 +447,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   if (timer) clearInterval(timer);
-  if (textSaveTimer) clearTimeout(textSaveTimer);
+  flushAllTextSaves();
 });
 
 const formattedTimer = computed(() => {
@@ -526,6 +527,26 @@ const persist = (qNum, patch) => {
   return saveChain;
 };
 
+const cancelTextSave = (qNum) => {
+  const pending = textSaveTimers.get(qNum);
+  if (!pending) return;
+  clearTimeout(pending);
+  textSaveTimers.delete(qNum);
+};
+
+/* 切题、交卷或卸载时把 800ms 延迟窗口内待保存的文本立即写回，避免答案丢失 */
+const flushTextSave = (qNum) => {
+  const pending = textSaveTimers.get(qNum);
+  if (!pending) return;
+  clearTimeout(pending);
+  textSaveTimers.delete(qNum);
+  persist(qNum, { text: String(answers.value[qNum]?.text || '') });
+};
+
+const flushAllTextSaves = () => {
+  [...textSaveTimers.keys()].forEach((qNum) => flushTextSave(qNum));
+};
+
 const toggleFlag = () => {
   const qNum = currentQuestionIdx.value;
   const next = { ...flags.value, [qNum]: !flags.value[qNum] };
@@ -550,17 +571,21 @@ const handleSelectOption = (key) => {
 const handleApplicationInput = (value) => {
   const qNum = currentQuestionIdx.value;
   answers.value = { ...answers.value, [qNum]: { selected: [], text: value } };
-  if (textSaveTimer) clearTimeout(textSaveTimer);
-  textSaveTimer = setTimeout(() => persist(qNum, { text: value }), 800);
+  cancelTextSave(qNum);
+  textSaveTimers.set(qNum, setTimeout(() => {
+    textSaveTimers.delete(qNum);
+    persist(qNum, { text: value });
+  }, 800));
 };
 
 const clearCurrentSelection = () => {
-  if (textSaveTimer) clearTimeout(textSaveTimer);
+  cancelTextSave(currentQuestionIdx.value);
   persist(currentQuestionIdx.value, { selected: [], text: '' });
 };
 
 const jumpToQuestion = (qNum) => {
   if (qNum < 1 || qNum > totalQuestions.value) return;
+  if (qNum !== currentQuestionIdx.value) flushTextSave(currentQuestionIdx.value);
   currentQuestionIdx.value = qNum;
 };
 
@@ -618,10 +643,7 @@ const finishExam = async () => {
     clearInterval(timer);
     timer = null;
   }
-  if (textSaveTimer) {
-    clearTimeout(textSaveTimer);
-    textSaveTimer = null;
-  }
+  flushAllTextSaves();
   try {
     await saveChain;
     const result = await submitExam(attemptId.value);
