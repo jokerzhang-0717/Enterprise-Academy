@@ -58,7 +58,7 @@
         >
           <Transition name="view" mode="out-in">
             <div
-              :key="currentView"
+              :key="viewTransitionKey"
               class="view-transition"
               :class="{ 'view-transition--home': currentView === 'home' }"
             >
@@ -306,6 +306,10 @@ const { show: showToast } = useToast();
 const landingView = (user) => (user && user.role === 'admin' ? 'admin-dashboard' : 'home');
 const currentUser = ref(storedUser || null);
 const currentView = ref(route.name === 'exam-taking-by-id' ? 'exam-taking' : route.name || 'login');
+/* 成绩弹窗叠在考评中心上，两者共用同一个视图容器，避免开关弹窗时重建页面 */
+const viewTransitionKey = computed(() => (
+  currentView.value === 'exam-result' ? 'exams' : currentView.value
+));
 
 // Navigation State
 const mainContent = ref(null);
@@ -326,12 +330,18 @@ watch(
   () => route.fullPath,
   () => {
     const routeName = route.name === 'exam-taking-by-id' ? 'exam-taking' : route.name;
-    currentView.value = routeName || 'home';
+    const nextView = routeName || 'home';
+    // 成绩弹窗仍叠在考评中心之上，开关弹窗不应改变滚动位置
+    const viewGroup = (name) => (name === 'exam-result' ? 'exams' : name);
+    const viewChanged = viewGroup(nextView) !== viewGroup(currentView.value);
+    currentView.value = nextView;
     selectedCourseId.value = String(route.params.courseId || '');
     selectedMessageId.value = String(route.params.messageId || '');
     selectedExamId.value = String(route.params.examId || route.query.examId || '');
     searchTargetId.value = String(route.query.searchTargetId || '');
-    mainContent.value?.scrollTo({ top: 0, behavior: 'auto' });
+    if (viewChanged) {
+      mainContent.value?.scrollTo({ top: 0, behavior: 'auto' });
+    }
   },
   { immediate: true },
 );
