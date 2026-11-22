@@ -62,16 +62,16 @@ mysql -uroot -p < ../sql/database.sql
 | `REDIS_PASSWORD` | 空 | Redis 密码（无密码时留空） |
 | `REDIS_DATABASE` | `0` | Redis DB 编号 |
 | `API_RESPONSE_CACHE_TTL` | `1s` | 登录用户 API 读取缓存时间；成功写操作会立即使旧缓存失效 |
-| `EMP_JWT_SECRET` | 内置开发密钥 | JWT 签名密钥，生产必须覆盖（≥32 字节） |
+| `EMP_JWT_SECRET` | 内置开发密钥 | JWT 签名密钥，≥32 字节；关闭演示模式或使用 `prod` profile 时仍用默认值会拒绝启动 |
 | `EMP_JWT_EXPIRE_MINUTES` | `15` | 访问令牌有效期（分钟） |
 | `EMP_ALLOWED_ORIGINS` | 空（仅本机 3000/5173） | 允许跨域的前端地址，逗号分隔；生产按实际域名配置 |
 | `AUTH_TRUST_FORWARDED_HEADERS` | `false` | 仅在可信反向代理之后设为 `true`；开启后才采信 `X-Forwarded-For` / `X-Real-IP` 作为限流来源 IP |
-| `EMP_DEMO_MODE` | `true` | 演示模式：允许密码哈希为空的种子账号使用 `123456` 登录，创建/重置用户时可省略密码；生产必须设为 `false` |
+| `EMP_DEMO_MODE` | `false` | 演示模式：仅允许空密码哈希账号使用 `123456`；种子账号已写入 BCrypt 哈希，关闭后仍可用 `123456` 登录 |
 | `MINIO_ENDPOINT` | `http://127.0.0.1:9000` | MinIO 地址 |
 | `MINIO_ACCESS_KEY` | `zhang` | MinIO Access Key |
 | `MINIO_SECRET_KEY` | `12345678` | MinIO Secret Key |
 | `MINIO_BUCKET` | `emp-academy` | 存储桶，启动时自动创建 |
-| `MINIO_PUBLIC_READ` | `true` | 是否给桶设置公共只读；生产建议 `false` |
+| `MINIO_PUBLIC_READ` | `false` | 是否给桶设置公共只读；`/files/view/**` 是公开稳定地址，敏感文件请用预签名 URL |
 
 数据库连接、端口等其余配置见 `src/main/resources/application.yml`。服务默认端口 `8080`，上下文路径 `/api`。
 课程播放期间需要 Redis 记录活跃会话，学习时长心跳会同步写入 MySQL；请先启动 Redis 服务。
@@ -110,7 +110,7 @@ mvn spring-boot:run
 | 学员（李明） | `EMP-2024098` | `123456` |
 | 管理员 | `admin` | `123456` |
 
-种子用户 `password_hash` 为空时，登录会按演示口令 `123456` 校验；新注册 / 重置密码使用 BCrypt 落库。
+种子用户已写入 BCrypt 哈希，口令 `123456` 在关闭演示模式后仍可登录；新注册 / 重置密码同样使用 BCrypt 落库。
 
 ## 响应格式
 
@@ -181,7 +181,7 @@ python docs/validate_openapi.py
 - 预签名下载：`GET /api/files/presign?objectName=...`。
 - 删除：`DELETE /api/files?objectName=...`。
 
-启动时自动创建 `MINIO_BUCKET`；`MINIO_PUBLIC_READ=true` 时会设置公共只读策略，便于直接访问。生产环境建议关闭公共读并统一走预签名 URL。
+启动时自动创建 `MINIO_BUCKET`；默认 `MINIO_PUBLIC_READ=false`，不为桶设置公共只读策略。注意 `/files/view/**` 是鉴权白名单中的公开稳定地址（供 `<img>` / `<video>` 直接访问），敏感文件应改用短时预签名 URL，不要把 MinIO 控制台暴露到公网。
 
 ## 常用命令
 

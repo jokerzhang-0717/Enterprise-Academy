@@ -67,15 +67,15 @@ emp:
     register-window-minutes: ${AUTH_REGISTER_WINDOW_MINUTES:60}
     # 仅在可信反向代理之后才信任 X-Forwarded-For / X-Real-IP，避免伪造 IP 绕过限流
     trust-forwarded-headers: ${AUTH_TRUST_FORWARDED_HEADERS:false}
-    # 演示模式允许种子账号（password_hash 为空）用 123456 登录；生产环境务必设为 false
-    demo-mode: ${EMP_DEMO_MODE:true}
+    # 演示模式允许 password_hash 为空的种子账号用 123456 登录；默认关闭
+    demo-mode: ${EMP_DEMO_MODE:false}
   minio:
     endpoint: ${MINIO_ENDPOINT:http://127.0.0.1:9000}
     access-key: ${MINIO_ACCESS_KEY:zhang}
     secret-key: ${MINIO_SECRET_KEY:12345678}
     bucket: ${MINIO_BUCKET:emp-academy}
-    # 演示环境将桶设置为公共只读；生产请改为 false 并统一使用预签名 URL
-    public-read: ${MINIO_PUBLIC_READ:true}
+    # 默认不开放公共读；文件访问统一走后端鉴权 /files/view 或预签名 URL
+    public-read: ${MINIO_PUBLIC_READ:false}
     # 预签名 URL 有效期：视频播放与附件下载共用
     presign-expiry-minutes: 60
 

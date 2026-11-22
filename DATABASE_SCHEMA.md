@@ -163,7 +163,7 @@ KEY idx_department_status (status, deleted_at)
 | --- | --- | --- | --- |
 | `id` | `BIGINT UNSIGNED NOT NULL AUTO_INCREMENT` | 否 | 主键 ID |
 | `employee_no` | `VARCHAR(32)     NOT NULL` | 否 | 工号，登录账号 |
-| `password_hash` | `VARCHAR(128)    NOT NULL DEFAULT ''` | 否 | 口令散列；演示种子为空串 |
+| `password_hash` | `VARCHAR(128)    NOT NULL DEFAULT ''` | 否 | 口令散列；演示种子为 BCrypt 哈希（口令 123456） |
 | `name` | `VARCHAR(64)     NOT NULL` | 否 | 姓名 |
 | `department_id` | `BIGINT UNSIGNED NULL` | 是 | 所属部门 ID |
 | `job_title` | `VARCHAR(64)     NULL` | 是 | 职位，如 高级研发工程师 |
@@ -861,5 +861,6 @@ SELECT
 
 - 2026-11-22：删除未被引用的统计视图 `v_department_stats`；DDL 增加重建时的 `DROP VIEW IF EXISTS` 保护。
 - 2026-11-23：`sql/schema.sql`、`sql/seed.sql`、3 个 `migrate_*.sql` 与 `add_exam_questions.sql` 合并为唯一的 `sql/database.sql`，一次执行完成建库、建表和演示数据写入。
+- 2026-11-23：种子账号 `password_hash` 改为 BCrypt；后端默认关闭演示模式与 MinIO 公共读，关闭演示模式或使用 `prod` profile 时拒绝使用内置开发 JWT 密钥。
 - 题目难度分类 `exam_question.difficulty` 已从结构中移除，当前表不包含该字段。
 - 入职手册完成时间 `sys_user.onboarding_completed_at` 已纳入 `sys_user` 表结构。

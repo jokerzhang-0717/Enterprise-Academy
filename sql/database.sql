@@ -72,7 +72,7 @@ CREATE TABLE department (
 CREATE TABLE sys_user (
   id              BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '主键 ID',
   employee_no     VARCHAR(32)     NOT NULL COMMENT '工号，登录账号',
-  password_hash   VARCHAR(128)    NOT NULL DEFAULT '' COMMENT '口令散列；演示种子为空串',
+  password_hash   VARCHAR(128)    NOT NULL DEFAULT '' COMMENT '口令散列；演示种子为 BCrypt 哈希（口令 123456）',
   name            VARCHAR(64)     NOT NULL COMMENT '姓名',
   department_id   BIGINT UNSIGNED NULL COMMENT '所属部门 ID',
   job_title       VARCHAR(64)     NULL COMMENT '职位，如 高级研发工程师',
@@ -633,22 +633,22 @@ INSERT INTO instructor (id, name, title) VALUES
 -- 用户（ADMIN_LEARNERS_DATA 10 人 + 管理员 + 请假/签到引用到的 4 人）
 -- 注：employee_no 保留 mock 的 'admin'，与前端登录分支 (employeeId === 'admin') 对齐
 -- -----------------------------------------------------------------------------
-INSERT INTO sys_user (id, employee_no, name, department_id, job_title, avatar_url, role, account_status, last_active_at) VALUES
-(1, 'EMP-2024098', '李明', 1, '高级研发工程师', 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=120&q=80', 1, 1, '2025-05-14 09:42:00'),
-(2, 'EXP-70291', '张浩然', 1, '高级工程师', 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=120&q=80', 1, 1, '2025-05-14 08:15:00'),
-(3, 'EMP-2024156', '陈嘉怡', 2, '产品经理', 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=120&q=80', 1, 1, '2025-05-13 17:30:00'),
-(4, 'EMP-2023877', '刘子墨', 3, '测试开发工程师', 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=120&q=80', 1, 1, '2025-05-14 07:58:00'),
-(5, 'EMP-2023512', '赵思远', 4, 'SRE 工程师', 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=120&q=80', 1, 1, '2025-05-12 18:20:00'),
-(6, 'EMP-2024620', '孙雨桐', 5, '品牌运营专员', 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=120&q=80', 1, 1, '2025-05-14 10:02:00'),
-(7, 'EMP-2023340', '周凯文', 6, '财务分析师', 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=120&q=80', 1, 1, '2025-05-11 15:40:00'),
-(8, 'EMP-2024901', '吴梦琪', 7, 'HRBP', 'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=120&q=80', 1, 1, '2025-05-13 11:20:00'),
-(9, 'EMP-2023788', '郑天翔', 1, '前端工程师', 'https://images.unsplash.com/photo-1506794778695-cb8523da5808?auto=format&fit=crop&w=120&q=80', 1, 2, '2025-05-02 10:00:00'),
-(10, 'EMP-2024402', '王若琳', 8, '合规专员', 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=120&q=80', 1, 1, '2025-05-14 08:47:00'),
-(11, 'admin', '王智远', 10, '超级管理员', 'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=120&q=80', 2, 1, '2025-05-14 10:24:00'),
-(12, 'EMP-2023115', '许清和', 2, '资深产品专家', NULL, 1, 1, '2025-05-13 09:10:00'),
-(13, 'EMP-2022890', '韩立言', 8, '涉外合规法务总监', NULL, 1, 1, '2025-05-14 09:05:00'),
-(14, 'EMP-2022551', '林欣怡', 9, 'PMP 专家教练', NULL, 1, 1, '2025-05-14 08:31:00'),
-(15, 'EMP-2023056', '陈建邦', 1, '资深架构师', NULL, 1, 1, '2025-05-14 09:06:00');
+INSERT INTO sys_user (id, password_hash, employee_no, name, department_id, job_title, avatar_url, role, account_status, last_active_at) VALUES
+(1, '$2a$10$o.ho/yyboF78baWrnndy7.QCX0c.0B..H9QX53pv.LHueiT3ufP76', 'EMP-2024098', '李明', 1, '高级研发工程师', 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=120&q=80', 1, 1, '2025-05-14 09:42:00'),
+(2, '$2a$10$5AFUsxLd5sgj0CDb3xBA6uIajcCrqLuZf6m/.ePvmEJP0llg/3w02', 'EXP-70291', '张浩然', 1, '高级工程师', 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=120&q=80', 1, 1, '2025-05-14 08:15:00'),
+(3, '$2a$10$e3maMepyCX7YT3/3NYJLi.93bgRMvmRurEu2EXx19s.GZ1dwH2T7i', 'EMP-2024156', '陈嘉怡', 2, '产品经理', 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=120&q=80', 1, 1, '2025-05-13 17:30:00'),
+(4, '$2a$10$J0GjVyGHx9MAIRqnMsKfw.jI0rFZlbsIkkk.Q6cQLKiCbG6Mg58eq', 'EMP-2023877', '刘子墨', 3, '测试开发工程师', 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=120&q=80', 1, 1, '2025-05-14 07:58:00'),
+(5, '$2a$10$mh0IUYVYPdZJZE/oiaWSFukOYwD/z/9qQb.XgsiPmOB40.G63h/gO', 'EMP-2023512', '赵思远', 4, 'SRE 工程师', 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=120&q=80', 1, 1, '2025-05-12 18:20:00'),
+(6, '$2a$10$sr.ujXdi8WGffiWPrZokvurb7wIwVP6T9jywAvwxxP0u71msgSlO2', 'EMP-2024620', '孙雨桐', 5, '品牌运营专员', 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=120&q=80', 1, 1, '2025-05-14 10:02:00'),
+(7, '$2a$10$VXDgSebX/nVJ.xmnGTz4suiWm8WRCjYBV3uFapgMQz6pSV.OmYKPu', 'EMP-2023340', '周凯文', 6, '财务分析师', 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=120&q=80', 1, 1, '2025-05-11 15:40:00'),
+(8, '$2a$10$7df5qxIPsn./k5gmNf5nHOy9Z3hTQJplN/A58s9aQVw/Ek6dy/C72', 'EMP-2024901', '吴梦琪', 7, 'HRBP', 'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=120&q=80', 1, 1, '2025-05-13 11:20:00'),
+(9, '$2a$10$EQfm.BZd0JZWSKMVGIibpuYjTu0H5klnY2VnP5lbW//uVSa1D9RNK', 'EMP-2023788', '郑天翔', 1, '前端工程师', 'https://images.unsplash.com/photo-1506794778695-cb8523da5808?auto=format&fit=crop&w=120&q=80', 1, 2, '2025-05-02 10:00:00'),
+(10, '$2a$10$vFUHARZ6Vv8BvMjjsImfn.bu7muzz11u47PF3/VJJwyvls2WOtjQO', 'EMP-2024402', '王若琳', 8, '合规专员', 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=120&q=80', 1, 1, '2025-05-14 08:47:00'),
+(11, '$2a$10$YUykpkn31MzaS6NmteXfeeliHRLrYZ/izIzct426QkAjmyiFspXnO', 'admin', '王智远', 10, '超级管理员', 'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=120&q=80', 2, 1, '2025-05-14 10:24:00'),
+(12, '$2a$10$j0IwaLiULUWHPB2/B2kNL.K5bERCizqcTx617yo.CzVeOsTJORMw.', 'EMP-2023115', '许清和', 2, '资深产品专家', NULL, 1, 1, '2025-05-13 09:10:00'),
+(13, '$2a$10$2hTDV9XZx2idMZwmbOY27uZfngZUn72aO4E86LO6XER3Lv6mx8QNm', 'EMP-2022890', '韩立言', 8, '涉外合规法务总监', NULL, 1, 1, '2025-05-14 09:05:00'),
+(14, '$2a$10$d30sAThmkTf8Js9rZRykTuW4Jlwnxu9CS57.HI/qwe5GPrCxvakIy', 'EMP-2022551', '林欣怡', 9, 'PMP 专家教练', NULL, 1, 1, '2025-05-14 08:31:00'),
+(15, '$2a$10$eH2Gp/Bs5b6ujGg.X6JTmuJbYsbCXSGiDbfp7q4gN7ictw32pvA66', 'EMP-2023056', '陈建邦', 1, '资深架构师', NULL, 1, 1, '2025-05-14 09:06:00');
 
 -- -----------------------------------------------------------------------------
 -- 课程分类

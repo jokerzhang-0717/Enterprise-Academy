@@ -15,6 +15,6 @@ public class MinioProperties {
   private String bucket = "emp-academy";
   private int presignExpiryMinutes = 60;
 
-  /** 是否将桶设置为公共只读（演示环境建议 true，生产请改用预签名 URL）。 */
-  private boolean publicRead = true;
+  /** 是否将桶设置为公共只读；默认 false，文件访问走后端鉴权 /files/view 或预签名 URL。 */
+  private boolean publicRead = false;
 }

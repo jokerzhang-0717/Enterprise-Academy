@@ -22,6 +22,6 @@ public class JwtProperties {
 
   private String issuer = "emp-server";
 
-  /** 允许跨域的前端地址；为空表示全部放行（开发环境）。 */
+  /** 允许跨域的前端地址；为空时 WebConfig 回退到本机 3000/5173 开发端口。 */
   private List<String> allowedOrigins;
 }

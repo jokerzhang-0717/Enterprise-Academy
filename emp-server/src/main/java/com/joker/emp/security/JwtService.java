@@ -22,15 +22,16 @@ public class JwtService {
   private final JwtProperties properties;
   private final SecretKey key;
 
-  public JwtService(JwtProperties properties, Environment environment) {
+  public JwtService(JwtProperties properties, AuthProperties authProperties,
+      Environment environment) {
     this.properties = properties;
     String secret = properties.getSecret();
     if (secret == null || secret.isBlank()) {
       throw new IllegalStateException("emp.jwt.secret 不能为空");
     }
-    if (environment.acceptsProfiles(Profiles.of(PROD_PROFILE))
+    if ((environment.acceptsProfiles(Profiles.of(PROD_PROFILE)) || !authProperties.isDemoMode())
         && JwtProperties.DEFAULT_SECRET.equals(secret)) {
-      throw new IllegalStateException("生产环境必须通过 EMP_JWT_SECRET 配置独立的 JWT 密钥");
+      throw new IllegalStateException("必须通过 EMP_JWT_SECRET 配置独立的 JWT 密钥（ prod 环境或关闭演示模式时强制）");
     }
     byte[] bytes = secret.getBytes(StandardCharsets.UTF_8);
     if (bytes.length < 32) {

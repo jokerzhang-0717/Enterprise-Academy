@@ -177,6 +177,8 @@ java -jar target/emp-server-0.0.1-SNAPSHOT.jar
 export MYSQL_USERNAME=root
 export MYSQL_PASSWORD='your-mysql-password'
 export EMP_JWT_SECRET='replace-with-a-random-secret-at-least-32-bytes'
+export EMP_DEMO_MODE=false
+export EMP_ALLOWED_ORIGINS='https://train.example.com'
 export MINIO_PUBLIC_READ=false
 mvn spring-boot:run
 ```
@@ -186,6 +188,8 @@ PowerShell：
 ```powershell
 $env:MYSQL_PASSWORD = "your-mysql-password"
 $env:EMP_JWT_SECRET = "replace-with-a-random-secret-at-least-32-bytes"
+$env:EMP_DEMO_MODE = "false"
+$env:EMP_ALLOWED_ORIGINS = "https://train.example.com"
 $env:MINIO_PUBLIC_READ = "false"
 mvn spring-boot:run
 ```
@@ -210,7 +214,7 @@ npm run dev
 | 管理员 | `admin` | `123456` | 学员端 + `/api/admin/**` |
 | 学员 | `EMP-2024098` | `123456` | 学员端 |
 
-> 演示账号仅用于本地体验。`sql/database.sql` 中的种子用户 `password_hash` 为空时，后端会按演示口令 `123456` 校验；正式环境请立即修改密码并移除演示数据。
+> 演示账号仅用于本地体验。`sql/database.sql` 中的种子用户已写入 BCrypt 哈希，口令仍为 `123456`；即使关闭演示模式也能登录。正式环境请立即修改密码并移除演示数据。
 
 ### 7. 验证登录
 
@@ -245,9 +249,10 @@ Authorization: Bearer <token>
 | `REDIS_PASSWORD` | 空 | Redis 密码，无密码时留空 |
 | `REDIS_DATABASE` | `0` | Redis DB 编号 |
 | `API_RESPONSE_CACHE_TTL` | `1s` | 登录用户 API 读缓存 TTL |
-| `EMP_JWT_SECRET` | 开发默认值 | JWT 签名密钥，生产必须覆盖，至少 32 字节 |
+| `EMP_JWT_SECRET` | 开发默认值 | JWT 签名密钥，至少 32 字节；关闭演示模式或使用 `prod` profile 时若仍为默认值会拒绝启动 |
 | `EMP_JWT_EXPIRE_MINUTES` | `15` | 访问令牌有效期（分钟） |
 | `EMP_ALLOWED_ORIGINS` | 空（仅本机 3000/5173） | 允许跨域的前端地址，逗号分隔；生产按实际域名配置 |
+| `EMP_DEMO_MODE` | `false` | 是否允许空密码哈希账号使用演示口令 `123456`；生产保持 `false` |
 | `AUTH_REFRESH_TOKEN_DAYS` | `7` | 刷新令牌有效期（天） |
 | `AUTH_MAX_LOGIN_ATTEMPTS` | `5` | 同一工号在窗口期内允许的登录失败次数 |
 | `AUTH_MAX_LOGIN_IP_ATTEMPTS` | `30` | 同一 IP 在窗口期内允许的登录失败次数 |
@@ -258,7 +263,7 @@ Authorization: Bearer <token>
 | `MINIO_ACCESS_KEY` | 开发默认值 | MinIO Access Key，生产必须覆盖 |
 | `MINIO_SECRET_KEY` | 开发默认值 | MinIO Secret Key，生产必须覆盖 |
 | `MINIO_BUCKET` | `emp-academy` | 存储桶，启动时自动创建 |
-| `MINIO_PUBLIC_READ` | `true` | 是否给桶设置公共只读，生产建议 `false` |
+| `MINIO_PUBLIC_READ` | `false` | 是否给桶设置公共只读；`/files/view/**` 是公开稳定地址，敏感文件请改用短时预签名 URL |
 
 ### 前端
 
@@ -400,9 +405,9 @@ mvn test
 
 上线前至少完成以下加固：
 
-- [ ] 修改演示账号密码，删除或禁用演示数据。
-- [ ] 通过环境变量覆盖 `EMP_JWT_SECRET`、`MYSQL_PASSWORD`、`MINIO_ACCESS_KEY`、`MINIO_SECRET_KEY`。
-- [ ] 设置 `MINIO_PUBLIC_READ=false`，文件统一走鉴权或短时预签名 URL。
+- [ ] 保持 `EMP_DEMO_MODE=false`；种子账号已写入 BCrypt 哈希，关闭后仍可用 `123456` 登录，但上线后必须逐个改密。
+- [ ] 通过环境变量覆盖 `EMP_JWT_SECRET`（随机 ≥32 字节）、`MYSQL_PASSWORD`、`MINIO_ACCESS_KEY`、`MINIO_SECRET_KEY`。关闭演示模式或启用 `prod` profile 时仍使用开发密钥会直接启动失败。
+- [ ] 保持 `MINIO_PUBLIC_READ=false`；`/files/view/**` 是公开稳定地址，敏感文件请改用短时预签名 URL，不要把 MinIO 控制台暴露到公网。
 - [ ] 限制上传文件类型和大小，不要把 MinIO 控制台直接暴露到公网。
 - [ ] 使用 HTTPS，并在反向代理层配置安全响应头。
 - [ ] 按实际域名配置 CORS 白名单，不要在所有环境使用通配符。
