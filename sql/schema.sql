@@ -5,7 +5,7 @@
 -- 建模口径：正规后端建模
 --   1. 主键统一 BIGINT UNSIGNED AUTO_INCREMENT；业务编码单独成列并加唯一索引。
 --   2. 状态类字段一律 TINYINT + 注释枚举（见下方「枚举字典」），不使用 MySQL ENUM。
---   3. 可派生的统计（学时、完成门数、证书数、题目数、部门汇总）不写回业务表，
+--   3. 可派生的统计（学时、完成门数、证书数、题目数）不写回业务表，
 --      由文件末尾的视图给出；确需缓存的计数器列名统一以 _cached 结尾，由后端维护。
 --   4. 业务表带 created_at / updated_at / deleted_at（软删除，NULL = 未删除）。
 --
@@ -38,6 +38,9 @@ CREATE DATABASE IF NOT EXISTS enterprise_academy
 USE enterprise_academy;
 
 SET FOREIGN_KEY_CHECKS = 0;
+
+-- 已下线的统计视图：旧库重建时先删除，避免残留失效视图
+DROP VIEW IF EXISTS v_department_stats;
 
 DROP TABLE IF EXISTS operation_log;
 DROP TABLE IF EXISTS checkin_record;
@@ -526,21 +529,6 @@ SELECT
 FROM enrollment e
 JOIN course c ON c.id = e.course_id
 WHERE c.deleted_at IS NULL;
-
--- 管理端部门统计 / 部门管理列表
-CREATE OR REPLACE VIEW v_department_stats AS
-SELECT
-  d.id                                AS department_id,
-  d.name,
-  d.manager_name,
-  d.status,
-  COUNT(DISTINCT u.id)                AS learner_count,
-  IFNULL(SUM(e.study_hours), 0)       AS total_study_hours
-FROM department d
-LEFT JOIN sys_user u   ON u.department_id = d.id AND u.role = 1 AND u.deleted_at IS NULL
-LEFT JOIN enrollment e ON e.user_id = u.id
-WHERE d.deleted_at IS NULL
-GROUP BY d.id;
 
 -- 考试管理列表：题数与参与人次的真实口径
 -- 同样用子查询：题目数与答卷数是一对多，交叉相乘后 AVG(total_score) 会被题目数加权。

@@ -13,15 +13,13 @@
 --      study_session 只给李明铺了 18.5h，改由 v_monthly_study_hours 出数。
 --   5. adminStore 的 participants 486/128/672 是写死的展示值；真实人次改由
 --      v_exam_overview.attempt_count 出。
---   6. ADMIN_DEPT_STATS 的部门学时/人数（386/128 等）远超 15 个种子用户能算出的量，
---      落在 department.*_cached，v_department_stats 同时给出真实派生值。
---   7. ADMIN_CERTIFICATE_ISSUES 的 aci-2 复用了 cert-3 的证书编号 ZX-2023-K8S-901，
+--   6. ADMIN_CERTIFICATE_ISSUES 的 aci-2 复用了 cert-3 的证书编号 ZX-2023-K8S-901，
 --      与 serial_number 唯一约束冲突 → 张浩然那张改为 ZX-2023-K8S-902。
---   8. MESSAGES_DATA 的 msg-3 标为「05-16」、msg-4「05-14」，晚于锚点当天，
+--   7. MESSAGES_DATA 的 msg-3 标为「05-16」、msg-4「05-14」，晚于锚点当天，
 --      属 mock 时间轴错乱 → 种子按列表顺序倒推为 05-12 / 05-11。
---   9. 课时数不再落库缓存，由 course_chapter / course_lesson 实时统计；
+--   8. 课时数不再落库缓存，由 course_chapter / course_lesson 实时统计；
 --      种子大纲只有 c1（3 章 8 课时）与 c3（1 章 1 课时）。
---  10. 题数不再落库缓存，由 v_exam_overview.question_count 实时统计。
+--   9. 题数不再落库缓存，由 v_exam_overview.question_count 实时统计。
 -- =============================================================================
 
 SET NAMES utf8mb4;
@@ -642,7 +640,6 @@ SET FOREIGN_KEY_CHECKS = 1;
 -- SELECT ym, study_hours FROM v_monthly_study_hours WHERE user_id = 1 ORDER BY ym;
 -- SELECT id, code, question_count, attempt_count, pass_rate FROM v_exam_overview ORDER BY id;
 -- SELECT * FROM v_admin_pending;
--- SELECT * FROM v_department_stats ORDER BY department_id;
 
 -- -----------------------------------------------------------------------------
 -- 试卷补足到 100 分：新增题目副本（保持单选 2 / 多选 4 / 判断 2 / 应用题 8 分值规则）

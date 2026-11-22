@@ -22,7 +22,7 @@ emp-server/
    │  ├─ common/                # ApiResponse / PageResult / 异常 / 数字转换
    │  ├─ config/                # MyBatis-Plus、CORS、MinIO、审计字段填充
    │  ├─ controller/            # 学员端 + 管理端 REST 接口
-   │  ├─ entity/                # 30 张业务表实体
+   │  ├─ entity/                # 23 张业务表实体
    │  ├─ mapper/                # BaseMapper + 统计/视图查询
    │  ├─ security/              # JWT、登录上下文、@AdminOnly
    │  ├─ service/               # 业务逻辑
@@ -30,7 +30,7 @@ emp-server/
    └─ resources/application.yml
 ```
 
-数据库脚本位于仓库根目录：`../sql/schema.sql`（30 表 + 7 视图）、`../sql/seed.sql`（演示数据）以及 `../sql/migrate_*.sql`（已有库迁移，均可重复执行）。新库按 schema → seed 初始化即可；迁移脚本说明见根目录 README。
+数据库脚本位于仓库根目录：`../sql/schema.sql`（23 表 + 6 视图）、`../sql/seed.sql`（演示数据）以及 `../sql/migrate_*.sql`（已有库迁移，均可重复执行）。新库按 schema → seed 初始化即可；迁移脚本说明见根目录 README。
 
 ## 环境要求
 
