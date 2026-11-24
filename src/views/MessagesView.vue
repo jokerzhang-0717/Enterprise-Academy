@@ -23,7 +23,7 @@
           class="px-3.5 py-1.5 bg-[color:var(--app-rose-100)] border border-[color:var(--app-rose-line)] hover:bg-[color:var(--app-rose-bg)] text-xs font-semibold text-[color:var(--app-rose-fg)] rounded-xl flex items-center gap-1.5 transition-colors"
         >
           <Trash2 class="w-3.5 h-3.5" />
-          <span>删除所选 ({{ selectedIds.length }})</span>
+          <span>删除所选 (<span v-count-up="selectedIds.length"></span>)</span>
         </button>
         <button
           @click="handleMarkAllRead"

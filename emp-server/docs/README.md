@@ -41,7 +41,7 @@ POST /auth/login
 Content-Type: application/json
 
 {
-  "employeeNo": "EMP-2024098",
+  "employeeNo": "YS-2024098",
   "password": "123456"
 }
 ```
@@ -60,7 +60,7 @@ Content-Type: application/json
     "refreshExpiresIn": 604800,
     "user": {
       "id": 1,
-      "employeeNo": "EMP-2024098",
+      "employeeNo": "YS-2024098",
       "name": "李明",
       "role": 1
     }
@@ -80,7 +80,7 @@ Authorization: Bearer {{token}}
 
 | 角色 | 工号 | 密码 | 可访问范围 |
 | --- | --- | --- | --- |
-| 学员 | `EMP-2024098` | `123456` | 学员端接口 |
+| 学员 | `YS-2024098` | `123456` | 学员端接口 |
 | 管理员 | `admin` | `123456` | 学员端 + `/admin/**` |
 
 ## 三、建议测试顺序

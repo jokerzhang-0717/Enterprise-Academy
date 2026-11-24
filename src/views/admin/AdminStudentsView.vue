@@ -93,7 +93,7 @@
                   <span class="toggle-dot"></span>
                   <span>{{ learner.status === 'active' ? '停用' : '启用' }}</span>
                 </button>
-                <button class="icon-btn icon-btn--key" title="重置密码为 12345678" @click="resetPassword(learner)">
+                <button class="icon-btn icon-btn--key" title="重置密码为 123456" @click="resetPassword(learner)">
                   <Key />
                 </button>
                 <button class="icon-btn" title="编辑" @click="openEdit(learner)">
@@ -132,7 +132,7 @@
           </label>
           <label class="field">
             <span class="field-label">企业工号</span>
-            <input v-model.trim="form.employeeId" type="text" class="field-input mono" placeholder="如 EMP-2025001" />
+            <input v-model.trim="form.employeeId" type="text" class="field-input mono" placeholder="如 YS-2026001" />
           </label>
           <div class="field-row">
             <label class="field">
@@ -343,14 +343,14 @@ const resetPassword = (learner) => {
     rows: [
       { label: '所属部门', value: learner.department },
       { label: '学员职位', value: learner.title },
-      { label: '重置后密码', value: '12345678' }
+      { label: '重置后密码', value: '123456' }
     ],
-    tip: '重置后该学员的登录密码将统一恢复为 12345678。',
-    confirmText: '确认重置为 12345678',
+    tip: '重置后该学员的登录密码将统一恢复为 123456。',
+    confirmText: '确认重置为 123456',
     action: async () => {
       try {
         await resetAdminUserPassword(learner.numericId ?? learner.id);
-        showToast(`已成功将【${learner.name}】的密码重置为 12345678`, 'success');
+        showToast(`已成功将【${learner.name}】的密码重置为 123456`, 'success');
       } catch (error) {
         showToast(error?.message || '密码重置失败', 'error');
       }

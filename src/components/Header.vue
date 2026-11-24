@@ -141,7 +141,7 @@
           <div class="user-dropdown">
             <div class="dropdown-user-info">
               <div class="dropdown-user-name">{{ user.name }}</div>
-              <div v-if="!isAdmin" class="dropdown-user-id">{{ user.employeeId }} · {{ user.role }}</div>
+              <div v-if="!isAdmin" class="dropdown-user-id">{{ user.employeeId }}</div>
             </div>
             <button
               class="dropdown-action"

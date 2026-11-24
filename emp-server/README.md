@@ -66,7 +66,7 @@ mysql -uroot -p < ../sql/database.sql
 | `EMP_JWT_EXPIRE_MINUTES` | `15` | 访问令牌有效期（分钟） |
 | `EMP_ALLOWED_ORIGINS` | 空（仅本机 3000/5173） | 允许跨域的前端地址，逗号分隔；生产按实际域名配置 |
 | `AUTH_TRUST_FORWARDED_HEADERS` | `false` | 仅在可信反向代理之后设为 `true`；开启后才采信 `X-Forwarded-For` / `X-Real-IP` 作为限流来源 IP |
-| `EMP_DEMO_MODE` | `false` | 演示模式：仅允许空密码哈希账号使用 `123456`；种子账号已写入 BCrypt 哈希，关闭后仍可用 `123456` 登录 |
+| `EMP_DEMO_MODE` | `true` | 本地默认开启以便直接启动；生产必须显式设为 `false`，并配置独立的 `EMP_JWT_SECRET`；种子账号已写入 BCrypt 哈希，关闭后仍可用 `123456` 登录 |
 | `MINIO_ENDPOINT` | `http://127.0.0.1:9000` | MinIO 地址 |
 | `MINIO_ACCESS_KEY` | `zhang` | MinIO Access Key |
 | `MINIO_SECRET_KEY` | `12345678` | MinIO Secret Key |
@@ -94,7 +94,7 @@ mvn spring-boot:run
 
 ## 鉴权
 
-1. 登录：`POST /api/auth/login`，请求体 `{ "employeeNo": "EMP-2024098", "password": "123456" }`，返回 15 分钟访问令牌 `token` 与 7 天刷新令牌 `refreshToken`。
+1. 登录：`POST /api/auth/login`，请求体 `{ "employeeNo": "YS-2024098", "password": "123456" }`，返回 15 分钟访问令牌 `token` 与 7 天刷新令牌 `refreshToken`。
 2. 后续请求只携带 `Authorization: Bearer <token>`；不再兼容 `X-Token`、裸 header 或 `token` 查询参数。
 3. 访问令牌过期后调用 `POST /api/auth/refresh`，请求体 `{ "refreshToken": "..." }` 换发新令牌；刷新令牌一次性使用，每次刷新都会轮换。
 4. 退出登录调用 `POST /api/auth/logout`，同时吊销访问令牌（Redis 黑名单）与刷新令牌；账号停用、密码修改后旧令牌立即失效。
@@ -107,7 +107,7 @@ mvn spring-boot:run
 
 | 角色 | 工号 | 密码 |
 | --- | --- | --- |
-| 学员（李明） | `EMP-2024098` | `123456` |
+| 学员（李明） | `YS-2024098` | `123456` |
 | 管理员 | `admin` | `123456` |
 
 种子用户已写入 BCrypt 哈希，口令 `123456` 在关闭演示模式后仍可登录；新注册 / 重置密码同样使用 BCrypt 落库。

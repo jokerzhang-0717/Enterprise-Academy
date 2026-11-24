@@ -2,7 +2,7 @@
   <div class="analytics-page">
 
     <!-- 页面标题 -->
-    <div class="page-header">
+    <div class="page-header" v-reveal>
       <div class="breadcrumb">
         <span>企业赋能平台</span>
         <span class="breadcrumb-sep">></span>
@@ -12,7 +12,7 @@
     </div>
 
     <!-- 四个核心指标卡片 -->
-    <div class="metrics-grid">
+    <div class="metrics-grid" v-reveal-rows>
 
       <!-- 指标 1：累计有效学时 -->
       <div class="metric-card">
@@ -23,7 +23,7 @@
           </div>
         </div>
         <div class="metric-bottom">
-          <span class="metric-number">{{ learningHours }}</span>
+          <span class="metric-number"><span v-count-up="learningHours"></span></span>
           <span class="metric-unit">小时</span>
         </div>
       </div>
@@ -37,7 +37,7 @@
           </div>
         </div>
         <div class="metric-bottom">
-          <span class="metric-number">{{ completedCourses }}</span>
+          <span class="metric-number"><span v-count-up="completedCourses"></span></span>
           <span class="metric-unit">门</span>
         </div>
       </div>
@@ -51,7 +51,7 @@
           </div>
         </div>
         <div class="metric-bottom">
-          <span class="metric-number metric-number--purple">{{ averageScore }}</span>
+          <span class="metric-number metric-number--purple"><span v-count-up="averageScore"></span></span>
           <span class="metric-unit">分</span>
         </div>
       </div>
@@ -59,7 +59,7 @@
     </div>
 
     <!-- 每月学习时长柱状图 -->
-    <div class="chart-section">
+    <div class="chart-section" v-reveal="120">
       <div class="chart-card">
 
         <!-- 图表标题 -->

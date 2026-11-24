@@ -212,7 +212,7 @@ npm run dev
 | 角色 | 工号 | 密码 | 访问范围 |
 | --- | --- | --- | --- |
 | 管理员 | `admin` | `123456` | 学员端 + `/api/admin/**` |
-| 学员 | `EMP-2024098` | `123456` | 学员端 |
+| 学员 | `YS-2024098` | `123456` | 学员端 |
 
 > 演示账号仅用于本地体验。`sql/database.sql` 中的种子用户已写入 BCrypt 哈希，口令仍为 `123456`；即使关闭演示模式也能登录。正式环境请立即修改密码并移除演示数据。
 
@@ -252,7 +252,7 @@ Authorization: Bearer <token>
 | `EMP_JWT_SECRET` | 开发默认值 | JWT 签名密钥，至少 32 字节；关闭演示模式或使用 `prod` profile 时若仍为默认值会拒绝启动 |
 | `EMP_JWT_EXPIRE_MINUTES` | `15` | 访问令牌有效期（分钟） |
 | `EMP_ALLOWED_ORIGINS` | 空（仅本机 3000/5173） | 允许跨域的前端地址，逗号分隔；生产按实际域名配置 |
-| `EMP_DEMO_MODE` | `false` | 是否允许空密码哈希账号使用演示口令 `123456`；生产保持 `false` |
+| `EMP_DEMO_MODE` | `true` | 本地默认开启以便直接启动；生产必须显式设为 `false`，并配合独立的 `EMP_JWT_SECRET` |
 | `AUTH_REFRESH_TOKEN_DAYS` | `7` | 刷新令牌有效期（天） |
 | `AUTH_MAX_LOGIN_ATTEMPTS` | `5` | 同一工号在窗口期内允许的登录失败次数 |
 | `AUTH_MAX_LOGIN_IP_ATTEMPTS` | `30` | 同一 IP 在窗口期内允许的登录失败次数 |
@@ -359,8 +359,8 @@ server {
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
 
-        # 与后端 multipart 上限保持一致
-        client_max_body_size 2048m;
+        # 与后端 multipart 上限保持一致（服务端转发 51MB，视频走预签名直传）
+        client_max_body_size 55m;
 
         # 视频/大文件上传建议放宽超时
         proxy_read_timeout 300s;
@@ -424,7 +424,7 @@ mvn test
 **登录返回 401 / 工号或密码错误**
 
 - 确认已执行 `sql/database.sql`。
-- 确认使用演示账号 `admin / 123456` 或 `EMP-2024098 / 123456`。
+- 确认使用演示账号 `admin / 123456` 或 `YS-2024098 / 123456`。
 - 若数据库中的 `password_hash` 已被修改，请使用修改后的密码，或重新导入种子数据。
 
 **文件上传失败 / 图片和视频打不开**

@@ -142,7 +142,7 @@
                 v-model.trim="employeeId"
                 @input="clearLoginError('employeeId')"
                 type="text"
-                placeholder="EMP-2024098"
+                placeholder="YS-2024098"
                 class="input-box mono-font"
                 :aria-invalid="Boolean(loginErrors.employeeId)"
                 aria-describedby="login-err-employeeId"
@@ -261,7 +261,7 @@
 
         <div class="fade-in mt-7 border-t border-[#DCE7F2] pt-4" style="--d:.56s">
           <div class="mono-font flex items-center justify-between text-[8.5px] tracking-[.16em] text-[#7C8FA3]">
-            <span class="whitespace-nowrap">© 2024 云舒艺境 LMS</span>
+            <span class="whitespace-nowrap">© 2026 云舒艺境 LMS</span>
             <span class="flex items-center gap-2.5 whitespace-nowrap">
               <a href="#privacy" class="footer-link" @click.prevent>隐私策略</a>
               <span class="h-[3px] w-[3px] rounded-full bg-[#C9D8E6]"></span>
@@ -307,7 +307,7 @@ const stats = [
 ];
 
 /* ---------- 登录 ---------- */
-const employeeId = ref('EMP-2024098');
+const employeeId = ref('YS-2024098');
 const password = ref('');
 const showPassword = ref(false);
 

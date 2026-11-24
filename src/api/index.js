@@ -145,7 +145,7 @@ export const deleteAdminUser = (id) => http.delete(`/admin/users/${id}`);
 export const updateAdminUserStatus = (id, accountStatus) =>
   http.put(`/admin/users/${id}/status`, { accountStatus });
 
-export const resetAdminUserPassword = (id, password = '12345678') =>
+export const resetAdminUserPassword = (id, password = '123456') =>
   http.post(`/admin/users/${id}/reset-password`, { newPassword: password });
 
 /* ---------- 部门 ---------- */

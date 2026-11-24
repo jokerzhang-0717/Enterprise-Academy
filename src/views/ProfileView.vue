@@ -51,7 +51,7 @@
         <div class="profile-hero__stats profile-hero__stats--single" v-else>
           <div class="profile-stat">
             <p class="profile-stat__label">累计学时</p>
-            <p class="profile-stat__value">{{ user.learningHours ?? 0 }}<span class="profile-stat__unit">小时</span></p>
+            <p class="profile-stat__value"><span v-count-up="user.learningHours ?? 0"></span><span class="profile-stat__unit">小时</span></p>
           </div>
         </div>
       </div>

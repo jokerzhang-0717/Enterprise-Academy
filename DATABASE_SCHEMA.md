@@ -861,6 +861,6 @@ SELECT
 
 - 2026-11-22：删除未被引用的统计视图 `v_department_stats`；DDL 增加重建时的 `DROP VIEW IF EXISTS` 保护。
 - 2026-11-23：`sql/schema.sql`、`sql/seed.sql`、3 个 `migrate_*.sql` 与 `add_exam_questions.sql` 合并为唯一的 `sql/database.sql`，一次执行完成建库、建表和演示数据写入。
-- 2026-11-23：种子账号 `password_hash` 改为 BCrypt；后端默认关闭演示模式与 MinIO 公共读，关闭演示模式或使用 `prod` profile 时拒绝使用内置开发 JWT 密钥。
+- 2026-11-23：种子账号 `password_hash` 改为 BCrypt；后端本地默认开启演示模式、MinIO 公共读默认关闭，生产需显式关闭演示模式并配置独立 JWT 密钥，关闭演示模式或使用 `prod` profile 时拒绝使用内置开发 JWT 密钥。
 - 题目难度分类 `exam_question.difficulty` 已从结构中移除，当前表不包含该字段。
 - 入职手册完成时间 `sys_user.onboarding_completed_at` 已纳入 `sys_user` 表结构。

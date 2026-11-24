@@ -2,7 +2,7 @@
   <div class="admin-dashboard">
 
     <!-- 页头 -->
-    <div class="page-head">
+    <div class="page-head" v-reveal>
       <div class="head-copy">
         <h1 class="page-title">管理总览</h1>
         <p class="page-sub">平台运营数据全景 · 数据更新于 {{ todayText }}</p>
@@ -15,7 +15,7 @@
     </div>
 
     <!-- 欢迎卡 -->
-    <section class="welcome-card">
+    <section class="welcome-card" v-reveal="{ delay: 30 }">
       <div class="welcome-copy">
         <div class="welcome-title">
           {{ greeting }}，{{ userName }}
@@ -26,21 +26,43 @@
         </p>
       </div>
       <div class="welcome-clock">
-        <div class="clock-time">{{ clockTime }}</div>
+        <div class="clock-time" :aria-label="clockTime">
+          <span
+            v-for="(ch, i) in clockChars"
+            :key="i"
+            class="clock-digit-slot"
+            :class="{ 'clock-digit-slot--sep': ch === ':' }"
+          >
+            <Transition v-if="ch !== ':'" name="digit-roll">
+              <span :key="ch" class="clock-digit">{{ ch }}</span>
+            </Transition>
+            <span v-else class="clock-digit">:</span>
+          </span>
+        </div>
         <div class="clock-date">{{ clockDate }}</div>
       </div>
     </section>
 
     <!-- 统计卡片 -->
-    <section class="stat-grid">
-      <div v-for="card in statCards" :key="card.label" class="stat-card">
+    <section class="stat-grid" v-reveal-rows="{ rowDelay: 90, itemDelay: 50 }">
+      <div
+        v-for="card in statCards"
+        :key="card.label"
+        class="stat-card"
+        role="button"
+        tabindex="0"
+        :aria-label="`${card.label}，点击查看详情`"
+        @click="$emit('navigate', card.view)"
+        @keydown.enter.prevent="$emit('navigate', card.view)"
+        @keydown.space.prevent="$emit('navigate', card.view)"
+      >
         <div class="stat-card-top">
           <div class="stat-icon" :style="{ background: card.tint, color: card.color }">
             <component :is="card.icon" />
           </div>
           <span v-if="card.trend" class="stat-trend" :class="card.trendClass">{{ card.trend }}</span>
         </div>
-        <div class="stat-value">{{ card.value }}</div>
+        <div class="stat-value"><span v-count-up="card.value"></span></div>
         <div class="stat-label">{{ card.label }}</div>
         <div class="stat-foot">{{ card.foot }}</div>
       </div>
@@ -49,20 +71,20 @@
     <!-- 图表 + 待办 -->
     <section class="dash-row">
       <!-- 部门学时柱状图 -->
-      <article class="panel panel--chart">
+      <article class="panel panel--chart" v-reveal="{ delay: 30 }">
         <div class="panel-head">
           <div>
             <h2 class="panel-title">各部门累计学时分布</h2>
             <p class="panel-sub">按学员学习记录统计 · 单位:小时</p>
           </div>
         </div>
-        <div class="chart-body">
+        <div class="chart-body" v-reveal-rows="{ rowDelay: 90, itemDelay: 50 }">
           <div v-for="dept in deptStats" :key="dept.department" class="chart-row">
             <span class="chart-label">{{ dept.department }}</span>
             <div class="chart-track">
               <div
                 class="chart-bar"
-                :style="{ width: barWidth(dept.hours) }"
+                :style="{ width: barsReady ? barWidth(dept.hours) : '0%' }"
               ></div>
             </div>
             <span class="chart-value">{{ dept.hours }}h</span>
@@ -73,7 +95,7 @@
       </article>
 
       <!-- 待办事项 -->
-      <article class="panel panel--todo">
+      <article class="panel panel--todo" v-reveal="{ delay: 60 }">
         <div class="panel-head">
           <div>
             <h2 class="panel-title">待办事项</h2>
@@ -81,7 +103,7 @@
           </div>
           <span class="todo-count">{{ todos.length }}</span>
         </div>
-        <div class="todo-list">
+        <div class="todo-list" v-reveal-rows="{ rowDelay: 90, itemDelay: 50 }">
           <div
             v-for="todo in todos"
             :key="todo.id"
@@ -108,14 +130,14 @@
     </section>
 
     <!-- 最近动态 -->
-    <section class="panel">
+    <section class="panel" v-reveal="{ delay: 45 }">
       <div class="panel-head">
         <div>
           <h2 class="panel-title">最近管理动态</h2>
           <p class="panel-sub">平台操作审计日志</p>
         </div>
       </div>
-      <div class="activity-list">
+      <div class="activity-list" v-reveal-rows="{ rowDelay: 90, itemDelay: 50 }">
         <div v-for="act in activities" :key="act.id" class="activity-item">
           <span class="activity-icon" :class="`activity-icon--${act.type}`">
             <component :is="activityIcon(act.type)" />
@@ -170,6 +192,8 @@ const pad = (n) => String(n).padStart(2, '0');
 const clockTime = computed(
   () => `${pad(now.value.getHours())}:${pad(now.value.getMinutes())}:${pad(now.value.getSeconds())}`
 );
+// 拆成单字符数组，配合 <Transition> 实现每秒数字滚动递增效果
+const clockChars = computed(() => clockTime.value.split(''));
 const clockDate = computed(() => {
   const d = now.value;
   return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日星期${'日一二三四五六'[d.getDay()]}`;
@@ -196,6 +220,8 @@ const refreshTodayCheckins = async () => {
 onMounted(() => {
   clockTimer = setInterval(() => { now.value = new Date(); }, 1000);
   refreshTodayCheckins();
+  // 双帧确保 0% 宽度已经渲染，再切到目标宽度触发 width 过渡
+  requestAnimationFrame(() => requestAnimationFrame(() => { barsReady.value = true; }));
 });
 onUnmounted(() => {
   if (clockTimer) clearInterval(clockTimer);
@@ -221,32 +247,32 @@ const todayRate = computed(() => {
 
 const statCards = computed(() => [
   {
-    label: '注册学员', value: activeLearners,
+    label: '注册学员', value: activeLearners.value, view: 'admin-students',
     foot: `共 ${learners.value.length} 个账号`, trend: '', trendClass: 'flat',
     icon: UserFilled, color: '--app-accent-deep', tint: '--app-accent-soft'
   },
   {
-    label: '在架课程', value: stats.value.publishedCourseCount ?? 0,
+    label: '在架课程', value: stats.value.publishedCourseCount ?? 0, view: 'admin-courses',
     foot: `共 ${totalCourses.value} 门课程`, trend: '', trendClass: 'flat',
     icon: Collection, color: '--app-violet-fg', tint: '--app-violet-bg'
   },
   {
-    label: '进行中考试', value: pending.value.activeExamCount ?? 0,
+    label: '进行中考试', value: pending.value.activeExamCount ?? 0, view: 'admin-exams',
     foot: `累计参考 ${attemptTotal.value} 人次`, trend: '', trendClass: 'flat',
     icon: Tickets, color: '--app-orange-fg', tint: '--app-orange-bg'
   },
   {
-    label: '累计发证', value: adminStore.certificates.length,
+    label: '累计发证', value: adminStore.certificates.length, view: 'admin-certificates',
     foot: '区块链存证已启用', trend: '链上', trendClass: 'flat',
     icon: Medal, color: '--app-amber-fg', tint: '--app-amber-bg'
   },
   {
-    label: '今日签到率', value: todayRate.value,
+    label: '今日签到率', value: todayRate.value, view: 'admin-checkin',
     foot: `应到 ${activeLearners.value} · 实到 ${attendedToday.value}`, trend: '', trendClass: 'flat',
     icon: Calendar, color: '--app-emerald-fg', tint: '--app-emerald-bg'
   },
   {
-    label: '待审公告', value: pending.value.draftNoticeCount ?? 0,
+    label: '待审公告', value: pending.value.draftNoticeCount ?? 0, view: 'admin-announcements',
     foot: `共 ${adminStore.announcements.length} 篇公告`, trend: '待发布', trendClass: 'warn',
     icon: Promotion, color: '--app-rose-fg', tint: '--app-rose-bg'
   }
@@ -259,6 +285,9 @@ const deptStats = computed(() => adminStore.departments
   })));
 const maxHours = computed(() => Math.max(1, ...deptStats.value.map(d => d.hours)));
 const barWidth = (hours) => `${Math.max((hours / maxHours.value) * 100, 4)}%`;
+
+/* 部门学时条：挂载后延迟一帧再从 0 过渡到目标宽度 */
+const barsReady = ref(false);
 
 const todos = computed(() => {
   const list = [];
@@ -321,6 +350,13 @@ const activityIcon = (type) => activityIconMap[type] || activityIconMap.default;
 </script>
 
 <style scoped>
+
+/* 管理端单独调快 reveal：短位移 + 更短时长。
+   #app 前缀保证优先级高于 index.css 的全局 520ms / 22px。 */
+:global(#app .admin-dashboard [data-scroll-reveal]) {
+  --reveal-duration: 340ms;
+  --reveal-distance: 12px;
+}
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
 button { font-family: inherit; cursor: pointer; }
@@ -412,12 +448,63 @@ button { font-family: inherit; cursor: pointer; }
 }
 
 .clock-time {
+  display: inline-flex;
+  align-items: center;
   font-size: 34px;
   font-weight: 700;
   line-height: 1.1;
   color: var(--app-heading);
   letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
+}
+
+/* 每位数字一个独立槽位：固定高度并裁剪，让数字能上下滚动 */
+.clock-digit-slot {
+  position: relative;
+  display: inline-block;
+  width: 0.62em;
+  height: 1.1em;
+  line-height: 1.1;
+  overflow: hidden;
+  text-align: center;
+}
+
+.clock-digit-slot--sep {
+  width: 0.34em;
+}
+
+.clock-digit {
+  display: block;
+  width: 100%;
+}
+
+/* 数字滚动：新数字从下方滚入，旧数字向上滚出 */
+.digit-roll-enter-active,
+.digit-roll-leave-active {
+  transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.28s ease;
+}
+
+.digit-roll-enter-from {
+  transform: translateY(100%);
+  opacity: 0;
+}
+
+.digit-roll-leave-to {
+  transform: translateY(-100%);
+  opacity: 0;
+}
+
+.digit-roll-leave-active {
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .digit-roll-enter-active,
+  .digit-roll-leave-active {
+    transition: none;
+  }
 }
 
 .clock-date {
@@ -466,17 +553,42 @@ button { font-family: inherit; cursor: pointer; }
 }
 
 .stat-card {
+  position: relative;
   padding: 16px;
   background: var(--app-surface);
   border: 1px solid var(--app-border);
   border-radius: 14px;
   box-shadow: 0 1px 2px rgba(15, 30, 51, 0.04);
-  transition: transform 0.15s, box-shadow 0.15s;
+  cursor: pointer;
+  outline: none;
+  transform: translateY(0);
+  transition: transform 0.18s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.25s, border-color 0.25s;
 }
 
 .stat-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(15, 30, 51, 0.08);
+  transform: translateY(-6px);
+  box-shadow: 0 18px 36px rgba(15, 30, 51, 0.16), 0 6px 12px rgba(15, 30, 51, 0.08);
+  border-color: var(--app-accent);
+}
+
+.stat-card:focus-visible {
+  border-color: var(--app-accent);
+  box-shadow: 0 0 0 3px var(--app-accent-soft);
+}
+
+.stat-card:active {
+  transform: translateY(-2px) scale(0.99);
+  transition-duration: 0.1s;
+}
+
+/* 减少动效偏好：关闭上浮，只保留边框提示 */
+@media (prefers-reduced-motion: reduce) {
+  .stat-card,
+  .stat-card:hover,
+  .stat-card:active {
+    transform: none !important;
+    transition: none !important;
+  }
 }
 
 .stat-card-top {
@@ -607,7 +719,11 @@ button { font-family: inherit; cursor: pointer; }
   height: 100%;
   background: linear-gradient(90deg, var(--app-accent-strong), var(--app-accent));
   border-radius: 9999px;
-  transition: width 0.5s ease-out;
+  transition: width 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chart-bar { transition: none; }
 }
 
 .chart-value {
@@ -649,21 +765,54 @@ button { font-family: inherit; cursor: pointer; }
 }
 
 .todo-item {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 10px 0;
+  padding: 10px 12px;
+  margin: 0 -12px;
   border-top: 1px solid var(--app-border-soft);
+  border-radius: 8px;
   cursor: pointer;
   outline: none;
-  transition: background 0.15s;
+  transition: background 0.2s ease, transform 0.2s cubic-bezier(0.22, 1, 0.36, 1);
 }
+
+/* 左侧色条：默认收缩为 0，悬停时滑出 */
+.todo-item::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: 3px;
+  height: 0;
+  border-radius: 9999px;
+  background: var(--app-accent);
+  transform: translateY(-50%);
+  transition: height 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
 .todo-item:first-child { border-top: none; }
+.todo-item:hover,
+.todo-item:focus-visible {
+  background: var(--app-accent-soft);
+  transform: translateX(3px);
+}
+.todo-item:hover::before,
+.todo-item:focus-visible::before {
+  height: 60%;
+}
 .todo-item:hover .todo-title,
 .todo-item:focus-visible .todo-title { color: var(--app-accent-deep); }
 .todo-item:focus-visible {
-  border-radius: 8px;
   box-shadow: 0 0 0 2px var(--app-ring-accent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .todo-item,
+  .todo-item::before { transition: none; }
+  .todo-item:hover,
+  .todo-item:focus-visible { transform: none; }
 }
 
 .todo-dot {

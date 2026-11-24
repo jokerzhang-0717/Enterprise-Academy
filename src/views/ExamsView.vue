@@ -1,13 +1,13 @@
 <template>
   <div class="exm-page">
     <!-- 1. Overview Metrics -->
-    <div class="exm-metrics">
+    <div class="exm-metrics" v-reveal-rows>
       <!-- 待参加考核 -->
       <div class="exm-metric">
         <div class="exm-metric__body">
           <div class="exm-metric__label">待参加考核</div>
           <div class="exm-metric__value">
-            {{ metrics.pendingCount }} <span class="exm-metric__note exm-metric__note--blue">{{ metrics.inProgressCount }}场正在进行</span>
+            <span v-count-up="metrics.pendingCount"></span> <span class="exm-metric__note exm-metric__note--blue"><span v-count-up="metrics.inProgressCount"></span>场正在进行</span>
           </div>
           <div class="exm-metric__foot">本季度必考安排</div>
         </div>
@@ -21,7 +21,7 @@
         <div class="exm-metric__body">
           <div class="exm-metric__label">已通过认证科目</div>
           <div class="exm-metric__value">
-            {{ certificateCount }} <span class="exm-metric__note exm-metric__note--green">获{{ certificateCount }}份电子徽章</span>
+            <span v-count-up="certificateCount"></span> <span class="exm-metric__note exm-metric__note--green">获<span v-count-up="certificateCount"></span>份电子徽章</span>
           </div>
           <div class="exm-metric__foot">认证率 {{ metrics.passRate }}% 达标</div>
         </div>
@@ -35,7 +35,7 @@
         <div class="exm-metric__body">
           <div class="exm-metric__label">综合考核平均分</div>
           <div class="exm-metric__value exm-metric__value--purple">
-            {{ metrics.avgPastScore }} <span class="exm-metric__note">通过率 {{ metrics.passRate }}%</span>
+            <span v-count-up="metrics.avgPastScore"></span> <span class="exm-metric__note">通过率 <span v-count-up="metrics.passRate"></span>%</span>
           </div>
           <div class="exm-metric__foot">本季度综合考核</div>
         </div>
@@ -85,7 +85,7 @@
       </div>
 
       <!-- 考试卡片列表 -->
-      <div class="exm-cards">
+      <div class="exm-cards" v-reveal-rows>
         <article
           v-for="exam in filteredExams"
           :id="`exam-${exam.id}`"
@@ -196,7 +196,7 @@
         </div>
       </div>
 
-      <div v-if="pastExams.length" class="exm-history__list">
+      <div v-if="pastExams.length" class="exm-history__list" v-reveal-rows>
         <article
           v-for="record in pastExams"
           :id="`past-exam-${record.attemptId}`"

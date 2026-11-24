@@ -15,7 +15,7 @@ info:
     - 时间格式：`LocalDateTime` 为 `yyyy-MM-ddTHH:mm:ss`，`LocalDate` 为 `yyyy-MM-dd`，`LocalTime` 为 `HH:mm:ss`
     - 错误码与 HTTP 状态码一致：400 参数错误、401 未登录、403 无权限、404 不存在、409 冲突、413 文件过大、415 请求格式不支持、429 请求过于频繁
 
-    演示账号：学员 `EMP-2024098 / 123456`，管理员 `admin / 123456`。
+    演示账号：学员 `YS-2024098 / 123456`，管理员 `admin / 123456`。
 servers:
   - url: http://127.0.0.1:8080/api
     description: 本地开发环境
@@ -62,7 +62,7 @@ paths:
             schema:
               $ref: '#/components/schemas/LoginRequest'
             example:
-              employeeNo: EMP-2024098
+              employeeNo: YS-2024098
               password: '123456'
       responses:
         '200':
@@ -82,7 +82,7 @@ paths:
                   refreshExpiresIn: 604800
                   user:
                     id: 1
-                    employeeNo: EMP-2024098
+                    employeeNo: YS-2024098
                     name: 李明
                     departmentId: 1
                     department: 技术研发部
@@ -129,7 +129,7 @@ paths:
                   refreshExpiresIn: 604800
                   user:
                     id: 1
-                    employeeNo: EMP-2024098
+                    employeeNo: YS-2024098
                     name: 李明
                     role: 1
                     accountStatus: 1
@@ -149,7 +149,7 @@ paths:
               $ref: '#/components/schemas/RegisterRequest'
             example:
               name: 王小明
-              employeeNo: EMP-2026001
+              employeeNo: YS-2026001
               password: '123456'
               departmentId: 1
               jobTitle: 研发工程师
@@ -882,7 +882,7 @@ paths:
               $ref: '#/components/schemas/UserSaveRequest'
             example:
               name: 王小明
-              employeeNo: EMP-2026002
+              employeeNo: YS-2026002
               password: '123456'
               departmentId: 1
               jobTitle: 研发工程师
@@ -968,7 +968,7 @@ paths:
             schema:
               $ref: '#/components/schemas/ResetPasswordRequest'
             example:
-              newPassword: '12345678'
+              newPassword: '123456'
       responses:
         '200': { $ref: '#/components/responses/OkVoid' }
         '400': { $ref: '#/components/responses/BadRequest' }
@@ -2279,7 +2279,7 @@ components:
         employeeNo:
           type: string
           description: 企业工号
-          example: EMP-2024098
+          example: YS-2024098
         password:
           type: string
           description: 登录密码
@@ -2295,7 +2295,7 @@ components:
           example: 王小明
         employeeNo:
           type: string
-          example: EMP-2026001
+          example: YS-2026001
         password:
           type: string
           format: password
@@ -2499,7 +2499,7 @@ components:
           example: 王小明
         employeeNo:
           type: string
-          example: EMP-2026002
+          example: YS-2026002
         password:
           type: string
           format: password

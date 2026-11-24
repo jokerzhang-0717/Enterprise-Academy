@@ -2,7 +2,7 @@
   <div class="home-page">
 
     <!-- ============ 1. 顶部欢迎横幅 ============ -->
-    <section class="welcome-banner">
+    <section class="welcome-banner" v-reveal>
       <div class="welcome-content">
         <div class="welcome-tag">
           <span class="welcome-tag-dot"></span>
@@ -16,7 +16,7 @@
     </section>
 
     <!-- ============ 2. 快捷入口（5 个卡片） ============ -->
-    <section class="quick-actions">
+    <section class="quick-actions" v-reveal-rows>
 
       <button class="quick-card" @click="currentCourse ? $emit('open-course', currentCourse) : $emit('navigate', 'courses')">
         <div class="quick-card-icon icon-blue">
@@ -77,7 +77,7 @@
       <div class="main-left">
 
         <!-- 正在学习的课程 -->
-        <section class="section-block">
+        <section class="section-block" v-reveal>
           <div class="section-header">
             <div class="section-header-left">
               <span class="section-bar"></span>
@@ -95,7 +95,7 @@
               去课程中心
             </button>
           </div>
-          <div v-else class="course-grid">
+          <div v-else class="course-grid" v-reveal-rows>
             <article
               v-for="course in personalCourses"
               :key="course.id"
@@ -144,7 +144,7 @@
         </section>
 
         <!-- 新员工入职手册 -->
-        <section class="section-block">
+        <section class="section-block" v-reveal>
           <div class="section-header section-header-wrap">
             <div class="section-header-left">
               <span class="section-bar"></span>
@@ -153,7 +153,7 @@
             <p class="guide-subtitle">从熟悉平台开始，轻松开启新旅程</p>
           </div>
 
-          <div class="guide-grid">
+          <div class="guide-grid" v-reveal-rows>
             <article
               class="guide-card"
               role="button"
@@ -245,7 +245,7 @@
       <div class="main-right">
 
         <!-- 企业培训公告 -->
-        <section class="side-panel">
+        <section class="side-panel" v-reveal="{ delay: 80, direction: 'right' }">
           <div class="side-panel-header">
             <div class="side-panel-title-row">
               <Bell class="side-panel-icon" />
@@ -282,26 +282,67 @@
           </div>
         </section>
 
-        <section class="cat-corner" aria-label="小猫陪伴角">
-          <span class="cat-sparkle cat-sparkle-left" aria-hidden="true">✦</span>
-          <span class="cat-sparkle cat-sparkle-right" aria-hidden="true">✧</span>
-          <svg class="study-cat" viewBox="0 0 180 170" role="img" aria-label="一只可爱的小猫">
-            <ellipse cx="92" cy="151" rx="48" ry="8" fill="#dbeafe" />
-            <path d="M56 119c-17 1-27-8-27-20 0-9 7-16 17-17" fill="none" stroke="#d99a72" stroke-width="9" stroke-linecap="round" />
-            <ellipse cx="91" cy="123" rx="43" ry="34" fill="#f3bd91" />
-            <ellipse cx="91" cy="127" rx="23" ry="25" fill="#fff1df" />
-            <path d="m48 64-5-39 34 23m24 0 34-23-5 39" fill="#f3bd91" stroke="#bd805e" stroke-width="4" stroke-linejoin="round" />
-            <path d="m52 55-2-20 19 14m43 0 19-14-2 20" fill="#f4a8ae" />
-            <path d="M49 58c10-15 24-22 42-22s32 7 42 22c8 11 11 25 7 39-6 22-25 34-49 34s-43-12-49-34c-4-14-1-28 7-39Z" fill="#ffe0bd" stroke="#bd805e" stroke-width="4" />
-            <path d="M70 77c4-5 10-5 14 0m14 0c4-5 10-5 14 0" fill="none" stroke="#604a45" stroke-width="4" stroke-linecap="round" />
-            <path d="m86 91 5 4 5-4c0 6-2 8-5 8s-5-2-5-8Z" fill="#dd8290" />
-            <path d="M91 99c-1 7-7 9-12 5m12-5c1 7 7 9 12 5" fill="none" stroke="#604a45" stroke-width="2.5" stroke-linecap="round" />
-            <circle cx="69" cy="94" r="6" fill="#f4a8ae" opacity=".65" />
-            <circle cx="113" cy="94" r="6" fill="#f4a8ae" opacity=".65" />
-            <path d="M48 91 27 87m22 13-22 2m105-11 21-4m-21 13 22 2" fill="none" stroke="#bd805e" stroke-width="2" stroke-linecap="round" />
-            <path d="M69 145c2 6 10 8 17 4m19 0c7 4 15 2 17-4" fill="none" stroke="#bd805e" stroke-width="3" stroke-linecap="round" />
-          </svg>
-          <p class="cat-caption">喵～学习也要记得休息哦</p>
+        <section class="focus-corner" v-reveal="{ delay: 140 }" aria-label="学习陪伴角">
+          <!-- 漂浮装饰 -->
+          <span class="float-deco float-deco--1">✦</span>
+          <span class="float-deco float-deco--2">✧</span>
+          <span class="float-deco float-deco--3">✦</span>
+
+          <!-- 点击计数徽标 -->
+          <transition name="badge-pop">
+            <span v-if="orbTaps > 0" :key="orbTaps" class="tap-badge">已互动 {{ orbTaps }} 次</span>
+          </transition>
+
+          <div
+            class="mascot-stage"
+            @mouseenter="handleCatEnter($event)"
+            @mousemove="handleCatTilt($event)"
+            @mouseleave="handleCatTiltReset($event)"
+          >
+            <!-- 点击迸发的粒子 -->
+            <span
+              v-for="p in particles"
+              :key="p.id"
+              class="spark-particle"
+              :style="{ '--px': p.x + 'px', '--py': p.y + 'px', '--dx': p.dx + 'px', '--dy': p.dy + 'px', '--pc': p.color }"
+            >{{ p.icon }}</span>
+
+            <button
+              class="mascot-btn"
+              :class="{ 'is-pulse': orbPulse, 'is-happy': mascotHappy }"
+              type="button"
+              :aria-label="`点击和守护兽互动，当前第 ${quoteIndex + 1} 句励志语`"
+              @click="changeQuote"
+            >
+              <!-- 光环 -->
+              <span class="mascot-halo"></span>
+              <img
+                class="mascot-img"
+                src="/assets/fox-mascot.png"
+                alt="戴皇冠的白色守护兽玩偶"
+                loading="lazy"
+              />
+              <!-- 眨眼遮罩 -->
+              <span v-if="blinking" class="mascot-blink"></span>
+            </button>
+          </div>
+
+          <!-- 守护兽聊天气泡 -->
+          <div class="chat-bubble-wrap">
+            <transition name="bubble-pop" mode="out-in">
+              <div :key="quoteIndex" class="chat-bubble">
+                <span class="bubble-tail"></span>
+                <div class="bubble-avatar">
+                  <img class="bubble-avatar-img" src="/assets/fox-mascot.png" alt="守护兽狐小d" />
+                </div>
+                <div class="bubble-body">
+                  <span class="bubble-name">狐小d</span>
+                  <p class="bubble-text">{{ typedText }}<span v-if="isTyping" class="typing-caret"></span></p>
+                </div>
+              </div>
+            </transition>
+          </div>
+          <p class="focus-hint">点一下守护兽 · 听它说句悄悄话</p>
         </section>
 
       </div>
@@ -338,7 +379,7 @@
 </template>
 
 <script setup>
-import { computed, nextTick, onMounted, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import { learnerStore } from '../learnerStore.js';
 import { guideDetails } from '../onboardingGuide.js';
 import { fetchExams, fetchMyCertificates } from '../api/index.js';
@@ -412,6 +453,141 @@ const openGuideFromKeyboard = (event, id) => {
   if (event.target === event.currentTarget) openGuide(id, event);
 };
 
+/* ===== 学习星球：鼠标跟随倾斜 ===== */
+const CAT_MAX_TILT = 16;
+const handleCatEnter = (event) => {
+  const el = event.currentTarget;
+  el.__catRect = el.getBoundingClientRect();
+};
+const handleCatTilt = (event) => {
+  if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
+  const el = event.currentTarget;
+  const rect = el.__catRect || el.getBoundingClientRect();
+  const px = (event.clientX - rect.left) / rect.width;
+  const py = (event.clientY - rect.top) / rect.height;
+  el.style.setProperty('--cat-tilt-y', `${((px - 0.5) * 2 * CAT_MAX_TILT).toFixed(2)}deg`);
+  el.style.setProperty('--cat-tilt-x', `${((0.5 - py) * 2 * CAT_MAX_TILT).toFixed(2)}deg`);
+};
+const handleCatTiltReset = (event) => {
+  const el = event.currentTarget;
+  el.style.setProperty('--cat-tilt-x', '0deg');
+  el.style.setProperty('--cat-tilt-y', '0deg');
+  el.__catRect = null;
+};
+
+/* ===== 学习星球：点击切换励志语 + 脉冲反馈 ===== */
+const quotes = [
+  '每一次专注，都在为未来蓄力',
+  '今天多学一点，明天从容一些',
+  '进步不必惊天动地，持续就好',
+  '种一棵树最好的时间是现在',
+  '点亮一个想法，胜过空想百次',
+  '专注当下，就是最好的准备',
+];
+const quoteIndex = ref(0);
+const orbPulse = ref(false);
+const mascotHappy = ref(false);
+const orbTaps = ref(0);
+const blinking = ref(false);
+const typedText = ref('');
+const isTyping = ref(false);
+const particles = ref([]);
+const PARTICLE_ICONS = ['✦', '✧', '★', '💫', '✨', '⭐'];
+const PARTICLE_COLORS = ['#f5b642', '#7ec8f2', '#ff9eb5', '#a78bfa', '#34d399'];
+let orbPulseTimer = null;
+let happyTimer = null;
+let blinkTimer = null;
+let typeTimer = null;
+let particleId = 0;
+
+// 定时随机眨眼，让守护兽更生动
+const scheduleBlink = () => {
+  const delay = 2600 + Math.random() * 3200;
+  blinkTimer = setTimeout(() => {
+    blinking.value = true;
+    setTimeout(() => { blinking.value = false; }, 180);
+    scheduleBlink();
+  }, delay);
+};
+
+// 点击迸发粒子
+const burstParticles = () => {
+  const created = Array.from({ length: 10 }, () => {
+    const angle = Math.random() * Math.PI * 2;
+    const dist = 60 + Math.random() * 90;
+    return {
+      id: ++particleId,
+      x: 90 + (Math.random() - 0.5) * 60,
+      y: 120 + (Math.random() - 0.5) * 60,
+      dx: Math.cos(angle) * dist,
+      dy: Math.sin(angle) * dist - 40,
+      icon: PARTICLE_ICONS[Math.floor(Math.random() * PARTICLE_ICONS.length)],
+      color: PARTICLE_COLORS[Math.floor(Math.random() * PARTICLE_COLORS.length)],
+    };
+  });
+  particles.value.push(...created);
+  setTimeout(() => {
+    const ids = new Set(created.map((p) => p.id));
+    particles.value = particles.value.filter((p) => !ids.has(p.id));
+  }, 900);
+};
+
+// 打字机：逐字显示守护兽的话
+const typeQuote = (text) => {
+  if (typeTimer) clearInterval(typeTimer);
+  // 减少动效偏好下直接显示全文
+  if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
+    typedText.value = text;
+    isTyping.value = false;
+    return;
+  }
+  typedText.value = '';
+  isTyping.value = true;
+  let i = 0;
+  typeTimer = setInterval(() => {
+    typedText.value = text.slice(0, ++i);
+    if (i >= text.length) {
+      clearInterval(typeTimer);
+      isTyping.value = false;
+    }
+  }, 70);
+};
+
+const changeQuote = () => {
+  // 避免连点总是重复上一句
+  let next = quoteIndex.value;
+  while (next === quoteIndex.value && quotes.length > 1) {
+    next = Math.floor(Math.random() * quotes.length);
+  }
+  quoteIndex.value = next;
+  orbTaps.value += 1;
+  typeQuote(quotes[next]);
+
+  // 弹跳反馈
+  orbPulse.value = false;
+  requestAnimationFrame(() => {
+    orbPulse.value = true;
+    if (orbPulseTimer) clearTimeout(orbPulseTimer);
+    orbPulseTimer = setTimeout(() => { orbPulse.value = false; }, 600);
+  });
+
+  // 开心摇摆 + 粒子
+  mascotHappy.value = false;
+  requestAnimationFrame(() => {
+    mascotHappy.value = true;
+    if (happyTimer) clearTimeout(happyTimer);
+    happyTimer = setTimeout(() => { mascotHappy.value = false; }, 700);
+  });
+  burstParticles();
+};
+
+onUnmounted(() => {
+  clearTimeout(orbPulseTimer);
+  clearTimeout(happyTimer);
+  clearTimeout(blinkTimer);
+  clearInterval(typeTimer);
+});
+
 const personalCourses = computed(() => learnerStore.courses
   .filter((course) => course.status === 'studying'
     || course.status === 'completed'
@@ -457,6 +633,8 @@ const certificateSub = computed(() =>
   certificateCount.value === null ? '证书数据加载中…' : `已获 ${certificateCount.value} 项专业认证`);
 
 onMounted(async () => {
+  scheduleBlink();
+  typeQuote(quotes[0]);
   const [examsResult, certificatesResult] = await Promise.allSettled([
     fetchExams(),
     fetchMyCertificates(),
@@ -661,13 +839,16 @@ watch(
   border-radius: 0.75rem;   /* 12px */
   cursor: pointer;
   text-align: left;
-  transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
-  animation: card-reveal 360ms ease-out both;
+  transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1), border-color 0.25s, box-shadow 0.25s;
 }
 .quick-card:hover {
-  transform: translateY(-2px);
+  transform: translateY(-6px);
   border-color: var(--app-accent);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 12px 24px rgba(0, 82, 118, 0.16), 0 4px 8px rgba(0, 0, 0, 0.06);
+}
+.quick-card:active {
+  transform: translateY(-2px);
+  transition-duration: 0.1s;
 }
 .quick-card-last {
   grid-column: span 2;
@@ -692,7 +873,7 @@ watch(
   transition: transform 0.2s;
 }
 .quick-card:hover .quick-card-icon {
-  transform: scale(1.05);
+  transform: scale(1.12) translateY(-1px);
 }
 .quick-icon {
   width: 1.25rem;
@@ -982,18 +1163,27 @@ watch(
   display: flex;
   flex-direction: column;
   cursor: pointer;
-  animation: card-reveal 360ms ease-out both;
-  transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
+  transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1), border-color 0.28s, box-shadow 0.28s;
 }
 .guide-card:hover {
-  transform: translateY(-2px);
+  transform: translateY(-8px);
   border-color: var(--app-accent);
-  box-shadow: 0 4px 14px rgba(37, 99, 145, 0.1);
+  box-shadow: 0 18px 40px rgba(37, 99, 145, 0.18), 0 6px 14px rgba(37, 99, 145, 0.08);
+}
+.guide-card:active {
+  transform: translateY(-3px);
+  transition-duration: 0.1s;
 }
 .guide-card:focus-visible {
   outline: 2px solid var(--app-accent);
   outline-offset: 2px;
 }
+@media (prefers-reduced-motion: reduce) {
+  .guide-card { transition: none; }
+  .guide-card:hover,
+  .guide-card:active { transform: none; }
+}
+/* 插画区轻微放大 + 文字区上移，形成分层视差感 */
 .guide-visual {
   position: relative;
   height: 7.5rem;
@@ -1001,6 +1191,7 @@ watch(
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
 }
 .guide-visual-blue {
   background: linear-gradient(135deg, #d9efff, #eef8ff);
@@ -1150,6 +1341,19 @@ watch(
 .guide-growth-path i:nth-child(3) { right: 8%; bottom: 0.55rem; }
 .guide-card-body {
   padding: 0.875rem;
+  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.guide-card:hover .guide-visual {
+  transform: scale(1.04);
+}
+.guide-card:hover .guide-card-body {
+  transform: translateY(-2px);
+}
+@media (prefers-reduced-motion: reduce) {
+  .guide-visual,
+  .guide-card-body { transition: none; }
+  .guide-card:hover .guide-visual,
+  .guide-card:hover .guide-card-body { transform: none; }
 }
 .guide-title {
   margin-bottom: 0.35rem;
@@ -1328,9 +1532,10 @@ watch(
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
   animation: card-reveal 360ms ease-out both;
 }
-.cat-corner {
+/* ========== 学习陪伴角：守护兽本体 ========== */
+.focus-corner {
   position: relative;
-  min-height: 300px;
+  min-height: 340px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1338,38 +1543,259 @@ watch(
   overflow: hidden;
   border: 1px solid var(--app-border);
   border-radius: 0.75rem;
+  padding: 1.25rem 1rem;
   background:
-    radial-gradient(ellipse at 50% 100%, rgba(191, 226, 250, 0.42), transparent 58%),
-    linear-gradient(145deg, #f8fcff, #edf7ff);
+    radial-gradient(ellipse at 50% 55%, var(--app-accent-dim), transparent 62%),
+    linear-gradient(145deg, var(--app-surface), var(--app-surface-2));
 }
-.study-cat {
-  width: min(150px, 44%);
-  overflow: visible;
-  animation: cat-bob 3s ease-in-out infinite;
-}
-.cat-sparkle {
+
+/* 漂浮小星星装饰 */
+.float-deco {
   position: absolute;
-  color: #f0bf67;
-  font-size: 1.25rem;
+  color: var(--app-accent);
+  opacity: 0.45;
+  pointer-events: none;
+  font-size: 1rem;
+  animation: float-deco 5s ease-in-out infinite;
 }
-.cat-sparkle-left {
-  top: 28%;
-  left: 28%;
+.float-deco--1 { top: 18%; left: 14%; font-size: 1.1rem; animation-delay: 0s; }
+.float-deco--2 { top: 32%; right: 16%; color: #f5b642; animation-delay: 1.4s; }
+.float-deco--3 { bottom: 30%; left: 20%; font-size: 0.8rem; animation-delay: 2.6s; }
+@keyframes float-deco {
+  0%, 100% { transform: translateY(0) rotate(0deg); opacity: 0.3; }
+  50% { transform: translateY(-14px) rotate(45deg); opacity: 0.7; }
 }
-.cat-sparkle-right {
-  top: 38%;
-  right: 27%;
-  color: #8bc9ed;
-}
-.cat-caption {
-  margin-top: 0.5rem;
-  color: var(--app-text-3);
-  font-size: 0.8125rem;
+
+/* 互动计数徽标 */
+.tap-badge {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.85rem;
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  background: var(--app-accent);
+  color: var(--app-on-accent-fill);
+  font-size: 0.68rem;
   font-weight: 600;
+  box-shadow: 0 2px 8px var(--app-accent-a20);
 }
-@keyframes cat-bob {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-5px); }
+.badge-pop-enter-active { animation: badge-pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); }
+@keyframes badge-pop {
+  0% { transform: scale(0.4); opacity: 0; }
+  60% { transform: scale(1.12); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.mascot-stage {
+  position: relative;
+  perspective: 620px;
+  --cat-tilt-x: 0deg;
+  --cat-tilt-y: 0deg;
+}
+.mascot-btn {
+  position: relative;
+  width: 180px;
+  height: 240px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  transform-style: preserve-3d;
+  transform: rotateX(var(--cat-tilt-x)) rotateY(var(--cat-tilt-y));
+  transition: transform 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+  animation: mascot-bob 3.4s ease-in-out infinite;
+}
+.mascot-btn:focus-visible { outline: 2px solid var(--app-accent); outline-offset: 6px; }
+.mascot-img {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+  transform: translateZ(22px);
+  z-index: 1;
+}
+
+/* 点击弹跳 */
+.mascot-btn.is-pulse { animation: mascot-tap 0.55s ease-out; }
+/* 开心摇摆 */
+.mascot-btn.is-happy .mascot-img { animation: mascot-wiggle 0.7s ease-in-out; }
+@keyframes mascot-bob {
+  0%, 100% { transform: translateY(0) rotateX(var(--cat-tilt-x)) rotateY(var(--cat-tilt-y)); }
+  50% { transform: translateY(-7px) rotateX(var(--cat-tilt-x)) rotateY(var(--cat-tilt-y)); }
+}
+@keyframes mascot-tap {
+  0% { transform: scale(1) rotateX(var(--cat-tilt-x)) rotateY(var(--cat-tilt-y)); }
+  35% { transform: scale(0.88) translateY(6px) rotateX(var(--cat-tilt-x)) rotateY(var(--cat-tilt-y)); }
+  70% { transform: scale(1.06) translateY(-4px) rotateX(var(--cat-tilt-x)) rotateY(var(--cat-tilt-y)); }
+  100% { transform: scale(1) rotateX(var(--cat-tilt-x)) rotateY(var(--cat-tilt-y)); }
+}
+@keyframes mascot-wiggle {
+  0%, 100% { transform: translateZ(22px) rotate(0deg); }
+  25% { transform: translateZ(22px) rotate(-8deg); }
+  75% { transform: translateZ(22px) rotate(8deg); }
+}
+
+/* 守护兽光环 */
+.mascot-halo {
+  position: absolute;
+  left: 50%;
+  top: 52%;
+  width: 200px;
+  height: 200px;
+  margin: -100px 0 0 -100px;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--app-accent-a20), transparent 68%);
+  animation: halo-pulse 3.4s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes halo-pulse {
+  0%, 100% { transform: scale(0.9); opacity: 0.5; }
+  50% { transform: scale(1.1); opacity: 0.9; }
+}
+
+/* 眨眼遮罩（用两道短横盖在眼部区域） */
+.mascot-blink {
+  position: absolute;
+  left: 50%;
+  top: 46%;
+  width: 96px;
+  height: 8px;
+  margin-left: -48px;
+  z-index: 2;
+  pointer-events: none;
+}
+.mascot-blink::before,
+.mascot-blink::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  width: 26px;
+  height: 5px;
+  border-radius: 3px;
+  background: #f2c9a5;
+}
+.mascot-blink::before { left: 14px; }
+.mascot-blink::after { right: 14px; }
+
+/* 点击迸发粒子 */
+.spark-particle {
+  position: absolute;
+  left: var(--px);
+  top: var(--py);
+  z-index: 3;
+  font-size: 1rem;
+  color: var(--pc);
+  pointer-events: none;
+  animation: spark-fly 0.9s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+@keyframes spark-fly {
+  0% { transform: translate(0, 0) scale(0.4) rotate(0deg); opacity: 1; }
+  100% { transform: translate(var(--dx), var(--dy)) scale(1.3) rotate(180deg); opacity: 0; }
+}
+
+/* 守护兽聊天气泡 */
+.chat-bubble-wrap {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  padding: 0.5rem 0.25rem 0.2rem;
+  perspective: 600px;
+}
+.chat-bubble {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  max-width: 100%;
+  min-height: 62px;
+  padding: 0.7rem 1.1rem 0.7rem 0.7rem;
+  background: linear-gradient(135deg, #0b3a5c 0%, #005576 100%);
+  border-radius: 1.15rem;
+  box-shadow:
+    0 12px 28px rgba(0, 85, 118, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18);
+}
+/* 指向守护兽的小尖角 */
+.bubble-tail {
+  position: absolute;
+  top: -6px;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-left: 9px solid transparent;
+  border-right: 9px solid transparent;
+  border-bottom: 8px solid #0b3a5c;
+  transform: translateX(-50%) rotate(12deg);
+}
+/* 头像：凸出的圆形白底 */
+.bubble-avatar {
+  position: relative;
+  flex-shrink: 0;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: var(--app-surface);
+  padding: 2px;
+  box-shadow: 0 4px 12px var(--app-accent-a20);
+}
+.bubble-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 40%;
+  border-radius: 50%;
+}
+.bubble-body { min-width: 0; flex: 0 1 auto; }
+.bubble-name {
+  display: block;
+  font-size: 0.66rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.82);
+  letter-spacing: 0.06em;
+  margin-bottom: 0.15rem;
+}
+.bubble-text {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  line-height: 1.45;
+  color: #ffffff;
+  min-height: 1.45em;
+  min-width: 13.5em;
+  letter-spacing: 0.01em;
+}
+.typing-caret {
+  display: inline-block;
+  width: 2px;
+  height: 1em;
+  margin-left: 2px;
+  vertical-align: -0.12em;
+  border-radius: 2px;
+  background: var(--app-accent);
+  animation: caret-blink 0.7s steps(1) infinite;
+}
+@keyframes caret-blink { 0%, 50% { opacity: 1; } 51%, 100% { opacity: 0; } }
+.bubble-pop-enter-active { animation: bubble-in 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); }
+.bubble-pop-leave-active { transition: opacity 0.15s ease, transform 0.15s ease; }
+.bubble-pop-enter-from { opacity: 0; transform: translateY(12px) scale(0.92); }
+.bubble-pop-leave-to { opacity: 0; transform: translateY(-4px) scale(0.97); }
+@keyframes bubble-in {
+  0% { opacity: 0; transform: translateY(14px) scale(0.9); }
+  65% { transform: translateY(-2px) scale(1.02); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+.focus-hint {
+  margin: 0.75rem 0 0;
+  font-size: 0.7rem;
+  color: var(--app-text-4);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mascot-btn, .mascot-img, .mascot-halo, .float-deco { animation: none !important; transition: none !important; }
+  .mascot-btn.is-pulse, .mascot-btn.is-happy .mascot-img { animation: none !important; }
+  .spark-particle { display: none; }
+  .typing-caret { display: none; }
 }
 .side-panel-header {
   display: flex;

@@ -3,14 +3,12 @@ server:
   servlet:
     context-path: /api
     encoding:
-      charset: UTF-8
       force: true
 
 spring:
   application:
     name: emp-server
   datasource:
-    driver-class-name: com.mysql.cj.jdbc.Driver
     url: jdbc:mysql://localhost:3306/enterprise_academy?useSSL=false&serverTimezone=Asia/Shanghai&characterEncoding=utf8&allowPublicKeyRetrieval=true&rewriteBatchedStatements=true
     username: ${MYSQL_USERNAME:root}
     password: ${MYSQL_PASSWORD:123456}
@@ -26,31 +24,22 @@ spring:
       database: ${REDIS_DATABASE:0}
   servlet:
     multipart:
-      # 课程视频走分片直传，普通课件/头像走服务端转发，这里放开单文件上限
-      max-file-size: 2048MB
-      max-request-size: 2048MB
-  mvc:
-    problemdetails:
-      enabled: false
+      # 服务端转发上传只面向头像、图片、PDF 等小文件；视频走预签名直传，与 FileController 的 50MB 限制对齐
+      max-file-size: 51MB
+      max-request-size: 55MB
   jackson:
     time-zone: Asia/Shanghai
     date-format: yyyy-MM-dd HH:mm:ss
 
 mybatis-plus:
-  mapper-locations: classpath*:/mapper/*.xml
-  type-aliases-package: com.joker.emp.entity
-  configuration:
-    map-underscore-to-camel-case: true
   global-config:
     banner: false
-    db-config:
-      id-type: auto
 
 emp:
   cache:
     api-response-ttl: ${API_RESPONSE_CACHE_TTL:1s}
   jwt:
-    # 生产环境务必用 EMP_JWT_SECRET 覆盖；HS256 要求至少 32 字节
+    # 生产环境务必用 EMP_JWT_SECRET 覆盖；密钥至少 32 字节，JWT 算法按密钥长度自动选择
     secret: ${EMP_JWT_SECRET:emp-academy-dev-secret-key-change-me-in-production-2025}
     # 访问令牌短时效，前端通过 /auth/refresh 自动续期
     expire-minutes: ${EMP_JWT_EXPIRE_MINUTES:15}
@@ -67,14 +56,14 @@ emp:
     register-window-minutes: ${AUTH_REGISTER_WINDOW_MINUTES:60}
     # 仅在可信反向代理之后才信任 X-Forwarded-For / X-Real-IP，避免伪造 IP 绕过限流
     trust-forwarded-headers: ${AUTH_TRUST_FORWARDED_HEADERS:false}
-    # 演示模式允许 password_hash 为空的种子账号用 123456 登录；默认关闭
-    demo-mode: ${EMP_DEMO_MODE:false}
+    # 演示模式允许 password_hash 为空的种子账号用 123456 登录；本地默认开启以便直接启动，生产必须显式设为 false
+    demo-mode: ${EMP_DEMO_MODE:true}
   minio:
     endpoint: ${MINIO_ENDPOINT:http://127.0.0.1:9000}
     access-key: ${MINIO_ACCESS_KEY:zhang}
     secret-key: ${MINIO_SECRET_KEY:12345678}
     bucket: ${MINIO_BUCKET:emp-academy}
-    # 默认不开放公共读；文件访问统一走后端鉴权 /files/view 或预签名 URL
+    # 默认不开放公共读；/files/view/** 是公开稳定地址，敏感文件请用预签名 URL
     public-read: ${MINIO_PUBLIC_READ:false}
     # 预签名 URL 有效期：视频播放与附件下载共用
     presign-expiry-minutes: 60
@@ -82,4 +71,3 @@ emp:
 logging:
   level:
     root: info
-    com.joker.emp: info

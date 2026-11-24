@@ -1,7 +1,7 @@
 <template>
   <div class="certificate-page">
     <!-- 页面标题 -->
-    <header class="page-header">
+    <header class="page-header" v-reveal>
       <div class="page-heading">
         <div class="update-badge">
           <span>我的学习成果</span>
@@ -13,12 +13,12 @@
 
     <div class="certificate-content">
       <!-- 统计卡片 -->
-      <section class="metrics-grid" aria-label="证书统计">
+      <section class="metrics-grid" v-reveal-rows aria-label="证书统计">
         <article class="metric-card">
           <div class="metric-copy">
             <div class="metric-label">已获得官方认证</div>
             <div class="metric-value">
-              {{ certificates.length }} <span class="metric-unit">张证书</span>
+              <span v-count-up="certificates.length"></span> <span class="metric-unit">张证书</span>
             </div>
             <div class="metric-note metric-note--blue">
               <span>{{ loading ? '正在同步' : loadError ? '暂不可用' : '个人证书记录' }}</span>
@@ -76,7 +76,7 @@
       </nav>
 
       <!-- 证书卡片列表 -->
-      <section class="certificate-grid" aria-label="证书列表">
+      <section class="certificate-grid" v-reveal-rows aria-label="证书列表">
         <p v-if="loading" class="certificate-empty">正在加载证书记录…</p>
         <p v-else-if="loadError" class="certificate-empty certificate-empty--error">{{ loadError }}</p>
         <p v-else-if="!filteredCerts.length" class="certificate-empty">

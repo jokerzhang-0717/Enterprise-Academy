@@ -31,7 +31,7 @@ class RedisApiResponseCacheTest {
 
   @Test
   void servesCachedResponseForAuthenticatedRead() throws Exception {
-    AuthContext.set(new AuthUser(7L, "EMP-7", "学员", 1, 1L));
+    AuthContext.set(new AuthUser(7L, "YS-7", "学员", 1, 1L));
     when(redis.opsForValue()).thenReturn(values);
     when(values.get(anyString())).thenAnswer(invocation ->
         "api:response-cache:generation".equals(invocation.getArgument(0))
@@ -47,7 +47,7 @@ class RedisApiResponseCacheTest {
 
   @Test
   void skipsCacheWhenRedisIsUnavailable() throws Exception {
-    AuthContext.set(new AuthUser(7L, "EMP-7", "学员", 1, 1L));
+    AuthContext.set(new AuthUser(7L, "YS-7", "学员", 1, 1L));
     when(redis.opsForValue()).thenThrow(
         new org.springframework.data.redis.RedisConnectionFailureException("offline"));
 

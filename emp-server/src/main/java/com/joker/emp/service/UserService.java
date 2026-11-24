@@ -55,6 +55,8 @@ public class UserService {
                 .or().like(SysUser::getEmployeeNo, keyword)
                 .or().like(SysUser::getPhone, keyword)
                 .or().like(SysUser::getEmail, keyword))
+            // 管理员（role=2）固定排在列表最前，方便在用户列表中优先看到 admin
+            .orderByDesc(SysUser::getRole)
             .orderByAsc(SysUser::getId));
 
     List<SysUser> users = result.getRecords();

@@ -241,7 +241,7 @@
           <div class="att-panel__title">
             <FileText class="att-icon att-icon--blue" aria-hidden="true" />
             <h3>请假审批记录</h3>
-            <span class="att-count">{{ leaveRecords.length }}</span>
+            <span class="att-count"><span v-count-up="leaveRecords.length"></span></span>
           </div>
         </div>
 

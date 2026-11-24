@@ -1,11 +1,11 @@
 <template>
   <div class="crs-page">
     <!-- 0. 视频课程分类筛选条 -->
-    <section class="crs-toolbar" aria-label="课程筛选">
+    <section class="crs-toolbar" v-reveal aria-label="课程筛选">
       <div class="crs-toolbar__top">
         <div class="crs-toolbar__heading">
           <h1 class="crs-toolbar__title">课程中心</h1>
-          <span class="crs-toolbar__result">{{ filteredCourses.length }} 门课程</span>
+          <span class="crs-toolbar__result"><span v-count-up="filteredCourses.length"></span> 门课程</span>
         </div>
         <label class="crs-search">
           <Search class="crs-search__icon" aria-hidden="true" />
@@ -65,7 +65,7 @@
     </section>
 
     <!-- 1. Course Cards Grid -->
-    <div class="crs-grid">
+    <div class="crs-grid" v-reveal-rows>
       <article
         v-for="course in filteredCourses"
         :id="`course-card-${course.id}`"
