@@ -46,7 +46,7 @@
 
 | 层级 | 技术 |
 | --- | --- |
-| 前端 | Vue 3、Vue Router 4、Vite、Tailwind CSS、Element Plus Icons、Lucide Vue |
+| 前端 | Vue 3.5、Vue Router 4.6、Vite 8、原生 CSS（手写工具类）、Element Plus Icons、Lucide Vue |
 | 后端 | Spring Boot 3.0、MyBatis-Plus 3.5、JWT（JJWT 0.12）、BCrypt |
 | 数据库 | MySQL 8.0（InnoDB / utf8mb4） |
 | 缓存 / 会话 | Redis（API 读缓存、学习计时会话） |
