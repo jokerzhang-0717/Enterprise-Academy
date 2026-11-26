@@ -1,7 +1,6 @@
 <template>
   <div class="admin-leave admin-fit-page">
 
-    <!-- 页头 -->
     <div class="page-head">
       <div>
         <h1 class="page-title">请假审批</h1>
@@ -9,7 +8,6 @@
       </div>
     </div>
 
-    <!-- 统计条 -->
     <div class="overview-strip">
       <div class="overview-item">
         <span class="overview-value overview-value--gold">{{ pendingCount }}</span>
@@ -65,7 +63,6 @@
       <span class="filter-count">{{ filteredRequests.length }} 条申请</span>
     </div>
 
-    <!-- 请假审批表 -->
     <div class="table-wrap">
       <table class="data-table">
         <thead>
@@ -139,7 +136,6 @@
       :total-pages="totalPages"
     />
 
-    <!-- 审批确认 -->
     <ConfirmDialog
       v-if="confirmState"
       :title="confirmState.title"
@@ -152,7 +148,6 @@
       @confirm="acceptConfirm"
     />
 
-    <!-- 请假事由详情 -->
     <Teleport to="body">
       <div v-if="reasonDetail" class="reason-modal" @click.self="closeReason">
         <div class="reason-dialog" role="dialog" aria-modal="true" aria-labelledby="reason-dialog-title">
@@ -187,7 +182,6 @@
       </div>
     </Teleport>
 
-    <!-- 驳回理由 -->
     <Teleport to="body">
       <div v-if="rejectTarget" class="reason-modal" @click.self="closeReject">
         <div class="reason-dialog" role="dialog" aria-modal="true" aria-labelledby="reject-dialog-title">
@@ -269,7 +263,6 @@ const approvedCount = computed(() => requests.value.filter(r => r.status === 'ap
 const rejectedCount = computed(() => requests.value.filter(r => r.status === 'rejected').length);
 const departments = computed(() => [...new Set(requests.value.map(r => r.department).filter(Boolean))].sort());
 
-/* 接口只给按状态的统计，本周人次按提交时间在本地算 */
 const weekCount = computed(() => {
   const now = new Date();
   const day = (now.getDay() + 6) % 7;
@@ -301,12 +294,10 @@ const statusLabelMap = {
 };
 const statusLabel = (status) => statusLabelMap[status] || status;
 
-/* ---------- 事由详情 ---------- */
 const reasonDetail = ref(null);
 const openReason = (item) => { reasonDetail.value = item; };
 const closeReason = () => { reasonDetail.value = null; };
 
-/* ---------- 驳回理由 ---------- */
 const rejectTarget = ref(null);
 const rejectRemark = ref('');
 const rejectError = ref('');
@@ -393,7 +384,6 @@ button { font-family: inherit; cursor: pointer; }
   min-height: 100%;
 }
 
-/* ========== 页头 ========== */
 .page-head {
   display: flex;
   align-items: flex-end;
@@ -415,7 +405,6 @@ button { font-family: inherit; cursor: pointer; }
   color: var(--app-text-4);
 }
 
-/* ========== 概览条 ========== */
 .overview-strip {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -448,7 +437,6 @@ button { font-family: inherit; cursor: pointer; }
   color: var(--app-text-4);
 }
 
-/* ========== 筛选工具栏 ========== */
 .filter-toolbar {
   display: grid;
   grid-template-columns: minmax(140px, 180px) minmax(140px, 180px) minmax(220px, 1fr) auto;
@@ -510,7 +498,6 @@ button { font-family: inherit; cursor: pointer; }
   border-radius: 999px; white-space: nowrap;
 }
 
-/* ========== 表格 ========== */
 .table-wrap {
   background: var(--app-surface);
   border: 1px solid var(--app-border);
@@ -549,7 +536,6 @@ button { font-family: inherit; cursor: pointer; }
 .data-table tbody tr:hover td { background: var(--app-accent-soft); }
 .data-table tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--app-accent); }
 
-/* 悬停整行时，整行文字统一变为主色 */
 .data-table tbody tr:hover td,
 .data-table tbody tr:hover .cell-name,
 .data-table tbody tr:hover .cell-meta,
@@ -561,14 +547,12 @@ button { font-family: inherit; cursor: pointer; }
 th.num, td.num { text-align: right; white-space: nowrap; }
 th.ops, td.ops { text-align: right; white-space: nowrap; }
 
-/* 表头默认 left 优先级更高,这里提权让数字列/操作列的表头与其内容对齐 */
 .data-table thead th.num,
 .data-table thead th.ops { text-align: right; }
 
 .cell-muted { color: var(--app-text-4); white-space: nowrap; }
 .empty-cell { text-align: center; color: var(--app-text-5); padding: 28px 0 !important; }
 
-/* ========== 申请人单元格 ========== */
 .cell-user {
   display: flex;
   align-items: center;
@@ -613,7 +597,6 @@ th.ops, td.ops { text-align: right; white-space: nowrap; }
   white-space: nowrap;
 }
 
-/* ========== 类型与事由 ========== */
 .type-chip {
   display: inline-flex;
   padding: 3px 10px;
@@ -632,7 +615,6 @@ th.ops, td.ops { text-align: right; white-space: nowrap; }
   cursor: pointer;
 }
 
-/* 事由最多显示两行，超出省略；点击单元格查看完整内容 */
 .reason-text {
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -645,7 +627,6 @@ th.ops, td.ops { text-align: right; white-space: nowrap; }
   transition: color 0.15s;
 }
 
-/* ========== 状态徽标 ========== */
 .status-pill {
   display: inline-flex;
   align-items: center;
@@ -661,7 +642,6 @@ th.ops, td.ops { text-align: right; white-space: nowrap; }
 .status-pill--approved { color: var(--app-emerald-fg); background: var(--app-emerald-bg); }
 .status-pill--rejected { color: var(--app-rose-fg); background: var(--app-rose-bg); }
 
-/* ========== 行操作 ========== */
 .row-actions {
   display: inline-flex;
   gap: 6px;
@@ -680,7 +660,6 @@ th.ops, td.ops { text-align: right; white-space: nowrap; }
 .text-btn--reject { color: var(--app-rose-fg); background: var(--app-rose-bg); }
 .text-btn--reject:hover { background: var(--app-rose-line); }
 
-/* ========== 事由详情弹窗 ========== */
 .reason-modal {
   position: fixed;
   inset: 0;
@@ -779,7 +758,6 @@ th.ops, td.ops { text-align: right; white-space: nowrap; }
   color: var(--app-text-5);
 }
 
-/* 驳回理由（列表 / 详情） */
 .reason-reject {
   margin-top: 6px;
   font-size: 11.5px;
@@ -813,7 +791,6 @@ th.ops, td.ops { text-align: right; white-space: nowrap; }
   word-break: break-word;
 }
 
-/* 驳回理由输入 */
 .reject-field {
   display: block;
   margin-top: 16px;
@@ -918,8 +895,6 @@ th.ops, td.ops { text-align: right; white-space: nowrap; }
   .filter-select, .filter-search, .filter-count { grid-column: 1; }
 }
 
-/* 1366 / 1440 这类窄屏:收窄左右内边距,
-   否则 8 列的最小宽度会超过容器,挤出横向滚动条并连带压出纵向滚动条 */
 @media (max-width: 1440px) {
   .data-table thead th,
   .data-table tbody td {
@@ -929,7 +904,6 @@ th.ops, td.ops { text-align: right; white-space: nowrap; }
   .reason-cell { width: 280px; min-width: 220px; }
 }
 
-/* 窄屏下收窄事由列,避免表格横向溢出 */
 @media (max-width: 1280px) {
   .reason-cell { width: 240px; min-width: 200px; }
   .reason-text { font-size: 12px; }

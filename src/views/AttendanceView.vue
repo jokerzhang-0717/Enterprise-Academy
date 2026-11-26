@@ -1,6 +1,6 @@
 <template>
   <div class="att-page">
-    <!-- Toast -->
+
     <Transition name="attendance-toast">
       <div v-if="notice" role="status" class="att-toast">
         <span class="att-toast__icon">
@@ -16,7 +16,6 @@
       </div>
     </Transition>
 
-    <!-- 1. Header -->
     <header class="att-header">
       <div class="att-header__meta">
         <span class="att-tag">HYBRID LMS ATTENDANCE</span>
@@ -28,7 +27,6 @@
       </p>
     </header>
 
-    <!-- 2. Quick Punch Box -->
     <section class="att-panel att-punch">
       <div class="att-punch__head">
         <div class="att-punch__label">
@@ -39,7 +37,7 @@
       </div>
 
       <div class="att-punch__grid">
-        <!-- 签到状态 -->
+
         <div v-if="isCheckedIn" class="att-punch__card att-punch__card--done">
           <span class="att-punch__badge att-punch__badge--done">
             <CircleCheck class="att-icon" aria-hidden="true" />
@@ -69,7 +67,6 @@
           <ChevronRight class="att-icon att-punch__arrow" aria-hidden="true" />
         </button>
 
-        <!-- 签退 -->
         <div v-if="isCheckedOut" class="att-punch__card att-punch__card--done">
           <span class="att-punch__badge att-punch__badge--done">
             <CircleCheck class="att-icon" aria-hidden="true" />
@@ -105,9 +102,8 @@
       </div>
     </section>
 
-    <!-- 3. Leave Form & Records -->
     <section class="att-columns">
-      <!-- Left: 请假申请 -->
+
       <div class="att-panel att-col">
         <div class="att-panel__head">
           <div class="att-panel__title">
@@ -235,7 +231,6 @@
         </form>
       </div>
 
-      <!-- Right: 审批记录 -->
       <div class="att-panel att-col">
         <div class="att-panel__head">
           <div class="att-panel__title">
@@ -441,7 +436,7 @@ const openDatePicker = (event) => {
     try {
       input.showPicker();
     } catch {
-      // 浏览器不支持或不在用户手势中时忽略，仍可直接输入日期
+
     }
   }
 };
@@ -508,7 +503,7 @@ const clearNotice = () => {
 </script>
 
 <style scoped>
-/* ============ Design tokens ============ */
+
 .att-page {
   --c-text: var(--app-text);
   --c-text-sub: var(--app-text-3);
@@ -532,7 +527,6 @@ const clearNotice = () => {
   font-family: 'PingFang SC', 'Microsoft YaHei', 'Helvetica Neue', sans-serif;
 }
 
-/* 所有图标使用统一尺寸和线条粗细。 */
 .att-icon {
   display: block;
   width: 18px;
@@ -545,13 +539,11 @@ const clearNotice = () => {
 .att-icon--blue { color: var(--c-blue); }
 .att-icon--purple { color: var(--c-purple-icon); }
 
-/* ============ Toast ============ */
 .att-toast {
   position: fixed;
   left: 50%;
   top: 80px;
-  /* 入场动画的 translate(-50%,-8px) 只在 enter-from 帧生效,
-     基础态必须自己带 -50%,否则动画结束后整块会向右偏移自身宽度的一半 */
+
   transform: translateX(-50%);
   z-index: 70;
   display: flex;
@@ -601,7 +593,6 @@ const clearNotice = () => {
   color: var(--c-text);
 }
 
-/* ============ Header ============ */
 .att-header__meta {
   display: flex;
   align-items: center;
@@ -635,7 +626,6 @@ const clearNotice = () => {
   color: var(--c-muted);
 }
 
-/* ============ Panels ============ */
 .att-panel {
   background: var(--app-surface);
   border: 1px solid var(--c-border);
@@ -680,7 +670,6 @@ const clearNotice = () => {
   text-align: center;
 }
 
-/* ============ Quick punch ============ */
 .att-punch__head {
   display: flex;
   align-items: center;
@@ -768,7 +757,6 @@ const clearNotice = () => {
   font-weight: 500;
 }
 
-/* 签退按钮 */
 .att-punch__btn {
   display: flex;
   align-items: center;
@@ -828,7 +816,6 @@ const clearNotice = () => {
 }
 .att-punch__btn:hover .att-punch__arrow { transform: translateX(2px); }
 
-/* ============ Two columns ============ */
 .att-columns {
   display: grid;
   grid-template-columns: 1fr;
@@ -839,7 +826,6 @@ const clearNotice = () => {
   .att-columns { grid-template-columns: 1fr 1fr; }
 }
 
-/* ============ Form ============ */
 .att-form {
   display: flex;
   flex-direction: column;
@@ -977,7 +963,6 @@ const clearNotice = () => {
 }
 .att-btn-primary:hover { background: var(--c-purple-hover); }
 
-/* ============ Records ============ */
 .att-records {
   height: 520px;
   overflow: hidden;
@@ -1081,7 +1066,6 @@ const clearNotice = () => {
   word-break: break-word;
 }
 
-/* ============ Pagination ============ */
 .att-pagination {
   display: flex;
   align-items: center;
@@ -1130,7 +1114,6 @@ const clearNotice = () => {
   font-weight: 700;
 }
 
-/* ============ Toast transition ============ */
 .attendance-toast-enter-active,
 .attendance-toast-leave-active {
   transition: opacity 180ms ease, transform 180ms ease;

@@ -1,7 +1,6 @@
 <template>
   <div class="analytics-page">
 
-    <!-- 页面标题 -->
     <div class="page-header" v-reveal>
       <div class="breadcrumb">
         <span>企业赋能平台</span>
@@ -11,10 +10,8 @@
       <h1 class="page-title">{{ user.name }} · 个人研学效能全景</h1>
     </div>
 
-    <!-- 四个核心指标卡片 -->
     <div class="metrics-grid" v-reveal-rows>
 
-      <!-- 指标 1：累计有效学时 -->
       <div class="metric-card">
         <div class="metric-top">
           <span class="metric-label">累计有效学时</span>
@@ -28,7 +25,6 @@
         </div>
       </div>
 
-      <!-- 指标 2：已完成专修课程 -->
       <div class="metric-card">
         <div class="metric-top">
           <span class="metric-label">已完成专修课程</span>
@@ -42,7 +38,6 @@
         </div>
       </div>
 
-      <!-- 指标 3：考评平均分 -->
       <div class="metric-card">
         <div class="metric-top">
           <span class="metric-label">考评平均分</span>
@@ -58,11 +53,9 @@
 
     </div>
 
-    <!-- 每月学习时长柱状图 -->
     <div class="chart-section" v-reveal="120">
       <div class="chart-card">
 
-        <!-- 图表标题 -->
         <div class="chart-header">
           <h3 class="chart-title">每月学习时长</h3>
           <div class="chart-legend">
@@ -82,7 +75,6 @@
           <button class="retry-button" type="button" @click="emit('navigate', 'courses')">去课程中心学习</button>
         </div>
 
-        <!-- 柱状图 -->
         <div v-else class="chart-body">
           <svg class="chart-svg" viewBox="0 0 700 250" role="img" aria-label="近六个月每月学习时长柱状图">
             <g v-for="tick in chartTicks" :key="tick.value">
@@ -238,14 +230,13 @@ onMounted(loadDashboard);
 </script>
 
 <style scoped>
-/* ========== 全局重置 ========== */
+
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
 }
 
-/* ========== 页面布局 ========== */
 .analytics-page {
   display: flex;
   flex-direction: column;
@@ -253,7 +244,6 @@ onMounted(loadDashboard);
   padding-bottom: 48px;
 }
 
-/* ========== 页面标题 ========== */
 .page-header {
   display: flex;
   flex-direction: column;
@@ -285,7 +275,6 @@ onMounted(loadDashboard);
   letter-spacing: -0.025em;
 }
 
-/* ========== 指标卡片网格 ========== */
 .metrics-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -319,7 +308,6 @@ onMounted(loadDashboard);
   color: var(--app-text-4);
 }
 
-/* 图标背景 */
 .metric-icon {
   width: 32px;
   height: 32px;
@@ -345,7 +333,6 @@ onMounted(loadDashboard);
   color: var(--app-violet-fg);
 }
 
-/* 数字 */
 .metric-bottom {
   margin-top: 24px;
   display: flex;
@@ -370,7 +357,6 @@ onMounted(loadDashboard);
   color: var(--app-text-4);
 }
 
-/* ========== 图表区域 ========== */
 .chart-section {
   display: grid;
   grid-template-columns: repeat(12, 1fr);
@@ -389,7 +375,6 @@ onMounted(loadDashboard);
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
-/* 图表标题 */
 .chart-header {
   display: flex;
   align-items: center;
@@ -449,7 +434,6 @@ onMounted(loadDashboard);
   cursor: pointer;
 }
 
-/* 图表主体 */
 .chart-body {
   padding: 12px 0 4px;
 }
@@ -460,7 +444,6 @@ onMounted(loadDashboard);
   height: 260px;
 }
 
-/* 柱状图交互 */
 .bar-group {
   cursor: pointer;
 }
@@ -473,7 +456,6 @@ onMounted(loadDashboard);
   fill: var(--app-accent-sky-400);
 }
 
-/* 提示气泡（默认隐藏，hover 显示） */
 .bar-tooltip {
   opacity: 0;
   pointer-events: none;
@@ -484,7 +466,6 @@ onMounted(loadDashboard);
   opacity: 1;
 }
 
-/* ========== 响应式 ========== */
 @media (max-width: 1024px) {
   .metrics-grid {
     grid-template-columns: repeat(2, 1fr);

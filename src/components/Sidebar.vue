@@ -1,7 +1,6 @@
 <template>
   <aside class="sidebar">
 
-    <!-- 品牌头部 -->
     <div class="brand-header" @click="$emit('select-view', 'home')">
       <div class="brand-logo">
         <School class="sidebar-icon sidebar-brand-icon" />
@@ -12,7 +11,6 @@
       </div>
     </div>
 
-    <!-- 导航菜单 -->
     <nav class="nav-menu">
       <button
         v-for="item in navItems"
@@ -28,7 +26,6 @@
       </button>
     </nav>
 
-    <!-- 底部用户卡片 -->
     <div class="sidebar-footer">
       <div class="user-card">
         <div class="user-card-info">
@@ -98,7 +95,7 @@ function isItemActive(id) {
 </script>
 
 <style scoped>
-/* ========== 全局重置 ========== */
+
 * {
   margin: 0;
   padding: 0;
@@ -110,7 +107,6 @@ button {
   cursor: pointer;
 }
 
-/* ========== 侧边栏布局 ========== */
 .sidebar {
   width: 240px;
   height: 100vh;
@@ -124,7 +120,6 @@ button {
   overflow: hidden;
 }
 
-/* ========== 品牌头部 ========== */
 .brand-header {
   display: flex;
   align-items: center;
@@ -191,7 +186,6 @@ button {
   text-transform: uppercase;
 }
 
-/* ========== 导航菜单 ========== */
 .nav-menu {
   flex: 1;
   padding: 16px 12px;
@@ -246,7 +240,6 @@ button {
   text-overflow: ellipsis;
 }
 
-/* ========== 徽章 ========== */
 .nav-badge {
   display: flex;
   align-items: center;
@@ -270,7 +263,6 @@ button {
   color: var(--app-on-fill);
 }
 
-/* ========== 底部用户卡片 ========== */
 .sidebar-footer {
   margin-top: auto;
   padding: 12px;
@@ -346,7 +338,6 @@ button {
   text-overflow: ellipsis;
 }
 
-/* 退出按钮 */
 .logout-btn {
   display: flex;
   align-items: center;

@@ -1,8 +1,8 @@
 <template>
   <div class="exm-page">
-    <!-- 1. Overview Metrics -->
+
     <div class="exm-metrics" v-reveal-rows>
-      <!-- 待参加考核 -->
+
       <div class="exm-metric">
         <div class="exm-metric__body">
           <div class="exm-metric__label">待参加考核</div>
@@ -16,7 +16,6 @@
         </div>
       </div>
 
-      <!-- 已通过认证科目 -->
       <div class="exm-metric">
         <div class="exm-metric__body">
           <div class="exm-metric__label">已通过认证科目</div>
@@ -30,7 +29,6 @@
         </div>
       </div>
 
-      <!-- 综合考核平均分 -->
       <div class="exm-metric">
         <div class="exm-metric__body">
           <div class="exm-metric__label">综合考核平均分</div>
@@ -45,9 +43,8 @@
       </div>
     </div>
 
-    <!-- 2. Upcoming Exam Arrangements -->
     <section class="exm-section">
-      <!-- 标题 + 筛选 -->
+
       <div class="exm-section__head">
         <div class="exm-section__title">
           <span class="exm-section__bar" />
@@ -84,7 +81,6 @@
         </div>
       </div>
 
-      <!-- 考试卡片列表 -->
       <div class="exm-cards" v-reveal-rows>
         <article
           v-for="exam in filteredExams"
@@ -97,7 +93,7 @@
           @click="handleCardClick(exam)"
           @keydown.enter.prevent="handleCardClick(exam)"
         >
-          <!-- 左侧信息 -->
+
           <div class="exm-card__info">
             <div class="exm-card__tags">
               <span v-if="exam.status === 'in_progress'" class="exm-badge exm-badge--live">
@@ -122,9 +118,8 @@
             </div>
           </div>
 
-          <!-- 右侧操作：始终只显示一个按钮 -->
           <div class="exm-card__actions">
-            <!-- 还有作答机会：开始 / 继续 / 重新作答 -->
+
             <button
               v-if="exam.status === 'in_progress'"
               type="button"
@@ -139,7 +134,6 @@
               </span>
             </button>
 
-            <!-- 次数用完或考核已结束：有成绩记录就直接查看成绩 -->
             <button
               v-else-if="latestAttemptOf(exam.examId)"
               type="button"
@@ -150,7 +144,6 @@
               <span>查看成绩</span>
             </button>
 
-            <!-- 未开始 -->
             <button
               v-else-if="exam.status === 'not_started'"
               type="button"
@@ -161,7 +154,6 @@
               <span>暂未开放</span>
             </button>
 
-            <!-- 已完成但没有成绩记录 -->
             <button
               v-else-if="exam.status === 'completed'"
               type="button"
@@ -186,7 +178,6 @@
       </div>
     </section>
 
-    <!-- 3. Past Exam Records -->
     <section class="exm-section exm-history">
       <div class="exm-section__head">
         <div class="exm-section__title">
@@ -269,8 +260,6 @@ onMounted(async () => {
   certificateCount.value = (certificates || []).length;
 });
 
-/* ---------- 筛选（纯函数，无副作用） ----------
-   可进入作答的状态归入「进行中」，其余归入「未开始」 */
 const examsInTab = (tab) => exams.value.filter(exam => {
   if (tab === 'in_progress') return exam.status === 'in_progress';
   if (tab === 'not_started') return exam.status === 'not_started' || exam.status === 'completed';
@@ -279,7 +268,6 @@ const examsInTab = (tab) => exams.value.filter(exam => {
 
 const filteredExams = computed(() => examsInTab(filterTab.value));
 
-/* ---------- 历史成绩：按考试取最近一次 attempt ---------- */
 const pastByExam = computed(() => {
   const map = new Map();
   for (const record of pastExams.value) {
@@ -291,7 +279,6 @@ const pastByExam = computed(() => {
 
 const latestAttemptOf = (examId) => pastByExam.value.get(Number(examId)) || null;
 
-/* 整张卡片点击进入考核详情页；卡片内按钮通过 .stop 保持原行为 */
 const handleCardClick = (exam) => {
   if (exam?.examId != null || exam?.id != null) emit('view-exam', exam);
 };
@@ -300,26 +287,24 @@ const openResult = (record) => {
   if (record?.attemptId != null) emit('view-result', record);
 };
 
-/* ---------- 筛选切换：统一入口，避免直接改 ref 造成隐式闭环 ---------- */
 const setFilterTab = (tab) => {
-  if (filterTab.value === tab) return; // 同值短路，防止无意义的重复触发
+  if (filterTab.value === tab) return;
   filterTab.value = tab;
 };
 
-/* ---------- 搜索定位滚动（修复死循环 / 爆栈风险） ---------- */
 let lastScrolledId = '';
 
 const scrollToTarget = (targetId) => {
   if (!targetId) return;
-  // 同一个目标不重复滚动；目标节点尚未渲染时不锁定，等列表数据到达后重试
+
   if (lastScrolledId === targetId) return;
 
   nextTick(() => {
-    // 不用 rAF：后台标签页/无头浏览器中 rAF 可能不触发，导致搜索定位失效
+
     const el = document.getElementById(targetId);
     if (el && typeof el.scrollIntoView === 'function') {
       lastScrolledId = targetId;
-      // 搜索定位用即时滚动，避免平滑动画在部分环境下不生效
+
       el.scrollIntoView({ behavior: 'auto', block: 'center' });
     }
   });
@@ -330,7 +315,6 @@ watch(
   ([targetId]) => {
     if (!targetId) return;
 
-    // 只在当前筛选不包含目标时才重置，且重置后值不变就不再赋值
     if (filterTab.value !== 'all') {
       filterTab.value = 'all';
     }
@@ -342,7 +326,7 @@ watch(
 </script>
 
 <style scoped>
-/* ============ Design tokens ============ */
+
 .exm-page {
   --c-text: var(--app-text);
   --c-text-sub: var(--app-text-2);
@@ -366,7 +350,6 @@ watch(
   font-family: 'PingFang SC', 'Microsoft YaHei', 'Helvetica Neue', sans-serif;
 }
 
-/* ============ Icons (lucide) ============ */
 .exm-icon {
   width: 20px;
   height: 20px;
@@ -376,7 +359,6 @@ watch(
 .exm-icon--xs { width: 14px; height: 14px; }
 .exm-icon--fill { fill: currentColor; }
 
-/* ============ Metrics ============ */
 .exm-metrics {
   display: grid;
   grid-template-columns: 1fr;
@@ -436,7 +418,6 @@ watch(
 }
 .exm-metric__icon--purple { color: var(--c-purple); }
 
-/* ============ Section head ============ */
 .exm-section {
   display: flex;
   flex-direction: column;
@@ -477,7 +458,6 @@ watch(
   color: var(--c-muted);
 }
 
-/* ---- Tabs ---- */
 .exm-tabs {
   display: flex;
   align-items: center;
@@ -509,7 +489,6 @@ watch(
   color: var(--app-on-accent-solid);
 }
 
-/* ============ Exam cards ============ */
 .exm-cards {
   display: flex;
   flex-direction: column;
@@ -598,7 +577,6 @@ watch(
   color: var(--c-text-sub);
 }
 
-/* ---- Card actions ---- */
 .exm-card__actions {
   display: flex;
   flex-direction: column;
@@ -668,7 +646,6 @@ watch(
   background: var(--c-blue-bg);
 }
 
-/* ============ 历史成绩 ============ */
 .exm-history__list {
   display: flex;
   flex-direction: column;

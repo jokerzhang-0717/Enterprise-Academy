@@ -51,11 +51,11 @@ import { WarningFilled, CircleCheckFilled, InfoFilled } from '@element-plus/icon
 
 const props = defineProps({
   open:        { type: Boolean, default: true },
-  tone:        { type: String,  default: 'danger' },   // danger | success | primary
+  tone:        { type: String,  default: 'danger' },
   title:       { type: String,  required: true },
   subtitle:    { type: String,  default: '' },
-  rows:        { type: Array,   default: () => [] },   // [{ label, value }]
-  list:        { type: Array,   default: () => [] },   // ['规则一', '规则二']
+  rows:        { type: Array,   default: () => [] },
+  list:        { type: Array,   default: () => [] },
   tip:         { type: String,  default: '' },
   confirmText: { type: String,  default: '确认' },
   cancelText:  { type: String,  default: '取消' },
@@ -114,7 +114,6 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
   overflow: hidden;
 }
 
-/* ========== 头部 ========== */
 .cf-head {
   display: flex;
   align-items: flex-start;
@@ -156,7 +155,6 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
   color: var(--app-text-5);
 }
 
-/* ========== 信息行 ========== */
 .cf-body {
   margin: 18px 24px 0;
   padding: 2px 14px;
@@ -177,7 +175,6 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
 }
 .cf-row:last-child { border-bottom: none; }
 
-/* ========== 规则列表 ========== */
 .cf-body--list { padding: 8px 0; }
 
 .cf-list-row {
@@ -215,7 +212,6 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
   word-break: break-word;
 }
 
-/* ========== 提示 ========== */
 .cf-tip {
   margin: 14px 24px 0;
   padding: 10px 12px;
@@ -229,7 +225,6 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
 .cf-tip--warn,
 .cf-tip--warning { color: #B45309; background: #FFFBEB; border: 1px solid #FDE68A; }
 
-/* ========== 底部按钮 ========== */
 .cf-actions {
   display: flex;
   justify-content: flex-end;
@@ -251,7 +246,6 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
 .cf-btn:active { transform: translateY(1px); }
 .cf-btn:focus-visible { outline: 2px solid rgba(148, 163, 184, 0.7); outline-offset: 2px; }
 
-/* 默认兜底确认按钮样式，确保无论任何 tone 都高亮显眼 */
 .cf-btn:not(.cf-btn--ghost) {
   color: #fff;
   background: linear-gradient(135deg, var(--app-brand), var(--app-brand-deep));
@@ -287,7 +281,6 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
   box-shadow: 0 5px 14px rgba(217, 119, 6, 0.5) !important;
 }
 
-/* ========== 动画 ========== */
 .cf-enter-active,
 .cf-leave-active { transition: opacity 0.18s ease; }
 

@@ -2,14 +2,6 @@ import { createRouter, createWebHistory } from 'vue-router';
 import { fetchMe } from '../api/index.js';
 import { clearAuth, getStoredUser, getToken, setStoredUser } from '../api/client.js';
 
-/**
- * 云舒艺境 · 前端路由
- *
- * 说明:本项目的视图渲染仍由 App.vue 内的 v-if 分支负责(以 route.name 驱动),
- * 这里只负责 URL ↔ 视图名(路由名沿用原 currentView 的 view id)的映射与守卫,
- * 因此路由记录无需绑定真实组件。
- */
-
 const Empty = { name: 'RouteView', render: () => null };
 
 const landingPath = (user) => (user && user.role === 'admin' ? '/admin/dashboard' : '/home');
@@ -18,10 +10,8 @@ let sessionInitialized = false;
 const routes = [
   { path: '/', name: 'root', component: Empty },
 
-  /* ---------- 登录 ---------- */
   { path: '/login', name: 'login', component: Empty, meta: { guestOnly: true } },
 
-  /* ---------- 学员端 ---------- */
   { path: '/home', name: 'home', component: Empty, meta: { learnerOnly: true } },
   { path: '/courses', name: 'courses', component: Empty, meta: { learnerOnly: true } },
   { path: '/courses/:courseId/player', name: 'course-player', component: Empty, meta: { learnerOnly: true } },
@@ -38,7 +28,6 @@ const routes = [
   { path: '/messages/:messageId', name: 'messages-detail', component: Empty, meta: { learnerOnly: true } },
   { path: '/certificates', name: 'certificates', component: Empty, meta: { learnerOnly: true } },
 
-  /* ---------- 管理端 ---------- */
   { path: '/admin', redirect: '/admin/dashboard' },
   { path: '/admin/dashboard', name: 'admin-dashboard', component: Empty, meta: { adminOnly: true } },
   { path: '/admin/students', name: 'admin-students', component: Empty, meta: { adminOnly: true } },
@@ -53,7 +42,6 @@ const routes = [
   { path: '/admin/announcements', name: 'admin-announcements', component: Empty, meta: { adminOnly: true } },
   { path: '/admin/profile', name: 'admin-profile', component: Empty, meta: { adminOnly: true } },
 
-  /* ---------- 兜底 ---------- */
   { path: '/:pathMatch(.*)*', redirect: '/' },
 ];
 
@@ -86,22 +74,18 @@ router.beforeEach(async (to) => {
     return token ? landingPath(user) : { name: 'login' };
   }
 
-  // 已登录访问登录页 → 回角色落地页
   if (to.meta?.guestOnly) {
     return token ? landingPath(user) : true;
   }
 
-  // 未登录访问受保护页面 → 登录页(带返回地址)
   if (!token) {
     return { name: 'login', query: to.fullPath && to.fullPath !== '/' ? { redirect: to.fullPath } : {} };
   }
 
-  // 学员访问管理端 → 回学员首页
   if (to.meta?.adminOnly && (!user || user.role !== 'admin')) {
     return { name: 'home' };
   }
 
-  // 管理员访问学员页面时回到管理首页，避免导航与页面角色不匹配
   if (to.meta?.learnerOnly && user?.role === 'admin') {
     return { name: 'admin-dashboard' };
   }

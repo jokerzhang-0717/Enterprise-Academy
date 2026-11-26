@@ -1,6 +1,6 @@
 <template>
   <div class="paper-page admin-fit-page">
-    <!-- 页头 -->
+
     <div class="paper-head">
       <button type="button" class="back-btn" @click="goBack">
         <ArrowLeft class="back-icon" /> 返回考试管理
@@ -21,7 +21,7 @@
     </div>
 
     <div class="paper-layout">
-      <!-- 左：题库选题 -->
+
       <section class="pool-panel">
         <div class="panel-head">
           <div>
@@ -111,7 +111,6 @@
         />
       </section>
 
-      <!-- 右：已选试卷 -->
       <aside class="selected-panel">
         <div class="panel-head selected-head">
           <div>
@@ -219,7 +218,6 @@ const questionTypes = [
 const stateLabelMap = { 1: '待发布', 2: '待开始', 3: '进行中', 4: '已结束' };
 const stateLabel = computed(() => stateLabelMap[exam.value?.statusCode] || '—');
 
-/* 已发布或已有作答后，后端同样禁止替换题目，前端同步锁定 */
 const locked = computed(() =>
   !exam.value || exam.value.statusCode !== 1 || Number(exam.value.attemptCount || 0) > 0,
 );
@@ -360,7 +358,6 @@ button { cursor: pointer; }
   min-height: 100%;
 }
 
-/* ========== 页头 ========== */
 .paper-head { display: flex; flex-direction: column; gap: 12px; }
 .back-btn {
   align-self: flex-start;
@@ -396,7 +393,6 @@ button { cursor: pointer; }
   font-size: 13px;
 }
 
-/* ========== 布局 ========== */
 .paper-layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 370px;
@@ -429,7 +425,6 @@ button { cursor: pointer; }
 .clear-btn { border: none; background: none; color: var(--app-text-4); font-size: 12px; }
 .clear-btn:hover { color: var(--app-danger, #ef4444); }
 
-/* ========== 筛选工具 ========== */
 .pool-tools {
   display: flex;
   flex-wrap: wrap;
@@ -457,7 +452,6 @@ button { cursor: pointer; }
 .random-input { width: 62px; height: 34px; padding: 0 8px; border: 1px solid var(--app-border); border-radius: 8px; background: var(--app-surface-2); color: var(--app-text); font-size: 13px; text-align: center; }
 .btn--sm { padding: 7px 12px; font-size: 12px; }
 
-/* ========== 题库列表 ========== */
 .pool-list { display: flex; flex-direction: column; gap: 8px; padding: 14px 18px; }
 .pool-item {
   display: flex;
@@ -493,7 +487,6 @@ button { cursor: pointer; }
 .btn-icon { width: 14px; height: 14px; }
 .empty-tip { padding: 30px 0; text-align: center; color: var(--app-text-4); font-size: 13px; }
 
-/* ========== 已选面板 ========== */
 .score-card { padding: 16px 18px; border-bottom: 1px solid var(--app-border); background: var(--app-surface-2); }
 .score-line { display: flex; align-items: baseline; gap: 6px; }
 .score-current { font-size: 30px; font-weight: 700; color: var(--app-accent-deep); }

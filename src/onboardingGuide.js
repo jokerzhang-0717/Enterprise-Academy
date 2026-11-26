@@ -1,8 +1,4 @@
-/**
- * 新员工入职手册内容。
- * 首页「新员工入职手册」卡片和首次登录强制阅读弹窗共用同一份数据，
- * 避免两处文案不一致。
- */
+
 export const guideDetails = {
   platform: {
     step: '新员工手册 · 01',
@@ -39,5 +35,4 @@ export const guideDetails = {
   },
 };
 
-/** 按 01 → 02 → 03 的顺序展示。 */
 export const guideSteps = [guideDetails.platform, guideDetails.checklist, guideDetails.growth];

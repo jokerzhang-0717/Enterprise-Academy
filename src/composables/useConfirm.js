@@ -1,11 +1,5 @@
 import { ref } from 'vue';
 
-/**
- * 管理端统一的确认弹窗状态
- *
- * const { confirmState, askConfirm, cancelConfirm, acceptConfirm } = useConfirm();
- * askConfirm({ title, subtitle, rows, tip, tone, confirmText, action });
- */
 export function useConfirm() {
   const confirmState = ref(null);
 

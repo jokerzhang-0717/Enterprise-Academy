@@ -1,7 +1,6 @@
 <template>
   <div class="admin-dashboard">
 
-    <!-- 页头 -->
     <div class="page-head" v-reveal>
       <div class="head-copy">
         <h1 class="page-title">管理总览</h1>
@@ -14,7 +13,6 @@
       </div>
     </div>
 
-    <!-- 欢迎卡 -->
     <section class="welcome-card" v-reveal="{ delay: 30 }">
       <div class="welcome-copy">
         <div class="welcome-title">
@@ -43,7 +41,6 @@
       </div>
     </section>
 
-    <!-- 统计卡片 -->
     <section class="stat-grid" v-reveal-rows="{ rowDelay: 90, itemDelay: 50 }">
       <div
         v-for="card in statCards"
@@ -68,9 +65,8 @@
       </div>
     </section>
 
-    <!-- 图表 + 待办 -->
     <section class="dash-row">
-      <!-- 部门学时柱状图 -->
+
       <article class="panel panel--chart" v-reveal="{ delay: 30 }">
         <div class="panel-head">
           <div>
@@ -94,7 +90,6 @@
         </div>
       </article>
 
-      <!-- 待办事项 -->
       <article class="panel panel--todo" v-reveal="{ delay: 60 }">
         <div class="panel-head">
           <div>
@@ -129,7 +124,6 @@
       </article>
     </section>
 
-    <!-- 最近动态 -->
     <section class="panel" v-reveal="{ delay: 45 }">
       <div class="panel-head">
         <div>
@@ -174,7 +168,6 @@ const todayText = new Date().toLocaleDateString('zh-CN', {
   year: 'numeric', month: '2-digit', day: '2-digit'
 });
 
-/* ===== 欢迎卡 ===== */
 const now = ref(new Date());
 const userName = computed(() => props.user?.name || '管理员');
 
@@ -192,7 +185,7 @@ const pad = (n) => String(n).padStart(2, '0');
 const clockTime = computed(
   () => `${pad(now.value.getHours())}:${pad(now.value.getMinutes())}:${pad(now.value.getSeconds())}`
 );
-// 拆成单字符数组，配合 <Transition> 实现每秒数字滚动递增效果
+
 const clockChars = computed(() => clockTime.value.split(''));
 const clockDate = computed(() => {
   const d = now.value;
@@ -220,7 +213,7 @@ const refreshTodayCheckins = async () => {
 onMounted(() => {
   clockTimer = setInterval(() => { now.value = new Date(); }, 1000);
   refreshTodayCheckins();
-  // 双帧确保 0% 宽度已经渲染，再切到目标宽度触发 width 过渡
+
   requestAnimationFrame(() => requestAnimationFrame(() => { barsReady.value = true; }));
 });
 onUnmounted(() => {
@@ -286,7 +279,6 @@ const deptStats = computed(() => adminStore.departments
 const maxHours = computed(() => Math.max(1, ...deptStats.value.map(d => d.hours)));
 const barWidth = (hours) => `${Math.max((hours / maxHours.value) * 100, 4)}%`;
 
-/* 部门学时条：挂载后延迟一帧再从 0 过渡到目标宽度 */
 const barsReady = ref(false);
 
 const todos = computed(() => {
@@ -351,8 +343,6 @@ const activityIcon = (type) => activityIconMap[type] || activityIconMap.default;
 
 <style scoped>
 
-/* 管理端单独调快 reveal：短位移 + 更短时长。
-   #app 前缀保证优先级高于 index.css 的全局 520ms / 22px。 */
 :global(#app .admin-dashboard [data-scroll-reveal]) {
   --reveal-duration: 340ms;
   --reveal-distance: 12px;
@@ -368,7 +358,6 @@ button { font-family: inherit; cursor: pointer; }
   min-height: 100%;
 }
 
-/* ========== 页头 ========== */
 .page-head {
   display: flex;
   align-items: flex-end;
@@ -402,7 +391,6 @@ button { font-family: inherit; cursor: pointer; }
   gap: 10px;
 }
 
-/* ========== 欢迎卡 ========== */
 .welcome-card {
   display: flex;
   align-items: center;
@@ -458,7 +446,6 @@ button { font-family: inherit; cursor: pointer; }
   font-variant-numeric: tabular-nums;
 }
 
-/* 每位数字一个独立槽位：固定高度并裁剪，让数字能上下滚动 */
 .clock-digit-slot {
   position: relative;
   display: inline-block;
@@ -478,7 +465,6 @@ button { font-family: inherit; cursor: pointer; }
   width: 100%;
 }
 
-/* 数字滚动：新数字从下方滚入，旧数字向上滚出 */
 .digit-roll-enter-active,
 .digit-roll-leave-active {
   transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.28s ease;
@@ -545,7 +531,6 @@ button { font-family: inherit; cursor: pointer; }
 }
 .btn--ghost:hover { border-color: var(--app-brand); color: var(--app-brand-ink); }
 
-/* ========== 统计卡片 ========== */
 .stat-grid {
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
@@ -581,7 +566,6 @@ button { font-family: inherit; cursor: pointer; }
   transition-duration: 0.1s;
 }
 
-/* 减少动效偏好：关闭上浮，只保留边框提示 */
 @media (prefers-reduced-motion: reduce) {
   .stat-card,
   .stat-card:hover,
@@ -639,7 +623,6 @@ button { font-family: inherit; cursor: pointer; }
   color: var(--app-text-5);
 }
 
-/* ========== 行布局 ========== */
 .dash-row {
   display: grid;
   grid-template-columns: 3fr 2fr;
@@ -647,7 +630,6 @@ button { font-family: inherit; cursor: pointer; }
   align-items: stretch;
 }
 
-/* ========== 面板 ========== */
 .panel {
   padding: 18px;
   background: var(--app-surface);
@@ -676,7 +658,6 @@ button { font-family: inherit; cursor: pointer; }
   color: var(--app-text-5);
 }
 
-/* ========== 柱状图 ========== */
 .chart-body {
   display: flex;
   flex-direction: column;
@@ -744,7 +725,6 @@ button { font-family: inherit; cursor: pointer; }
   flex-shrink: 0;
 }
 
-/* ========== 待办 ========== */
 .todo-count {
   min-width: 24px;
   height: 24px;
@@ -778,7 +758,6 @@ button { font-family: inherit; cursor: pointer; }
   transition: background 0.2s ease, transform 0.2s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-/* 左侧色条：默认收缩为 0，悬停时滑出 */
 .todo-item::before {
   content: '';
   position: absolute;
@@ -855,7 +834,6 @@ button { font-family: inherit; cursor: pointer; }
 }
 .todo-action:hover { background: var(--app-accent-hover); }
 
-/* ========== 最近动态 ========== */
 .activity-list {
   display: flex;
   flex-direction: column;
@@ -904,7 +882,6 @@ button { font-family: inherit; cursor: pointer; }
   color: var(--app-text-5);
 }
 
-/* ========== 响应式 ========== */
 @media (max-width: 1200px) {
   .stat-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }

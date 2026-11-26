@@ -1,7 +1,6 @@
 <template>
   <div class="admin-courses admin-fit-page">
 
-    <!-- 页头 -->
     <div class="page-head">
       <div>
         <h1 class="page-title">课程管理</h1>
@@ -12,7 +11,6 @@
       </button>
     </div>
 
-    <!-- 工具栏 -->
     <div class="toolbar">
       <div class="search-box">
         <span class="search-icon"></span>
@@ -45,7 +43,6 @@
       <span class="toolbar-result">{{ filteredCourses.length }} 条结果</span>
     </div>
 
-    <!-- 课程表格 -->
     <div class="table-wrap">
       <table class="data-table">
         <thead>
@@ -114,7 +111,6 @@
       :total-pages="totalPages"
     />
 
-    <!-- 新增 / 编辑弹窗 -->
     <div v-if="modalOpen" class="modal-backdrop" @click.self="closeModal">
       <div class="modal">
         <div class="modal-head">
@@ -123,7 +119,6 @@
         </div>
         <form class="modal-body" @submit.prevent="saveCourse">
 
-          <!-- ── 基础信息 ── -->
           <div class="section-block">
             <div class="section-header">
               <span class="section-dot"></span>
@@ -153,7 +148,6 @@
             </div>
           </div>
 
-          <!-- ── 课程封面 ── -->
           <div class="section-block">
             <div class="section-header">
               <span class="section-dot section-dot--blue"></span>
@@ -177,7 +171,6 @@
             </div>
           </div>
 
-          <!-- ── 课程目录 ── -->
           <div class="section-block">
             <div class="section-header">
               <span class="section-dot section-dot--green"></span>
@@ -294,7 +287,6 @@ const keyword = ref('');
 const categoryFilter = ref('');
 const publishFilter = ref('');
 
-/* 分类项的 id 为数字主键，code 为业务编码；筛选与表单用 code，写入课程用 id */
 const categories = ref([]);
 const instructors = ref([]);
 
@@ -309,7 +301,6 @@ onMounted(async () => {
 
 const onlineCount = computed(() => courses.filter(c => c.published).length);
 
-/* 分类 code → course_category.id：直接使用字典接口返回的数字主键 */
 const categoryIdOf = (code) => {
   const hit = categories.value.find(c => c.code === code);
   return hit ? Number(hit.id) : null;
@@ -339,14 +330,13 @@ const filteredCourses = computed(() => {
 const { page, totalPages, paged: pagedCourses, resetPage } = usePager(filteredCourses, 8);
 watch([keyword, categoryFilter, publishFilter], resetPage);
 
-/* ---------- 弹窗表单 ---------- */
 const modalOpen = ref(false);
 const editingId = ref(null);
 const formError = ref('');
 const saving = ref(false);
 const loadingDetail = ref(false);
 const uploadingCover = ref(false);
-/* 按小节对象记录上传状态，避免上传一个视频时所有小节都显示「上传中」 */
+
 const uploadingLessons = ref(new Set());
 const isLessonUploading = (lesson) => uploadingLessons.value.has(lesson);
 const form = ref({
@@ -354,7 +344,6 @@ const form = ref({
   thumbnail: '', syllabus: []
 });
 
-/* 弹窗打开时的目录快照：保存时据此找出被删掉的章节与小节 */
 let savedSyllabus = [];
 
 const lessonCount = computed(() =>
@@ -396,7 +385,7 @@ const openEdit = async (course) => {
     syllabus: []
   };
   modalOpen.value = true;
-  /* 列表接口不返回章节目录，编辑时必须按课程详情取回 */
+
   loadingDetail.value = true;
   try {
     const detail = await fetchAdminCourse(course.numericId ?? course.id);
@@ -415,7 +404,6 @@ const closeModal = () => {
   formError.value = '';
 };
 
-/* 章节与小节各自走子资源接口：新增/改名/排序逐条提交，再删除快照里已不存在的行 */
 const syncSyllabus = async (courseId, chapters) => {
   const keptChapterIds = new Set();
   for (let ci = 0; ci < chapters.length; ci++) {
@@ -513,7 +501,7 @@ const saveCourse = async () => {
 };
 
 const togglePublish = async (course) => {
-  /* 1 草稿 / 2 已上架 / 3 已下架 */
+
   const nextCode = course.published ? 3 : 2;
   try {
     await updateAdminCourseStatus(course.numericId ?? course.id, nextCode);
@@ -524,7 +512,6 @@ const togglePublish = async (course) => {
   }
 };
 
-/* ---------- 课程目录(章节 → 小节) ---------- */
 const addChapter = () => {
   form.value.syllabus.push({
     id: `ch-${Date.now()}`,
@@ -538,7 +525,6 @@ const addLesson = (chapter) => {
   lessons.push({ id: `ls-${Date.now()}`, name: '', duration: '', url: '' });
 };
 
-/* 导出/转码后的视频文件名常是哈希串，直接照抄会变成一长串乱码 */
 const isMeaninglessName = (name) =>
   !/[\u4e00-\u9fa5]/.test(name) && /^[0-9a-f]{12,}$/i.test(name.replace(/[\s_-]/g, ''));
 
@@ -581,7 +567,6 @@ const handleLessonFile = async (lesson, e) => {
     uploadingLessons.value.delete(lesson);
   }
 
-  /* 时长用本地文件探测，不必为了读元数据再把视频下载一遍 */
   const probeUrl = URL.createObjectURL(file);
   const probe = document.createElement('video');
   probe.preload = 'metadata';
@@ -621,7 +606,6 @@ const removeLesson = (chapter, lesson) => {
   chapter.lessons = chapter.lessons.filter(ls => ls.id !== lesson.id);
 };
 
-/* ---------- 封面 ---------- */
 const handleCoverUpload = async (e) => {
   const input = e.target;
   const file = input.files && input.files[0];
@@ -667,9 +651,6 @@ const removeCourse = (course) => {
 </script>
 
 <style scoped>
-/* ============================================================
-   AdminCourses · 课程管理 · 纯原生 CSS
-   ============================================================ */
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
 button, input, select, textarea { font-family: inherit; }
@@ -682,7 +663,6 @@ button { cursor: pointer; }
   min-height: 100%;
 }
 
-/* ========== 页头 ========== */
 .page-head {
   display: flex;
   align-items: flex-end;
@@ -733,7 +713,6 @@ button { cursor: pointer; }
 }
 .btn--ghost:hover { border-color: var(--app-brand); color: var(--app-brand-ink); }
 
-/* ========== 工具栏 ========== */
 .toolbar {
   display: flex;
   align-items: center;
@@ -837,7 +816,6 @@ button { cursor: pointer; }
   color: var(--app-text-5);
 }
 
-/* ========== 表格 ========== */
 .table-wrap {
   background: var(--app-surface);
   border: 1px solid var(--app-border);
@@ -884,7 +862,6 @@ button { cursor: pointer; }
 th.num, td.num { text-align: right; }
 th.ops, td.ops { text-align: right; }
 
-/* 表头默认 left 优先级更高,这里提权让数字列/操作列的表头与其内容对齐 */
 .data-table thead th.num,
 .data-table thead th.ops { text-align: right; }
 
@@ -935,7 +912,6 @@ th.ops, td.ops { text-align: right; }
   text-overflow: ellipsis;
 }
 
-/* ========== 分类与必修徽标 ========== */
 .cat-chip {
   display: inline-flex;
   padding: 3px 10px;
@@ -946,7 +922,6 @@ th.ops, td.ops { text-align: right; }
   border-radius: 9999px;
 }
 
-/* ========== 状态徽标 ========== */
 .status-pill {
   display: inline-flex;
   align-items: center;
@@ -960,7 +935,6 @@ th.ops, td.ops { text-align: right; }
 .status-pill--on  { color: var(--app-emerald-fg); background: var(--app-emerald-bg); }
 .status-pill--off { color: var(--app-text-4); background: var(--app-chip); }
 
-/* ========== 上架开关 ========== */
 .switch {
   position: relative;
   width: 40px;
@@ -985,7 +959,6 @@ th.ops, td.ops { text-align: right; }
 }
 .switch--on .switch-knob { left: 21px; }
 
-/* ========== 行操作 ========== */
 .row-actions {
   display: inline-flex;
   gap: 6px;
@@ -1007,7 +980,6 @@ th.ops, td.ops { text-align: right; }
 .icon-btn:hover { background: var(--app-accent-soft); color: var(--app-accent-deep); border-color: var(--app-accent-border); }
 .icon-btn--danger:hover { background: var(--app-rose-bg); color: var(--app-rose-fg); border-color: var(--app-rose-line); }
 
-/* ========== 弹窗 ========== */
 .modal-backdrop {
   position: fixed;
   inset: 0;
@@ -1098,7 +1070,6 @@ th.ops, td.ops { text-align: right; }
   padding: 0;
 }
 
-/* ========== 表单分区 ========== */
 .section-block {
   padding: 18px 22px;
   border-bottom: 1px solid var(--app-border-soft);
@@ -1223,7 +1194,6 @@ th.ops, td.ops { text-align: right; }
   padding: 16px 22px 20px;
 }
 
-/* ========== 封面管理 ========== */
 .cover-section {
   display: flex;
   flex-direction: column;
@@ -1267,7 +1237,6 @@ th.ops, td.ops { text-align: right; }
   display: block;
 }
 
-/* 已有封面时，悬停居中提示更换 */
 .cover-hero-overlay {
   position: absolute;
   inset: 0;
@@ -1305,7 +1274,6 @@ th.ops, td.ops { text-align: right; }
 .cover-empty-title { font-size: 13px; font-weight: 600; }
 .cover-empty-hint { font-size: 11px; color: var(--app-text-5); }
 
-/* ========== 上传按钮 ========== */
 .upload-btn {
   display: inline-flex;
   align-items: center;
@@ -1336,7 +1304,6 @@ th.ops, td.ops { text-align: right; }
   display: none;
 }
 
-/* ========== 课程目录(章节 → 课时) ========== */
 .syl-editor {
   display: flex;
   flex-direction: column;
@@ -1420,7 +1387,6 @@ th.ops, td.ops { text-align: right; }
   flex-shrink: 0;
 }
 
-/* 删除章节按钮 — 静默样式，悬停才显出危险色 */
 .del-chapter-btn {
   display: inline-flex;
   align-items: center;
@@ -1442,7 +1408,6 @@ th.ops, td.ops { text-align: right; }
 }
 .del-icon { font-size: 10px; }
 
-/* ========== 课时 ========== */
 .syl-lessons {
   display: flex;
   flex-direction: column;
@@ -1484,7 +1449,6 @@ th.ops, td.ops { text-align: right; }
   flex-shrink: 0;
 }
 
-/* 删除课时按钮 */
 .del-lesson-btn {
   display: inline-flex;
   align-items: center;

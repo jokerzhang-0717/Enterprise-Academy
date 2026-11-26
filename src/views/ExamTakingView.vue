@@ -1,8 +1,8 @@
 <template>
   <div class="exam-page">
-    <!-- 1. Top Navigation Bar -->
+
     <header class="exam-topbar">
-      <!-- 左侧：考场信息 -->
+
       <div class="exam-topbar__brand">
         <div class="exam-brand__logo">考</div>
         <div>
@@ -16,7 +16,6 @@
         </div>
       </div>
 
-      <!-- 右侧：倒计时 + 操作 -->
       <div class="exam-topbar__tools">
         <div class="exam-timer">
           <div class="exam-timer__icon">
@@ -40,9 +39,8 @@
       </div>
     </header>
 
-    <!-- 2. Main Split: Question (left) + Answer Sheet (right) -->
     <div class="exam-layout">
-      <!-- ===== Left: Question Canvas ===== -->
+
       <div class="exam-main">
         <div v-if="pageError" class="exam-panel exam-state">
           <h3 class="exam-state__title">试卷加载失败</h3>
@@ -60,7 +58,7 @@
         </div>
 
         <div v-else class="exam-panel">
-          <!-- 题目元信息栏 -->
+
           <div class="exam-qmeta">
             <div class="exam-qmeta__left">
               <span class="exam-chip">第 {{ currentQuestionIdx }} 题</span>
@@ -73,7 +71,6 @@
               </span>
             </div>
 
-            <!-- 标记复查 -->
             <button
               type="button"
               class="exam-flag-btn"
@@ -85,12 +82,10 @@
             </button>
           </div>
 
-          <!-- 题干 -->
           <h3 class="exam-question__title">
             Q{{ currentQuestionIdx }}. {{ currentQuestion.title }}
           </h3>
 
-          <!-- 应用题：文本作答 -->
           <div v-if="currentQuestion.type === 'application'" class="exam-answer">
             <label :for="`answer-${currentQuestionIdx}`" class="exam-answer__label">
               请在下方填写作答内容
@@ -107,7 +102,6 @@
             <p class="exam-answer__count">{{ (currentAnswer || '').length }} / 2000</p>
           </div>
 
-          <!-- 选择题：选项列表 -->
           <div v-else class="exam-options">
             <div
               v-for="opt in currentQuestion.options"
@@ -116,7 +110,7 @@
               :class="selectedOptions.includes(opt.key) ? 'is-selected' : ''"
               @click="handleSelectOption(opt.key)"
             >
-              <!-- 选择指示器（单选圆 / 多选方） -->
+
               <div
                 class="exam-option__indicator"
                 :class="[
@@ -147,7 +141,6 @@
             </div>
           </div>
 
-          <!-- 底部导航按钮 -->
           <div class="exam-nav">
             <button
               type="button"
@@ -183,7 +176,6 @@
 
         <div v-if="saveError" class="exam-save-error">{{ saveError }}</div>
 
-        <!-- 安全节点提示 -->
         <div class="exam-secure">
           <div class="exam-secure__left">
             <span class="exam-secure__dot" />
@@ -193,9 +185,8 @@
         </div>
       </div>
 
-      <!-- ===== Right Sidebar ===== -->
       <aside v-if="!pageError" class="exam-side">
-        <!-- 答题进度概览 -->
+
         <div class="exam-panel exam-side__panel">
           <div class="exam-progress__head">
             <h3 class="exam-side__title">答题进度概览</h3>
@@ -205,12 +196,10 @@
             </div>
           </div>
 
-          <!-- 进度条 -->
           <div class="exam-progress__track">
             <div class="exam-progress__bar" :style="{ width: `${progressPercent}%` }" />
           </div>
 
-          <!-- 统计三宫格 -->
           <div class="exam-progress__stats">
             <div class="exam-stat-box exam-stat-box--answered">
               <span class="exam-stat-box__num">{{ answeredCount }}</span>
@@ -226,7 +215,6 @@
             </div>
           </div>
 
-          <!-- 图例 -->
           <div class="exam-legend">
             <span class="exam-legend__item">
               <span class="exam-legend__swatch exam-legend__swatch--answered" />
@@ -247,7 +235,6 @@
           </div>
         </div>
 
-        <!-- 全卷答题卡 -->
         <div class="exam-panel exam-side__panel">
           <div class="exam-sheet__top">
             <h3 class="exam-side__title">全卷答题卡</h3>
@@ -275,7 +262,6 @@
             </div>
           </div>
 
-          <!-- 提交试卷 -->
           <button
             type="button"
             class="exam-btn exam-btn--submit"
@@ -289,7 +275,6 @@
       </aside>
     </div>
 
-    <!-- 交卷确认 -->
     <ConfirmDialog
       v-if="confirmState"
       :title="confirmState.title"
@@ -302,7 +287,6 @@
       @confirm="acceptConfirm"
     />
 
-    <!-- 考场规则 -->
     <ConfirmDialog
       v-if="rulesOpen"
       tone="primary"
@@ -354,7 +338,7 @@ const emit = defineEmits(['back', 'submit-exam']);
 const exam = ref(null);
 const questions = ref([]);
 const attemptId = ref(null);
-/* 答案与标记都以题目主键为 key，避免与后端 questionId 混淆 */
+
 const answers = ref({});
 const flags = ref({});
 const loading = ref(true);
@@ -372,7 +356,7 @@ const questionTypeOrder = {
 };
 
 let timer = null;
-/* 应用题文本延迟保存按题号独立计时，避免切题时互相取消导致漏存 */
+
 const textSaveTimers = new Map();
 
 const idxByQuestionId = computed(() => {
@@ -389,7 +373,7 @@ const applySession = (paper, session) => {
     (questionTypeOrder[a.type] ?? Number.MAX_SAFE_INTEGER)
       - (questionTypeOrder[b.type] ?? Number.MAX_SAFE_INTEGER)
   );
-  // 倒计时以服务端剩余时间为准；服务端明确返回 0 时立即自动交卷，不再回退到试卷时长
+
   const sessionRemaining = session.remainingSeconds == null ? null : Number(session.remainingSeconds);
   const examDurationSeconds = Number(paper.durationMinutes || 60) * 60;
   secondsLeft.value = sessionRemaining == null
@@ -498,7 +482,6 @@ const progressPercent = computed(() =>
   totalQuestions.value ? Math.round((answeredCount.value / totalQuestions.value) * 100) : 0
 );
 
-/* 同一题连续修改（多选连点）必须串行提交，否则并发插入撞 uk_attempt_answer 唯一键 */
 let saveChain = Promise.resolve();
 
 const sendAnswer = async (qNum) => {
@@ -534,7 +517,6 @@ const cancelTextSave = (qNum) => {
   textSaveTimers.delete(qNum);
 };
 
-/* 切题、交卷或卸载时把 800ms 延迟窗口内待保存的文本立即写回，避免答案丢失 */
 const flushTextSave = (qNum) => {
   const pending = textSaveTimers.get(qNum);
   if (!pending) return;
@@ -597,7 +579,6 @@ const handlePrevQuestion = () => {
   jumpToQuestion(currentQuestionIdx.value - 1);
 };
 
-/* 返回语义化状态类（不再返回 Tailwind 工具类） */
 const getGridButtonClass = (qNum) => {
   if (qNum === currentQuestionIdx.value) return 'is-current';
   if (flags.value[qNum]) return 'is-flagged';
@@ -673,7 +654,7 @@ const showRulesHint = () => {
 </script>
 
 <style scoped>
-/* ============ Design tokens ============ */
+
 .exam-page {
   --c-text: var(--app-text);
   --c-text-sub: var(--app-text-2);
@@ -701,7 +682,6 @@ const showRulesHint = () => {
   font-family: 'PingFang SC', 'Microsoft YaHei', 'Helvetica Neue', sans-serif;
 }
 
-/* ============ Icons (lucide) ============ */
 .exam-icon {
   width: 18px;
   height: 18px;
@@ -710,7 +690,6 @@ const showRulesHint = () => {
 .exam-icon--sm { width: 16px; height: 16px; }
 .exam-icon--xs { width: 14px; height: 14px; }
 
-/* ============ Top bar ============ */
 .exam-topbar {
   display: flex;
   flex-direction: column;
@@ -783,7 +762,6 @@ const showRulesHint = () => {
   .exam-topbar__tools { margin-left: auto; }
 }
 
-/* ---- Timer ---- */
 .exam-timer {
   display: flex;
   align-items: center;
@@ -815,7 +793,6 @@ const showRulesHint = () => {
   color: var(--c-blue);
 }
 
-/* ============ Common buttons ============ */
 .exam-btn {
   display: inline-flex;
   align-items: center;
@@ -844,7 +821,6 @@ const showRulesHint = () => {
 }
 .exam-btn--sky:hover { background: var(--c-sky-hover); }
 
-/* ============ Layout ============ */
 .exam-layout {
   display: grid;
   width: 100%;
@@ -868,7 +844,6 @@ const showRulesHint = () => {
   gap: 16px;
 }
 
-/* ============ Panel ============ */
 .exam-panel {
   min-width: 0;
   padding: 24px;
@@ -891,7 +866,6 @@ const showRulesHint = () => {
   color: var(--c-text);
 }
 
-/* ============ 加载 / 错误态 ============ */
 .exam-state {
   align-items: center;
   justify-content: center;
@@ -925,7 +899,6 @@ const showRulesHint = () => {
   font-weight: 600;
 }
 
-/* ============ Question meta ============ */
 .exam-qmeta {
   display: flex;
   align-items: center;
@@ -985,7 +958,6 @@ const showRulesHint = () => {
   font-weight: 700;
 }
 
-/* ============ Question title ============ */
 .exam-question__title {
   margin: 0;
   font-size: 14px;
@@ -997,7 +969,6 @@ const showRulesHint = () => {
   .exam-question__title { font-size: 16px; }
 }
 
-/* ============ Application answer ============ */
 .exam-answer {
   display: flex;
   flex-direction: column;
@@ -1034,7 +1005,6 @@ const showRulesHint = () => {
   color: var(--c-faint);
 }
 
-/* ============ Options ============ */
 .exam-options {
   display: flex;
   flex-direction: column;
@@ -1109,7 +1079,6 @@ const showRulesHint = () => {
   font-weight: 600;
 }
 
-/* ============ Nav buttons ============ */
 .exam-nav {
   display: flex;
   flex-wrap: wrap;
@@ -1149,7 +1118,6 @@ const showRulesHint = () => {
   transform: scale(1.01);
 }
 
-/* ============ Secure notice ============ */
 .exam-secure {
   display: flex;
   flex-direction: column;
@@ -1186,7 +1154,6 @@ const showRulesHint = () => {
   color: var(--c-faint);
 }
 
-/* ============ Progress overview ============ */
 .exam-progress__head {
   display: flex;
   align-items: center;
@@ -1251,7 +1218,6 @@ const showRulesHint = () => {
 }
 .exam-stat-box--flagged .exam-stat-box__label { color: var(--app-on-fill); }
 
-/* ---- Legend ---- */
 .exam-legend {
   display: flex;
   align-items: center;
@@ -1279,7 +1245,6 @@ const showRulesHint = () => {
 }
 .exam-legend__swatch--flag { background: var(--c-purple); }
 
-/* ============ Answer sheet ============ */
 .exam-sheet__top {
   display: flex;
   align-items: center;
@@ -1355,7 +1320,6 @@ const showRulesHint = () => {
   background: var(--app-amber-solid);
 }
 
-/* ---- Final submit ---- */
 .exam-btn--submit {
   width: 100%;
   padding: 12px 0;

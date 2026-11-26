@@ -1,7 +1,6 @@
 <template>
   <div class="admin-announcements admin-fit-page">
 
-    <!-- 页头 -->
     <div class="page-head">
       <div>
         <h1 class="page-title">公告管理</h1>
@@ -12,7 +11,6 @@
       </button>
     </div>
 
-    <!-- 公告列表 -->
     <div class="notice-list">
       <article
         v-for="notice in pagedAnnouncements"
@@ -68,7 +66,6 @@
       :total-pages="totalPages"
     />
 
-    <!-- 公告详情 -->
     <AdminDetailModal
       v-if="detailNotice"
       title="公告详情"
@@ -82,7 +79,6 @@
       @close="detailNotice = null"
     />
 
-    <!-- 撰写 / 编辑公告弹窗 -->
     <div v-if="modalOpen" class="modal-backdrop" @click.self="closeModal">
       <div class="modal">
         <div class="modal-head">
@@ -160,7 +156,6 @@ const { page, totalPages, paged: pagedAnnouncements } = usePager(announcements, 
 const publishedCount = computed(() => announcements.value.filter(a => a.status === 'published').length);
 const draftCount = computed(() => announcements.value.filter(a => a.status === 'draft').length);
 
-/* ---------- 公告详情 ---------- */
 const detailNotice = ref(null);
 const openDetail = (notice) => { detailNotice.value = notice; };
 const detailTags = computed(() => {
@@ -170,7 +165,6 @@ const detailTags = computed(() => {
   return tags;
 });
 
-/* ---------- 弹窗表单 ---------- */
 const modalOpen = ref(false);
 const editingId = ref(null);
 const formError = ref('');
@@ -272,9 +266,6 @@ const removeNotice = (notice) => {
 </script>
 
 <style scoped>
-/* ============================================================
-   AdminAnnouncements · 公告管理 · 纯原生 CSS
-   ============================================================ */
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
 button, input, textarea { font-family: inherit; }
@@ -287,7 +278,6 @@ button { cursor: pointer; }
   min-height: 100%;
 }
 
-/* ========== 页头 ========== */
 .page-head {
   display: flex;
   align-items: flex-end;
@@ -338,7 +328,6 @@ button { cursor: pointer; }
 }
 .btn--ghost:hover { border-color: var(--app-brand); color: var(--app-brand-ink); }
 
-/* ========== 公告卡片 ========== */
 .notice-list {
   display: flex;
   flex-direction: column;
@@ -366,14 +355,14 @@ button { cursor: pointer; }
 
 .notice-card:hover {
   background: var(--app-accent-soft);
-  /* 只翻三边,左 4px 条留给「已发布/置顶」的状态色,hover 不再把它刷成品牌青 */
+
   border-top-color: var(--app-accent-border);
   border-right-color: var(--app-accent-border);
   border-bottom-color: var(--app-accent-border);
   box-shadow: 0 6px 18px var(--app-accent-a20);
 }
 .notice-card:hover .notice-title { color: var(--app-accent-deep); }
-/* 卡片底变成青底后,同为青底的操作按钮会糊进去,改用实底卡片色 */
+
 .notice-card:hover .text-btn--primary { background: var(--app-surface); }
 
 .notice-main { flex: 1; min-width: 0; }
@@ -420,7 +409,6 @@ button { cursor: pointer; }
 
 .meta-sep { margin: 0 6px; }
 
-/* ========== 右侧操作区 ========== */
 .notice-side {
   display: flex;
   flex-direction: column;
@@ -482,7 +470,6 @@ button { cursor: pointer; }
   color: var(--app-text-5);
 }
 
-/* ========== 弹窗 ========== */
 .modal-backdrop {
   position: fixed;
   inset: 0;

@@ -1,7 +1,6 @@
 <template>
   <div class="home-page">
 
-    <!-- ============ 1. 顶部欢迎横幅 ============ -->
     <section class="welcome-banner" v-reveal>
       <div class="welcome-content">
         <div class="welcome-tag">
@@ -15,7 +14,6 @@
       </div>
     </section>
 
-    <!-- ============ 2. 快捷入口（5 个卡片） ============ -->
     <section class="quick-actions" v-reveal-rows>
 
       <button class="quick-card" @click="currentCourse ? $emit('open-course', currentCourse) : $emit('navigate', 'courses')">
@@ -70,13 +68,10 @@
 
     </section>
 
-    <!-- ============ 3. 主体分栏 ============ -->
     <div class="main-grid">
 
-      <!-- ======== 左栏（8 列） ======== -->
       <div class="main-left">
 
-        <!-- 正在学习的课程 -->
         <section class="section-block" v-reveal>
           <div class="section-header">
             <div class="section-header-left">
@@ -143,7 +138,6 @@
           </div>
         </section>
 
-        <!-- 新员工入职手册 -->
         <section class="section-block" v-reveal>
           <div class="section-header section-header-wrap">
             <div class="section-header-left">
@@ -241,10 +235,8 @@
 
       </div>
 
-      <!-- ======== 右栏（4 列） ======== -->
       <div class="main-right">
 
-        <!-- 企业培训公告 -->
         <section class="side-panel" v-reveal="{ delay: 80, direction: 'right' }">
           <div class="side-panel-header">
             <div class="side-panel-title-row">
@@ -283,12 +275,11 @@
         </section>
 
         <section class="focus-corner" v-reveal="{ delay: 140 }" aria-label="学习陪伴角">
-          <!-- 漂浮装饰 -->
+
           <span class="float-deco float-deco--1">✦</span>
           <span class="float-deco float-deco--2">✧</span>
           <span class="float-deco float-deco--3">✦</span>
 
-          <!-- 点击计数徽标 -->
           <transition name="badge-pop">
             <span v-if="orbTaps > 0" :key="orbTaps" class="tap-badge">已互动 {{ orbTaps }} 次</span>
           </transition>
@@ -299,7 +290,7 @@
             @mousemove="handleCatTilt($event)"
             @mouseleave="handleCatTiltReset($event)"
           >
-            <!-- 点击迸发的粒子 -->
+
             <span
               v-for="p in particles"
               :key="p.id"
@@ -314,7 +305,7 @@
               :aria-label="`点击和守护兽互动，当前第 ${quoteIndex + 1} 句励志语`"
               @click="changeQuote"
             >
-              <!-- 光环 -->
+
               <span class="mascot-halo"></span>
               <img
                 class="mascot-img"
@@ -322,12 +313,11 @@
                 alt="戴皇冠的白色守护兽玩偶"
                 loading="lazy"
               />
-              <!-- 眨眼遮罩 -->
+
               <span v-if="blinking" class="mascot-blink"></span>
             </button>
           </div>
 
-          <!-- 守护兽聊天气泡 -->
           <div class="chat-bubble-wrap">
             <transition name="bubble-pop" mode="out-in">
               <div :key="quoteIndex" class="chat-bubble">
@@ -421,7 +411,6 @@ const props = defineProps({
 
 defineEmits(['navigate', 'open-course', 'open-message']);
 
-/* ---------- 快捷入口：副标题与目标页同一份数据 ---------- */
 const messages = useMessages();
 const leaveRecords = useLeaveRequests();
 const { isCheckedIn, checkedInAt } = useAttendance();
@@ -453,7 +442,6 @@ const openGuideFromKeyboard = (event, id) => {
   if (event.target === event.currentTarget) openGuide(id, event);
 };
 
-/* ===== 学习星球：鼠标跟随倾斜 ===== */
 const CAT_MAX_TILT = 16;
 const handleCatEnter = (event) => {
   const el = event.currentTarget;
@@ -475,7 +463,6 @@ const handleCatTiltReset = (event) => {
   el.__catRect = null;
 };
 
-/* ===== 学习星球：点击切换励志语 + 脉冲反馈 ===== */
 const quotes = [
   '每一次专注，都在为未来蓄力',
   '今天多学一点，明天从容一些',
@@ -500,7 +487,6 @@ let blinkTimer = null;
 let typeTimer = null;
 let particleId = 0;
 
-// 定时随机眨眼，让守护兽更生动
 const scheduleBlink = () => {
   const delay = 2600 + Math.random() * 3200;
   blinkTimer = setTimeout(() => {
@@ -510,7 +496,6 @@ const scheduleBlink = () => {
   }, delay);
 };
 
-// 点击迸发粒子
 const burstParticles = () => {
   const created = Array.from({ length: 10 }, () => {
     const angle = Math.random() * Math.PI * 2;
@@ -532,10 +517,9 @@ const burstParticles = () => {
   }, 900);
 };
 
-// 打字机：逐字显示守护兽的话
 const typeQuote = (text) => {
   if (typeTimer) clearInterval(typeTimer);
-  // 减少动效偏好下直接显示全文
+
   if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
     typedText.value = text;
     isTyping.value = false;
@@ -554,7 +538,7 @@ const typeQuote = (text) => {
 };
 
 const changeQuote = () => {
-  // 避免连点总是重复上一句
+
   let next = quoteIndex.value;
   while (next === quoteIndex.value && quotes.length > 1) {
     next = Math.floor(Math.random() * quotes.length);
@@ -563,7 +547,6 @@ const changeQuote = () => {
   orbTaps.value += 1;
   typeQuote(quotes[next]);
 
-  // 弹跳反馈
   orbPulse.value = false;
   requestAnimationFrame(() => {
     orbPulse.value = true;
@@ -571,7 +554,6 @@ const changeQuote = () => {
     orbPulseTimer = setTimeout(() => { orbPulse.value = false; }, 600);
   });
 
-  // 开心摇摆 + 粒子
   mascotHappy.value = false;
   requestAnimationFrame(() => {
     mascotHappy.value = true;
@@ -608,7 +590,7 @@ const courseTitle = computed(() => hasStarted.value ? '继续上次学习' : '�
 const courseSub = computed(() => {
   const course = currentCourse.value;
   if (!course) return '暂无可选课程';
-  /* 全名会挤掉百分比，这里用同类目页也展示的短标签 */
+
   const label = course.categoryLabel || '在修课程';
   return hasStarted.value ? `${label} · ${course.progress}%` : `${label} · 未开始`;
 });
@@ -655,7 +637,6 @@ const unreadCount = computed(() => messages.value.filter(m => !m.isRead).length)
 const messageSub = computed(() =>
   unreadCount.value ? `${unreadCount.value} 条未读消息` : '暂无未读消息');
 
-/* ---------- 企业培训公告：与消息中心的公告数据同源 ---------- */
 const announcementDate = (item) => {
   const value = item?.publishAt || item?.createdAt;
   if (!value) return '';
@@ -681,19 +662,17 @@ const homeAnnouncements = computed(() =>
     })
     .slice(0, 2));
 
-/* ---------- 键盘无障碍操作 ---------- */
 const openCourseFromKeyboard = (event) => {
   if (event.target === event.currentTarget) {
     event.currentTarget.click();
   }
 };
 
-/* ---------- 搜索定位滚动（修复死循环 / 爆栈风险） ---------- */
 let lastScrolledId = '';
 
 const scrollToTarget = (targetId) => {
   if (!targetId) return;
-  // 同一目标不重复滚动，打断 watch <-> 状态 闭环
+
   if (lastScrolledId === targetId) return;
   lastScrolledId = targetId;
 
@@ -718,83 +697,58 @@ watch(
 </script>
 
 <style scoped>
-/* ============================================================
-   云舒艺境 · 首页仪表盘样式
-   ------------------------------------------------------------
-   目录
-     01  页面基础布局          08  卡片网格
-     02  顶部欢迎横幅          09  右栏通用面板
-     03  快捷入口卡片          10  企业公告
-     04  主体分栏网格          11  企业公告
-     05  分栏标题              12  标签配色变体
-     06  课程卡片              13  入场动画
-     07  课程封面与角标        14  无障碍
-   ------------------------------------------------------------
-   色板速查
-     品牌蓝   #005576 · #83C9F4 · #D9F0FF
-     品牌紫   #6555B0 · #9381FF
-     标题深色 #1E293B · #334155 · #475569
-     正文灰   #64748B · #94A3B8
-     成功绿   #16A34A · #F0FDF4
-     警告红   #DC2626 · #E11D48 · #FEE2E2 · #FFF1F2
-     警示琥珀 #D97706 · #FEF3C7
-     边框浅灰 #E2E8F0 · #F1F5F9 · #F8FAFC · #FFFFFF
-   ============================================================ */
 
-/* ==================== 01 页面基础布局 ==================== */
 .home-page {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;              /* 24px */
-  padding-bottom: 3rem;     /* 48px */
+  gap: 1.5rem;
+  padding-bottom: 3rem;
 }
 
-/* ==================== 02 顶部欢迎横幅 ==================== */
 .welcome-banner {
-  border-radius: 1rem;      /* 16px */
+  border-radius: 1rem;
   border: 1px solid var(--app-accent-soft);
   background: linear-gradient(135deg, var(--app-accent-soft) 0%, var(--app-page-bg) 50%, var(--app-surface) 100%);
-  padding: 2rem 1.25rem;    /* 32px 20px */
+  padding: 2rem 1.25rem;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 @media (min-width: 768px) {
   .welcome-banner { padding: 2.5rem 2.5rem; }
 }
 .welcome-content {
-  max-width: 48rem;         /* 768px */
+  max-width: 48rem;
   margin-left: auto;
   margin-right: auto;
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;             /* 12px */
+  gap: 0.75rem;
   text-align: center;
 }
 
-/* 标题上方小标签 */
 .welcome-tag {
   display: inline-flex;
   align-items: center;
-  gap: 0.375rem;            /* 6px */
+  gap: 0.375rem;
   padding: 0.25rem 0.75rem;
   border-radius: 999px;
   background: var(--app-wash-strong);
   border: 1px solid rgba(131, 201, 244, 0.4);
   color: var(--app-accent-deep);
-  font-size: 0.75rem;       /* 12px */
+  font-size: 0.75rem;
   font-weight: 600;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
   align-self: center;
   animation: welcome-text-in 360ms ease-out both;
 }
 .welcome-tag-dot {
-  width: 0.5rem;            /* 8px */
+  width: 0.5rem;
   height: 0.5rem;
   border-radius: 50%;
   background: var(--app-accent);
   flex-shrink: 0;
 }
 .welcome-title {
-  font-size: 1.5rem;        /* 24px */
+  font-size: 1.5rem;
   font-weight: 800;
   color: var(--app-text);
   letter-spacing: -0.025em;
@@ -820,11 +774,10 @@ watch(
   .welcome-desc { font-size: 0.875rem; }
 }
 
-/* ==================== 03 快捷入口卡片 ==================== */
 .quick-actions {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 0.75rem;             /* 12px */
+  gap: 0.75rem;
 }
 @media (min-width: 640px) {
   .quick-actions { grid-template-columns: repeat(5, 1fr); }
@@ -833,10 +786,10 @@ watch(
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  padding: 0.875rem;        /* 14px */
+  padding: 0.875rem;
   background: var(--app-surface);
   border: 1px solid var(--app-border);
-  border-radius: 0.75rem;   /* 12px */
+  border-radius: 0.75rem;
   cursor: pointer;
   text-align: left;
   transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1), border-color 0.25s, box-shadow 0.25s;
@@ -861,9 +814,8 @@ watch(
   .quick-card-last { grid-column: auto; }
 }
 
-/* 图标容器 + 变体 */
 .quick-card-icon {
-  width: 2.5rem;            /* 40px */
+  width: 2.5rem;
   height: 2.5rem;
   border-radius: 0.75rem;
   display: flex;
@@ -884,7 +836,6 @@ watch(
 .icon-purple { background: var(--app-accent-soft); color: var(--app-violet-fg); }
 .icon-red    { background: var(--app-rose-100); color: var(--app-rose-600); }
 
-/* 卡片文字 */
 .quick-card-text { min-width: 0; }
 .quick-card-title {
   font-size: 0.75rem;
@@ -899,14 +850,13 @@ watch(
   color: var(--app-accent-deep);
 }
 .quick-card-sub {
-  font-size: 0.625rem;      /* 10px */
+  font-size: 0.625rem;
   color: var(--app-text-4);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-/* ==================== 04 主体分栏网格 ==================== */
 .main-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -932,7 +882,6 @@ watch(
   gap: 1.5rem;
 }
 
-/* ==================== 05 分栏标题 ==================== */
 .section-block {
   display: flex;
   flex-direction: column;
@@ -956,8 +905,8 @@ watch(
   gap: 0.5rem;
 }
 .section-bar {
-  width: 0.25rem;           /* 4px */
-  height: 1rem;             /* 16px */
+  width: 0.25rem;
+  height: 1rem;
   border-radius: 999px;
   background: var(--app-accent);
   flex-shrink: 0;
@@ -979,7 +928,6 @@ watch(
   text-decoration: underline;
 }
 
-/* ==================== 06 课程卡片 ==================== */
 .course-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -1035,10 +983,9 @@ watch(
   outline-offset: 2px;
 }
 
-/* ==================== 07 课程封面与角标 ==================== */
 .course-cover {
   position: relative;
-  height: 10rem;            /* 160px */
+  height: 10rem;
   overflow: hidden;
   background: var(--app-ink-solid);
   flex-shrink: 0;
@@ -1084,7 +1031,6 @@ watch(
   background: var(--app-violet);
 }
 
-/* 课程正文 */
 .course-body {
   display: flex;
   flex-direction: column;
@@ -1098,7 +1044,7 @@ watch(
   margin-bottom: 0.75rem;
 }
 .course-avatar {
-  width: 2rem;              /* 32px */
+  width: 2rem;
   height: 2rem;
   border-radius: 50%;
   display: flex;
@@ -1141,7 +1087,6 @@ watch(
   font-size: 0.6875rem;
 }
 
-/* ==================== 08 新员工入职手册 ==================== */
 .guide-subtitle {
   color: var(--app-text-4);
   font-size: 0.75rem;
@@ -1183,7 +1128,7 @@ watch(
   .guide-card:hover,
   .guide-card:active { transform: none; }
 }
-/* 插画区轻微放大 + 文字区上移，形成分层视差感 */
+
 .guide-visual {
   position: relative;
   height: 7.5rem;
@@ -1523,16 +1468,15 @@ watch(
   }
 }
 
-/* ==================== 09 右栏通用面板 ==================== */
 .side-panel {
   background: var(--app-surface);
   border: 1px solid var(--app-border);
   border-radius: 0.75rem;
-  padding: 1.25rem;         /* 20px */
+  padding: 1.25rem;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
   animation: card-reveal 360ms ease-out both;
 }
-/* ========== 学习陪伴角：守护兽本体 ========== */
+
 .focus-corner {
   position: relative;
   min-height: 340px;
@@ -1549,7 +1493,6 @@ watch(
     linear-gradient(145deg, var(--app-surface), var(--app-surface-2));
 }
 
-/* 漂浮小星星装饰 */
 .float-deco {
   position: absolute;
   color: var(--app-accent);
@@ -1566,7 +1509,6 @@ watch(
   50% { transform: translateY(-14px) rotate(45deg); opacity: 0.7; }
 }
 
-/* 互动计数徽标 */
 .tap-badge {
   position: absolute;
   top: 0.75rem;
@@ -1616,9 +1558,8 @@ watch(
   z-index: 1;
 }
 
-/* 点击弹跳 */
 .mascot-btn.is-pulse { animation: mascot-tap 0.55s ease-out; }
-/* 开心摇摆 */
+
 .mascot-btn.is-happy .mascot-img { animation: mascot-wiggle 0.7s ease-in-out; }
 @keyframes mascot-bob {
   0%, 100% { transform: translateY(0) rotateX(var(--cat-tilt-x)) rotateY(var(--cat-tilt-y)); }
@@ -1636,7 +1577,6 @@ watch(
   75% { transform: translateZ(22px) rotate(8deg); }
 }
 
-/* 守护兽光环 */
 .mascot-halo {
   position: absolute;
   left: 50%;
@@ -1654,7 +1594,6 @@ watch(
   50% { transform: scale(1.1); opacity: 0.9; }
 }
 
-/* 眨眼遮罩（用两道短横盖在眼部区域） */
 .mascot-blink {
   position: absolute;
   left: 50%;
@@ -1678,7 +1617,6 @@ watch(
 .mascot-blink::before { left: 14px; }
 .mascot-blink::after { right: 14px; }
 
-/* 点击迸发粒子 */
 .spark-particle {
   position: absolute;
   left: var(--px);
@@ -1694,7 +1632,6 @@ watch(
   100% { transform: translate(var(--dx), var(--dy)) scale(1.3) rotate(180deg); opacity: 0; }
 }
 
-/* 守护兽聊天气泡 */
 .chat-bubble-wrap {
   width: 100%;
   display: flex;
@@ -1716,7 +1653,7 @@ watch(
     0 12px 28px rgba(0, 85, 118, 0.28),
     inset 0 1px 0 rgba(255, 255, 255, 0.18);
 }
-/* 指向守护兽的小尖角 */
+
 .bubble-tail {
   position: absolute;
   top: -6px;
@@ -1728,7 +1665,7 @@ watch(
   border-bottom: 8px solid #0b3a5c;
   transform: translateX(-50%) rotate(12deg);
 }
-/* 头像：凸出的圆形白底 */
+
 .bubble-avatar {
   position: relative;
   flex-shrink: 0;
@@ -1827,7 +1764,6 @@ watch(
   font-family: 'JetBrains Mono', monospace;
 }
 
-/* ==================== 10 企业公告 ==================== */
 .announcement-list {
   display: flex;
   flex-direction: column;
@@ -1867,7 +1803,6 @@ watch(
   text-overflow: ellipsis;
 }
 
-/* 未读公告红点，与消息中心已读状态同步 */
 .announcement-unread {
   flex: none;
   width: 6px;
@@ -1883,7 +1818,6 @@ watch(
   color: var(--app-text-5);
 }
 
-/* ==================== 11 标签配色变体 ==================== */
 .announcement-tag {
   padding: 0.05rem 0.375rem;
   border-radius: 0.25rem;
@@ -1900,7 +1834,6 @@ watch(
   color: var(--app-text-5);
 }
 
-/* ==================== 12 入场动画 ==================== */
 @keyframes welcome-text-in {
   from {
     opacity: 0.65;
@@ -1921,7 +1854,7 @@ watch(
     transform: translateY(0);
   }
 }
-/* ==================== 14 无障碍：减少动效 ==================== */
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;

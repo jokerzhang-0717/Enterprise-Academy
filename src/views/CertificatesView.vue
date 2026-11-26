@@ -1,6 +1,6 @@
 <template>
   <div class="certificate-page">
-    <!-- 页面标题 -->
+
     <header class="page-header" v-reveal>
       <div class="page-heading">
         <div class="update-badge">
@@ -12,7 +12,7 @@
     </header>
 
     <div class="certificate-content">
-      <!-- 统计卡片 -->
+
       <section class="metrics-grid" v-reveal-rows aria-label="证书统计">
         <article class="metric-card">
           <div class="metric-copy">
@@ -60,7 +60,6 @@
         </article>
       </section>
 
-      <!-- 证书分类筛选 -->
       <nav class="filter-list" aria-label="证书分类">
           <button
             v-for="filter in certificateFilters"
@@ -75,7 +74,6 @@
           </button>
       </nav>
 
-      <!-- 证书卡片列表 -->
       <section class="certificate-grid" v-reveal-rows aria-label="证书列表">
         <p v-if="loading" class="certificate-empty">正在加载证书记录…</p>
         <p v-else-if="loadError" class="certificate-empty certificate-empty--error">{{ loadError }}</p>
@@ -90,13 +88,13 @@
           class="certificate-card"
           :class="{ 'certificate-card--search-target': searchTargetId === `certificate-${cert.id}` }"
         >
-          <!-- 卡片背景装饰 -->
+
           <div class="certificate-watermark" aria-hidden="true">
             <ShieldCheck class="watermark-icon" />
           </div>
 
           <div class="certificate-main">
-            <!-- 等级与有效期 -->
+
             <div class="certificate-top">
               <div class="certificate-level">
                 <div class="award-icon">
@@ -116,7 +114,6 @@
               {{ cert.description || '未设置证书说明' }}
             </p>
 
-            <!-- 证书信息 -->
             <div class="certificate-details">
               <div class="detail-item">
                 <span class="detail-label">{{ cert.blockchainHash ? '区块链存证摘要' : '证书编号' }}</span>
@@ -137,7 +134,6 @@
             </div>
           </div>
 
-          <!-- 卡片底部操作 -->
           <div class="certificate-footer">
             <div class="certificate-privilege">
               <ShieldCheck class="icon icon--tiny" aria-hidden="true" />
@@ -234,7 +230,7 @@ onMounted(loadCertificates);
 </script>
 
 <style scoped>
-/* 页面整体间距和字体 */
+
 .certificate-page {
   display: flex;
   flex-direction: column;
@@ -259,7 +255,6 @@ onMounted(loadCertificates);
 }
 .certificate-empty--error { color: var(--app-rose-fg); }
 
-/* 页面标题 */
 .page-header {
   display: flex;
   align-items: center;
@@ -302,7 +297,6 @@ onMounted(loadCertificates);
   font-size: 12px;
 }
 
-/* 顶部统计卡片 */
 .metrics-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -405,7 +399,6 @@ onMounted(loadCertificates);
   color: var(--app-emerald-strong);
 }
 
-/* 图标尺寸 */
 .icon {
   display: block;
   flex: 0 0 auto;
@@ -426,7 +419,6 @@ onMounted(loadCertificates);
   height: 14px;
 }
 
-/* 分类筛选按钮 */
 .filter-list {
   display: flex;
   flex-wrap: wrap;
@@ -466,7 +458,6 @@ onMounted(loadCertificates);
   outline-offset: 2px;
 }
 
-/* 证书卡片 */
 .certificate-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -568,7 +559,6 @@ onMounted(loadCertificates);
   line-height: 1.6;
 }
 
-/* 证书编号、机构、日期和评级 */
 .certificate-details {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -610,7 +600,6 @@ onMounted(loadCertificates);
   font-weight: 700;
 }
 
-/* 卡片底部说明和预览按钮 */
 .certificate-footer {
   position: relative;
   z-index: 1;
@@ -652,7 +641,6 @@ onMounted(loadCertificates);
   background: var(--app-surface-3);
 }
 
-/* 平板和手机布局 */
 @media (max-width: 900px) {
   .metrics-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));

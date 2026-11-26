@@ -1,7 +1,6 @@
 <template>
   <aside class="admin-sidebar">
 
-    <!-- 品牌头部 -->
     <div class="brand-header" @click="$emit('select-view', 'admin-dashboard')">
       <div class="brand-logo">
         <School class="sidebar-icon sidebar-brand-icon" />
@@ -13,7 +12,6 @@
       </div>
     </div>
 
-    <!-- 导航菜单 -->
     <nav class="nav-menu">
       <div class="nav-section-label">平台管理</div>
 
@@ -32,7 +30,6 @@
 
     </nav>
 
-    <!-- 底部管理员卡片 -->
     <div class="sidebar-footer">
       <div
         class="admin-card"
@@ -102,21 +99,13 @@ const navItems = [
 ];
 
 function isItemActive(id) {
-  // 组卷页属于考试管理的子页面，侧栏保持「考试管理」高亮
+
   if (id === 'admin-exams' && props.currentView === 'admin-exam-paper') return true;
   return props.currentView === id;
 }
 </script>
 
 <style scoped>
-/* ============================================================
-   AdminSidebar · 管理员导航栏 · 纯原生 CSS
-   ------------------------------------------------------------
-   配色全部走 App.vue 的主题 token,随「换主题」按钮整体切换
-     导航面   --app-nav-1 / -2 / -3 (深色渐变) --app-nav-ink
-     身份色   --app-brand / -deep / -soft / -glow / -a12 / -a14
-     文字     --app-nav-text / -text-hi / -text-active / -muted
-   ============================================================ */
 
 * {
   margin: 0;
@@ -129,7 +118,6 @@ button {
   cursor: pointer;
 }
 
-/* ========== 侧边栏布局 ========== */
 .admin-sidebar {
   width: 240px;
   height: 100vh;
@@ -143,7 +131,6 @@ button {
   overflow: hidden;
 }
 
-/* ========== 品牌头部 ========== */
 .brand-header {
   display: flex;
   align-items: center;
@@ -228,7 +215,6 @@ button {
   white-space: nowrap;
 }
 
-/* ========== 导航菜单 ========== */
 .nav-menu {
   flex: 1;
   padding: 16px 12px;
@@ -294,8 +280,6 @@ button {
   text-overflow: ellipsis;
 }
 
-/* ========== 徽章 ========== */
-/* ========== 底部管理员卡片 ========== */
 .sidebar-footer {
   margin-top: auto;
   padding: 12px;
@@ -375,7 +359,6 @@ button {
   text-overflow: ellipsis;
 }
 
-/* 退出按钮 */
 .logout-btn {
   display: flex;
   align-items: center;

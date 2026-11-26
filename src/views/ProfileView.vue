@@ -1,20 +1,18 @@
 <template>
   <div class="profile-page" :class="user?.role === 'admin' ? 'profile-page--admin' : 'profile-page--user'">
 
-    <!-- ============ 1. 面包屑导航 ============ -->
     <header class="profile-crumb">
       <span class="profile-crumb__item">{{ user?.role === 'admin' ? '管理控制台' : '企业赋能平台' }}</span>
       <span class="profile-crumb__sep">/</span>
       <span class="profile-crumb__item is-current">{{ user?.role === 'admin' ? '管理员个人信息' : '个人中心' }}</span>
     </header>
 
-    <!-- ============ 2. 个人档案横幅 ============ -->
     <section class="profile-hero">
       <div class="profile-orb profile-orb-one" />
       <div class="profile-orb profile-orb-two" />
 
       <div class="profile-hero__inner">
-        <!-- 头像:整块可点击换头像 -->
+
         <button
           type="button"
           class="profile-avatar"
@@ -26,7 +24,6 @@
           <span v-else class="profile-avatar__letter">{{ user.name?.charAt(0) || '用' }}</span>
         </button>
 
-        <!-- 姓名 / 部门 / 标签 -->
         <div class="profile-hero__info">
           <p class="profile-hero__label">{{ user?.role === 'admin' ? '管理员资料' : '个人档案' }}</p>
           <h2 class="profile-hero__name">{{ user.name }}</h2>
@@ -37,7 +34,6 @@
           </div>
         </div>
 
-        <!-- 学习统计 / 管理员概览 -->
         <div class="profile-hero__stats" v-if="user?.role === 'admin'">
           <div class="profile-stat">
             <p class="profile-stat__label">管理权限</p>
@@ -57,13 +53,11 @@
       </div>
     </section>
 
-    <!-- ============ 3. 基本资料表单 ============ -->
     <form class="profile-card" novalidate @submit.prevent="saveProfile">
-      <!-- 头像隐藏上传 -->
+
       <input ref="avatarInput" type="file" accept="image/*" class="profile-hidden" @change="handleAvatarChange" />
       <p v-if="avatarError" role="alert" class="profile-alert profile-alert--error">{{ avatarError }}</p>
 
-      <!-- 卡片头 -->
       <div class="profile-card__head">
         <div class="profile-card__title">
           <span class="profile-card__icon profile-card__icon--sky">
@@ -76,7 +70,7 @@
         </div>
 
         <div class="profile-card__aside">
-          <!-- 安全提示 -->
+
           <section class="profile-tip">
             <span class="profile-tip__icon">
               <ShieldCheck class="profile-icon" />
@@ -93,7 +87,6 @@
         </div>
       </div>
 
-      <!-- 基本信息字段 -->
       <div class="profile-grid">
         <label class="profile-field">
           <span>姓名 <b>*</b></span>
@@ -114,7 +107,6 @@
         </label>
       </div>
 
-      <!-- 联系与个人信息 -->
       <div class="profile-block">
         <h4 class="profile-block__title">联系与个人信息</h4>
         <p class="profile-block__desc">可选填写，用于完善个人档案</p>
@@ -167,7 +159,6 @@
         </div>
       </div>
 
-      <!-- 底部提交 -->
       <div class="profile-card__foot">
         <p class="profile-note">带 <b class="profile-note__star">*</b> 的项目为必填信息</p>
         <button type="submit" class="profile-btn profile-btn--primary" :disabled="savingProfile || uploadingAvatar">
@@ -177,9 +168,8 @@
       </div>
     </form>
 
-    <!-- ============ 4. 修改密码 ============ -->
     <section class="profile-card profile-card--password">
-      <!-- 卡片头 -->
+
       <div class="profile-card__head">
         <div class="profile-card__title">
           <span class="profile-card__icon profile-card__icon--violet">
@@ -193,7 +183,6 @@
         <span class="profile-badge-amber">需验证当前密码</span>
       </div>
 
-      <!-- 密码表单 -->
       <form class="profile-grid profile-grid--spaced profile-grid--password" @submit.prevent="submitPasswordChange">
         <label class="profile-field profile-field--full">
           <span>当前密码</span>
@@ -264,7 +253,6 @@ const form = reactive({
   avatarUrl: '',
 });
 
-/* 单向同步：props.user -> form，不会回写 props，无闭环风险 */
 const syncProfileForm = (source, fallback = props.user) => {
   const user = source || props.user;
   const valueOrFallback = (value, fallbackValue) =>
@@ -285,7 +273,6 @@ watch(() => props.user.avatarUrl, (avatarUrl) => {
   form.avatarUrl = avatarUrl || '';
 });
 
-/* 登录快照可能滞后，进入页面时以数据库最新资料为准 */
 onMounted(async () => {
   try {
     const fresh = await fetchProfile();
@@ -427,27 +414,16 @@ const submitPasswordChange = async () => {
 </script>
 
 <style scoped>
-/* ============================================================
-   个人中心 · 纯手写 CSS
-   ------------------------------------------------------------
-   目录
-     01  页面布局与工具类        06  表单卡片
-     02  图标                    07  表单字段
-     03  面包屑                  08  修改密码
-     04  档案横幅                09  按钮 / 提示
-     05  头像与统计              10  隐藏元素
-   ============================================================ */
 
-/* ==================== 01 页面布局 ==================== */
 .profile-page {
-  max-width: 72rem;         /* max-w-6xl */
+  max-width: 72rem;
   width: 100%;
   margin-left: auto;
   margin-right: auto;
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;              /* 24px */
-  padding-bottom: 3rem;     /* 48px */
+  gap: 1.5rem;
+  padding-bottom: 3rem;
 }
 
 @media (min-width: 1100px) {
@@ -457,7 +433,6 @@ const submitPasswordChange = async () => {
   }
 }
 
-/* ==================== 02 图标 (lucide) ==================== */
 .profile-icon {
   width: 1rem;
   height: 1rem;
@@ -468,7 +443,6 @@ const submitPasswordChange = async () => {
   height: 0.875rem;
 }
 
-/* ==================== 03 面包屑 ==================== */
 .profile-crumb {
   display: flex;
   align-items: center;
@@ -485,13 +459,12 @@ const submitPasswordChange = async () => {
   color: var(--app-text-6);
 }
 
-/* ==================== 04 档案横幅 ==================== */
 .profile-hero {
   position: relative;
   isolation: isolate;
   overflow: hidden;
-  border-radius: 1rem;      /* 16px */
-  padding: 1.5rem;          /* 24px */
+  border-radius: 1rem;
+  padding: 1.5rem;
   color: var(--app-hero-ink);
   background-image: linear-gradient(112deg, var(--app-hero-1) 0%, var(--app-hero-2) 58%, var(--app-hero-3) 100%);
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
@@ -500,7 +473,6 @@ const submitPasswordChange = async () => {
   .profile-hero { padding: 2rem; }
 }
 
-/* 装饰光斑 */
 .profile-orb {
   position: absolute;
   z-index: -1;
@@ -536,13 +508,12 @@ const submitPasswordChange = async () => {
   }
 }
 
-/* ---- 05 头像 ---- */
 .profile-avatar {
   position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 5rem;              /* 80px */
+  width: 5rem;
   height: 5rem;
   flex-shrink: 0;
   overflow: hidden;
@@ -564,7 +535,6 @@ const submitPasswordChange = async () => {
   object-fit: cover;
 }
 
-/* ---- 姓名信息 ---- */
 .profile-hero__info {
   min-width: 0;
   flex: 1;
@@ -577,7 +547,7 @@ const submitPasswordChange = async () => {
 }
 .profile-hero__name {
   margin: 0.25rem 0 0;
-  font-size: 1.5rem;        /* 24px */
+  font-size: 1.5rem;
   font-weight: 700;
   white-space: nowrap;
   overflow: hidden;
@@ -603,7 +573,6 @@ const submitPasswordChange = async () => {
   color: var(--app-hero-ink);
 }
 
-/* ---- 学习统计 ---- */
 .profile-hero__stats {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -616,7 +585,7 @@ const submitPasswordChange = async () => {
 @media (min-width: 640px) {
   .profile-hero__stats { min-width: 250px; }
 }
-/* 学员端只剩一项统计:收成单列,否则右半格是空白 */
+
 .profile-hero__stats.profile-hero__stats--single {
   grid-template-columns: 1fr;
   min-width: 0;
@@ -644,9 +613,8 @@ const submitPasswordChange = async () => {
   color: var(--app-hero-ink-80);
 }
 
-/* ==================== 06 表单卡片 ==================== */
 .profile-card {
-  padding: 1.25rem;         /* 20px */
+  padding: 1.25rem;
   border: 1px solid var(--app-border-soft);
   border-radius: 1rem;
   background: var(--app-surface);
@@ -726,7 +694,6 @@ const submitPasswordChange = async () => {
   gap: 1rem;
 }
 
-/* ---- 安全提示小卡 ---- */
 .profile-tip {
   display: flex;
   align-items: center;
@@ -762,7 +729,6 @@ const submitPasswordChange = async () => {
   color: var(--app-slate-500);
 }
 
-/* ---- 已保存状态 ---- */
 .profile-saved {
   display: inline-flex;
   align-items: center;
@@ -772,7 +738,6 @@ const submitPasswordChange = async () => {
   color: var(--app-emerald-fg);
 }
 
-/* ---- 字段栅格 ---- */
 .profile-grid {
   display: grid;
   grid-template-columns: 1fr;
@@ -790,7 +755,6 @@ const submitPasswordChange = async () => {
   padding-top: 1.25rem;
 }
 
-/* ---- 分组块 ---- */
 .profile-block {
   margin-top: 1.25rem;
   padding-top: 1.25rem;
@@ -808,7 +772,6 @@ const submitPasswordChange = async () => {
   color: var(--app-slate-400);
 }
 
-/* ==================== 07 表单字段 ==================== */
 .profile-field {
   display: flex;
   min-width: 0;
@@ -869,7 +832,6 @@ const submitPasswordChange = async () => {
   color: var(--app-text-5);
 }
 
-/* ==================== 08 修改密码 ==================== */
 .profile-badge-amber {
   padding: 0.25rem 0.625rem;
   border-radius: 999px;
@@ -892,7 +854,6 @@ const submitPasswordChange = async () => {
   }
 }
 
-/* ==================== 09 按钮 / 提示 ==================== */
 .profile-btn {
   display: inline-flex;
   align-items: center;
@@ -968,15 +929,10 @@ const submitPasswordChange = async () => {
   opacity: 0.65;
 }
 
-/* ==================== 10 隐藏元素 ==================== */
 .profile-hidden {
   display: none;
 }
 
-/* ==================== 11 管理端主题覆盖 ====================
-   本页同时给学员端和管理端用。学员端永远走上面的原色,
-   .profile-page--admin 只在 role==='admin' 时挂上,
-   让横幅、卡片、按钮按当前主题 token 重画,深色主题下不出现浅底深字。 */
 .profile-page--admin .profile-hero__label,
 .profile-page--admin .profile-stat__label {
   color: var(--app-on-hero-soft);

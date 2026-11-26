@@ -130,7 +130,7 @@ const focusPrimary = () => {
 };
 
 const goToStep = (index) => {
-  // 只允许回看已经读过的章节，未读章节必须按顺序解锁。
+
   if (index < 0 || index > stepIndex.value) return;
   stepIndex.value = index;
   error.value = '';
@@ -176,7 +176,7 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-/* 首次登录强制阅读：背景不可点击、无关闭按钮，必须按顺序读完 3 个章节。 */
+
 .onboarding-backdrop {
   position: fixed;
   z-index: 80;

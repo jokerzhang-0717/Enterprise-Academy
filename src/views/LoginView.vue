@@ -1,7 +1,6 @@
 <template>
   <div class="auth-shell relative flex min-h-screen items-stretch lg:h-dvh lg:overflow-hidden">
 
-    <!-- ============ 全局背景层 ============ -->
     <div class="pointer-events-none absolute inset-0 z-0 hidden lg:block">
       <div class="background-gradient"></div>
       <div class="dot-pattern"></div>
@@ -21,7 +20,6 @@
     </div>
     <div class="background-gradient pointer-events-none absolute inset-0 z-0 lg:hidden"></div>
 
-    <!-- ============ LEFT ============ -->
     <aside class="relative hidden flex-col justify-between overflow-hidden px-12 py-11 lg:flex lg:w-[54%] xl:w-[55%] xl:px-16">
 
       <div class="relative z-10 fade-in" style="--d:.05s">
@@ -87,7 +85,6 @@
       </div>
     </aside>
 
-    <!-- ============ RIGHT ============ -->
     <main class="relative flex w-full items-center justify-center px-6 py-10 sm:px-10 lg:w-[46%] lg:px-12 xl:w-[45%] xl:px-16">
       <div class="w-full max-w-[23.5rem]">
 
@@ -131,7 +128,6 @@
           </p>
         </div>
 
-        <!-- ====== 登录 ====== -->
         <form v-if="activeTab === 'login'" class="space-y-[14px]" @submit.prevent="handleSubmit" novalidate>
 
           <div class="fade-in" style="--d:.22s">
@@ -179,7 +175,6 @@
             </p>
           </div>
 
-          <!-- ====== 滑块行为验证 ====== -->
           <div class="fade-in" style="--d:.34s">
             <div class="flex items-center justify-between">
               <span class="form-label">Behaviour Check · 行为验证</span>
@@ -222,7 +217,6 @@
           </div>
         </form>
 
-        <!-- ====== 注册 ====== -->
         <form v-else class="space-y-[12px]" @submit.prevent="handleRegister" novalidate>
           <div v-for="f in registerFields" :key="f.key" class="fade-in" :style="{ '--d': `${0.22 + f.order * 0.05}s` }">
             <label class="form-label">{{ f.label }}</label>
@@ -306,7 +300,6 @@ const stats = [
   { label: 'Defence', value: '金融级' }
 ];
 
-/* ---------- 登录 ---------- */
 const employeeId = ref('YS-2024098');
 const password = ref('');
 const showPassword = ref(false);
@@ -320,7 +313,6 @@ const clearLoginError = (field) => {
   loginErrors.value = rest;
 };
 
-/* ---------- 滑块行为验证 ---------- */
 const HANDLE_SIZE = 40;
 const SLIDER_INSET = 3;
 const sliderVerified = ref(false);
@@ -368,7 +360,6 @@ const stopDrag = () => {
 
 onBeforeUnmount(stopDrag);
 
-/* ---------- 注册 ---------- */
 const registerName = ref('');
 const registerEmployeeId = ref('');
 const registerPassword = ref('');
@@ -470,29 +461,7 @@ const handleRegister = async () => {
 </script>
 
 <style scoped>
-/* ============================================================
-   云舒艺境 · 登录 / 注册页样式
-   ------------------------------------------------------------
-   目录
-     01  字体排版            08  表单标签 / 链接
-     02  渐变高亮文字        09  表单输入框
-     03  全页渐变背景        10  滑块行为验证
-     04  氛围光斑            11  复选框
-     05  轨道动效图形        12  Tab 切换
-     06  品牌标识            13  提交按钮
-     07  特性列表 + 指标条   14  入场动效 / 15 无障碍
-   ------------------------------------------------------------
-   色板速查
-     主蓝   #83C9F4 · #2E8BD6 · #A3D5FF · #6FA9E0
-     品牌紫 #9381FF · #6B55E0
-     深字   #0B1B33 · #16233A · #41526A
-     灰蓝   #5B6B80 · #4F627A · #7C8FA3 · #8497AC
-     成功绿 #2FBF8F · #12866A · #1B7F63 · #7BD9B8
-     错误粉 #C2417C · #F0B4CC
-     描边   #D3E4F3 · #D6E7F7 · #DCE7F2 · #C9D8E6
-   ============================================================ */
 
-/* ==================== 01 字体排版 ==================== */
 :global(.auth-shell) {
   font-family: 'Sora', 'Noto Sans SC', ui-sans-serif, system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
@@ -503,7 +472,6 @@ const handleRegister = async () => {
 .mono-font    { font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace; font-weight: 500; }
 .number-font  { font-family: 'Sora', 'Noto Sans SC', sans-serif; letter-spacing: -.01em; font-variant-numeric: tabular-nums; }
 
-/* ==================== 02 渐变高亮文字 ==================== */
 .gradient-text {
   background: linear-gradient(96deg, #A3D5FF 0%, #83C9F4 34%, #9381FF 92%);
   -webkit-background-clip: text;
@@ -511,7 +479,6 @@ const handleRegister = async () => {
   color: transparent;
 }
 
-/* ==================== 03 全页渐变背景 ==================== */
 .background-gradient {
   position: absolute; inset: 0;
   background:
@@ -521,7 +488,6 @@ const handleRegister = async () => {
     linear-gradient(112deg, #E4F1FD 0%, #E9F2FC 34%, #EBEEFB 62%, #EDEAFB 100%);
 }
 
-/* ==================== 04 氛围层（点阵 + 光斑漂移） ==================== */
 .dot-pattern {
   position: absolute; inset: 0;
   background-image: radial-gradient(rgba(46, 139, 214, .14) 1px, transparent 1px);
@@ -545,7 +511,6 @@ const handleRegister = async () => {
   to   { transform: translate3d(30px,-24px,0) scale(1.07); }
 }
 
-/* ==================== 05 轨道动效图形（同心圆 + 卫星） ==================== */
 .orbit-center-glow {
   position: absolute; left: 44%; top: 50%; width: 36vw; height: 36vw;
   transform: translate(-50%, -50%); border-radius: 50%;
@@ -576,7 +541,6 @@ const handleRegister = async () => {
 }
 @keyframes satellite-spin { to { transform: rotate(360deg); } }
 
-/* ==================== 06 品牌标识 ==================== */
 .logo-icon {
   background: linear-gradient(138deg, #A3D5FF 0%, #83C9F4 42%, #9381FF 100%);
   color: #fff;
@@ -589,7 +553,6 @@ const handleRegister = async () => {
   font-family: 'JetBrains Mono', monospace; font-size: 7.5px; letter-spacing: .22em;
 }
 
-/* ==================== 07 特性列表 + 指标条 ==================== */
 .feature-item {
   display: flex; align-items: center; gap: .95rem;
   padding: .82rem 0;
@@ -603,7 +566,6 @@ const handleRegister = async () => {
   border-top: 1px solid rgba(46, 139, 214, .22);
 }
 
-/* ==================== 08 标题装饰 / 表单标签 / 链接 ==================== */
 .title-accent {
   width: 34px; height: 3px; border-radius: 999px;
   background: linear-gradient(90deg, #83C9F4 0%, #9381FF 100%);
@@ -620,7 +582,6 @@ const handleRegister = async () => {
 .footer-link { transition: color .18s ease; }
 .footer-link:hover { color: #2E8BD6; }
 
-/* ==================== 09 表单输入框 ==================== */
 .input-wrap {
   display: flex; align-items: center; gap: .6rem;
   height: 44px; padding: 0 .85rem;
@@ -637,7 +598,6 @@ const handleRegister = async () => {
   background: #FDF4F8 !important;
 }
 
-/* 登录字段错误提示（与注册一致的内联提示风格） */
 .login-error {
   margin-top: 5px;
   font-size: 10px;
@@ -661,8 +621,6 @@ const handleRegister = async () => {
 }
 .password-toggle:hover { color: #2E8BD6; }
 
-/* ==================== 10 滑块行为验证 ==================== */
-/* 浅色轨道 + 实心方形把手，无投影 */
 .slider-track {
   position: relative;
   height: 46px; border-radius: 12px;
@@ -682,7 +640,6 @@ const handleRegister = async () => {
   background: rgba(233, 248, 242, .9);
 }
 
-/* 进度填充：拖动时浅蓝，验证后整条绿色 */
 .slider-progress {
   position: absolute; inset: 0 auto 0 0;
   background: linear-gradient(90deg, #D8ECFF 0%, #BCE0FF 100%);
@@ -698,7 +655,6 @@ const handleRegister = async () => {
   place-items: center;
 }
 
-/* 居中提示文字：默认靠左，紧随把手 */
 .slider-hint {
   position: absolute; inset: 0; z-index: 1;
   display: grid; place-items: center start;
@@ -707,10 +663,9 @@ const handleRegister = async () => {
   color: #4E6B85; pointer-events: none;
   transition: opacity .2s, color .2s;
 }
-/* 拖动时隐藏提示，避免文字与把手重叠 */
+
 .slider-track.dragging .slider-hint { opacity: 0; }
 
-/* 拖动把手：实心方形按钮，圆角收柔、无描边无投影 */
 .slider-handle {
   position: absolute; top: 3px; left: 3px;
   width: 40px; height: 40px; border-radius: 12px;
@@ -743,7 +698,6 @@ const handleRegister = async () => {
   cursor: default;
 }
 
-/* ==================== 12 Tab 切换指示器 ==================== */
 .tab-active-bg {
   background: #FFFFFF;
   border: 1px solid rgba(147, 129, 255, .35);
@@ -755,7 +709,6 @@ const handleRegister = async () => {
   to   { opacity: 1; transform: scale(1) translateY(0); }
 }
 
-/* ==================== 13 提交按钮 ==================== */
 .submit-btn {
   position: relative;
   display: flex; width: 100%;
@@ -774,7 +727,6 @@ const handleRegister = async () => {
 }
 .submit-btn:active { transform: translateY(0); }
 
-/* ==================== 14 入场动效 ==================== */
 @keyframes fade-up {
   from { opacity: 0; transform: translateY(14px); }
   to   { opacity: 1; transform: translateY(0); }
@@ -791,7 +743,6 @@ const handleRegister = async () => {
 }
 .pulse-dot { animation: pulse-heartbeat 2.1s ease-in-out infinite; }
 
-/* ==================== 15 无障碍：减少动效 ==================== */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: .01ms !important;

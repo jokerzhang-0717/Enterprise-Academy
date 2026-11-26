@@ -60,7 +60,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown));
 </script>
 
 <style scoped>
-/* ===== 遮罩 ===== */
+
 .overlay {
   position: fixed;
   inset: 0;
@@ -74,7 +74,6 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown));
   animation: fade-in 0.16s ease-out;
 }
 
-/* ===== 弹窗 ===== */
 .modal {
   display: flex;
   flex-direction: column;
@@ -132,7 +131,6 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown));
   color: var(--app-heading);
 }
 
-/* ===== 内容 ===== */
 .modal-body {
   padding: 16px 20px 18px;
   overflow-y: auto;
@@ -205,7 +203,6 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown));
   word-break: break-word;
 }
 
-/* ===== 底部操作 ===== */
 .modal-actions {
   display: flex;
   justify-content: flex-end;
@@ -229,7 +226,6 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown));
   color: var(--app-heading);
 }
 
-/* ===== 动画 ===== */
 @keyframes fade-in {
   from { opacity: 0; }
   to   { opacity: 1; }

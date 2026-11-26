@@ -1,8 +1,8 @@
 <template>
-  <!-- 考试成绩：以大窗口（弹窗）形式呈现，不再是独立页面；底层仍是考评中心 -->
+
   <div class="result-overlay" @click.self="close">
     <div class="result-modal" role="dialog" aria-modal="true" aria-label="考试成绩详情">
-      <!-- 窗口头部：标题 + 关闭 -->
+
       <div class="result-modal__head">
         <span class="result-modal__crumb">在线考核 / 成绩详情</span>
         <button type="button" class="result-modal__close" aria-label="关闭" @click="close">
@@ -18,7 +18,7 @@
       </div>
 
       <div v-else class="result-card">
-        <!-- 顶部结果图标：待评分=时钟 / 通过=奖杯 / 未通过=叉号 -->
+
         <div class="result-card__head">
           <div :class="['result-icon', `result-icon--${resultTheme}`]">
             <span class="result-icon__glyph">{{ resultGlyph }}</span>
@@ -32,7 +32,6 @@
           </div>
         </div>
 
-        <!-- 分数展示 -->
         <div class="score-panel" :class="{ 'score-panel--pending': data.pendingReview }">
           <div class="score-caption">
             {{ data.pendingReview ? '客观题机审分（最终成绩待人工评分）' : '最终成绩' }}
@@ -47,7 +46,6 @@
           </div>
         </div>
 
-        <!-- 仅保留作答完成度；机审得分率、考位状态不再展示 -->
         <div class="stats-grid">
           <div class="stats-card">
             <span class="stats-label">作答完成度</span>
@@ -55,7 +53,6 @@
           </div>
         </div>
 
-        <!-- 答题明细：跳转到独立的答题明细页面 -->
         <button
           v-if="data.answers.length"
           type="button"
@@ -73,9 +70,8 @@
           </span>
         </button>
 
-        <!-- 操作按钮 -->
         <div class="action-bar">
-          <!-- 还有考试机会 → 直接开始下一次作答（待评分期间也可以开始） -->
+
           <button
             v-if="canRetry"
             class="btn btn-retry"
@@ -110,7 +106,7 @@ const router = useRouter();
 const attemptId = String(route.params.attemptId || '');
 const loading = ref(true);
 const loadError = ref('');
-/* null 表示尚未取得/取得失败，此时按原逻辑兜底 */
+
 const remainingAttempts = ref(null);
 
 const data = ref({
@@ -128,8 +124,6 @@ const data = ref({
   answers: [],
 });
 
-/* App.vue 在跳转前把组装好的成绩写入 sessionStorage，这里读取作为准确的满分等上下文；
-   刷新或直接访问 URL 时用 fetchAttempt 兜底。 */
 const storeKey = `emp_exam_result_${attemptId}`;
 const readStored = () => {
   try {
@@ -144,10 +138,9 @@ const apply = (payload) => {
 };
 
 const close = () => router.push({ name: 'exams' });
-/* 答题明细独立成页：整页展示逐题作答 */
+
 const goDetails = () => router.push({ name: 'exam-result-details', params: { attemptId } });
 
-/* 还有机会且考试仍在进行中才允许重考；已结束/未开始考试直接隐藏入口 */
 const examRetryAllowed = ref(null);
 const canRetry = computed(() => {
   if (examRetryAllowed.value === false) return false;
@@ -170,7 +163,6 @@ const retryExam = () => {
   router.push({ name: 'exam-taking-by-id', params: { examId: data.value.examId } });
 };
 
-/* 关闭窗口时清理滚动锁与 Esc 监听 */
 const onKeydown = (event) => {
   if (event.key === 'Escape') close();
 };
@@ -191,14 +183,14 @@ onMounted(async () => {
       attemptNo: Number(detail?.attemptNo ?? stored?.attemptNo ?? 1),
       submittedAt: stored?.submittedAt || formatDateTime(detail?.submittedAt),
       status,
-      // 以服务端最新状态为准：待评分被人工评分后刷新即可看到最终成绩
+
       pendingReview: status === 2,
       isPassed: Boolean(detail?.isPassed),
       score: Number(detail?.totalScore ?? stored?.score ?? 0),
       passScore: Number(detail?.passScore ?? stored?.passScore ?? 60),
       answers,
     };
-    // 满分/题数：优先用跳转时带入的试卷上下文，缺失时按答案累加/计数兜底
+
     merged.totalScore = Number(stored?.totalScore || 0)
       || answers.reduce((sum, a) => sum + Number(a.score || 0), 0)
       || 100;
@@ -211,7 +203,6 @@ onMounted(async () => {
     loading.value = false;
   }
 
-  /* 读取剩余考试机会与考试开放状态；已结束/未开始考试禁止重考入口 */
   if (data.value.examId) {
     try {
       const examsData = await fetchExams();
@@ -235,7 +226,7 @@ onMounted(async () => {
         examRetryAllowed.value = false;
       }
     } catch {
-      /* 机会数获取失败时退回原逻辑，不影响成绩展示 */
+
     }
   }
 });
@@ -247,7 +238,6 @@ onUnmounted(() => {
 const isSubjectiveType = (type) =>
   Number(type) === 4 || type === 'application' || type === 'essay';
 
-/* 统一主题：待评分 / 通过 / 未通过 */
 const resultTheme = computed(() => {
   if (data.value.pendingReview) return 'pending';
   return data.value.isPassed ? 'pass' : 'fail';
@@ -265,7 +255,7 @@ const statusBadge = computed(() => {
   if (data.value.pendingReview) return '客观题已机审 · 主观题待评分';
   return data.value.isPassed ? '★ 考核优秀通过' : '未达到合格基准线';
 });
-/* 每题的判定状态（仅用于明细入口的对错概要统计） */
+
 const answerState = (answer) => {
   if (data.value.pendingReview && isSubjectiveType(answer.type)) return 'pending';
   const gained = Number(answer.scoreGained || 0);
@@ -276,7 +266,6 @@ const answerState = (answer) => {
   return 'partial';
 };
 
-/* 只给一个概要，具体逐题数据跳转到独立的答题明细页查看 */
 const detailSummary = computed(() => {
   const counts = { correct: 0, wrong: 0, partial: 0, pending: 0 };
   for (const answer of data.value.answers) {
@@ -293,7 +282,7 @@ const detailSummary = computed(() => {
 </script>
 
 <style scoped>
-/* ============ 大窗口（弹窗）外壳 ============ */
+
 .result-overlay {
   position: fixed;
   inset: 0;
@@ -358,7 +347,6 @@ const detailSummary = computed(() => {
 }
 .result-modal__close-icon { width: 18px; height: 18px; }
 
-/* ============ 加载 / 错误态 ============ */
 .result-state {
   display: flex;
   flex-direction: column;
@@ -370,7 +358,6 @@ const detailSummary = computed(() => {
 }
 .result-state--error { color: var(--app-rose-fg); }
 
-/* ============ 成绩卡片 ============ */
 .result-card {
   padding: 32px clamp(20px, 5vw, 48px) 36px;
   animation: cardIn 0.28s ease both;
@@ -387,7 +374,6 @@ const detailSummary = computed(() => {
 }
 .result-card__heading { min-width: 0; flex: 1; }
 
-/* 顶部结果图标 */
 .result-icon {
   width: 80px;
   height: 80px;
@@ -418,7 +404,6 @@ const detailSummary = computed(() => {
 }
 .result-meta { font-size: 12px; color: var(--app-text-4); }
 
-/* ============ 分数面板 ============ */
 .score-panel {
   margin: 28px 0 24px;
   padding: 28px;
@@ -459,7 +444,6 @@ const detailSummary = computed(() => {
 .pass-badge--pending { color: var(--app-accent-deep); background: var(--app-surface); border: 1px solid var(--app-accent-line); }
 .pass-line { font-size: 12px; color: var(--app-text-4); }
 
-/* ============ 数据统计 ============ */
 .stats-grid {
   display: grid;
   grid-template-columns: 1fr;
@@ -477,7 +461,6 @@ const detailSummary = computed(() => {
 .stats-value { font-size: 14px; font-weight: 700; color: var(--app-text); }
 .stats-value--amber { color: var(--app-amber-strong); }
 
-/* ============ 答题明细入口 ============ */
 .detail-toggle {
   display: flex;
   align-items: center;
@@ -510,7 +493,6 @@ const detailSummary = computed(() => {
 }
 .detail-toggle__arrow { width: 16px; height: 16px; }
 
-/* ============ 操作按钮 ============ */
 .action-bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .btn {
   display: flex;

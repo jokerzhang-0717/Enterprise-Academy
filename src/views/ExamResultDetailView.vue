@@ -1,6 +1,6 @@
 <template>
   <div class="detail-page">
-    <!-- 顶部返回条：从成绩页点进来，可返回成绩详情 -->
+
     <div class="detail-page__topbar">
       <button type="button" class="back-link" @click="goBack">
         <ArrowLeft class="back-link__icon" />
@@ -17,7 +17,7 @@
     </div>
 
     <template v-else>
-      <!-- 概要卡 -->
+
       <div class="detail-summary">
         <div class="detail-summary__main">
           <div class="detail-label">ANSWER REVIEW · 逐题作答明细</div>
@@ -33,7 +33,6 @@
         </div>
       </div>
 
-      <!-- 筛选 -->
       <div v-if="answers.length" class="filter-bar">
         <button
           v-for="tab in filterTabs"
@@ -48,7 +47,6 @@
         </button>
       </div>
 
-      <!-- 逐题明细列表 -->
       <div v-if="filteredAnswers.length" class="answer-list">
         <article
           v-for="(entry, index) in filteredAnswers"
@@ -160,7 +158,6 @@ const answerScoreText = (answer) => {
   return `${gained} / ${total} 分`;
 };
 
-/* 统计与筛选 */
 const counts = computed(() => {
   const result = { correct: 0, wrong: 0, partial: 0, pending: 0, neutral: 0 };
   for (const answer of answers.value) {
@@ -197,7 +194,6 @@ const filteredAnswers = computed(() =>
   padding-bottom: 48px;
 }
 
-/* ============ 顶部返回条 ============ */
 .detail-page__topbar {
   display: flex;
   align-items: center;
@@ -227,7 +223,6 @@ const filteredAnswers = computed(() =>
 .back-link__icon { width: 16px; height: 16px; }
 .detail-page__crumb { font-size: 12px; color: var(--app-text-5); }
 
-/* ============ 加载 / 错误 / 空态 ============ */
 .detail-state {
   display: flex;
   flex-direction: column;
@@ -250,7 +245,6 @@ const filteredAnswers = computed(() =>
   font-size: 13px;
 }
 
-/* ============ 概要卡 ============ */
 .detail-summary {
   display: flex;
   align-items: flex-start;
@@ -299,7 +293,6 @@ const filteredAnswers = computed(() =>
 .count-chip--partial { color: var(--app-amber-fg); background: var(--app-amber-bg); border-color: var(--app-amber-line); }
 .count-chip--pending { color: var(--app-accent-deep); background: var(--app-accent-soft); border-color: var(--app-accent-line); }
 
-/* ============ 筛选条 ============ */
 .filter-bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .filter-btn {
   display: inline-flex;
@@ -320,7 +313,6 @@ const filteredAnswers = computed(() =>
 .filter-btn--active:hover { color: var(--app-on-fill); }
 .filter-btn__num { opacity: 0.75; font-variant-numeric: tabular-nums; }
 
-/* ============ 逐题卡片 ============ */
 .answer-list { display: flex; flex-direction: column; gap: 12px; }
 .answer-card {
   padding: 18px 20px;
@@ -372,7 +364,6 @@ const filteredAnswers = computed(() =>
 .answer-line__value--ref { color: var(--app-emerald-strong); font-weight: 600; }
 .answer-line--analysis { padding-top: 8px; border-top: 1px dashed var(--app-border); }
 
-/* ============ 操作按钮 ============ */
 .btn {
   display: inline-flex;
   align-items: center;

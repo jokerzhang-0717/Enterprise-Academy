@@ -1,6 +1,6 @@
 <template>
-  <div class="messages-page space-y-6 animate-in fade-in duration-200">
-    <!-- 1. Top Title & Global Controls -->
+  <div class="messages-page space-y-6 animate-in duration-200">
+
     <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
       <div v-if="!detailMode">
         <div class="flex items-center gap-2">
@@ -54,7 +54,6 @@
       </div>
     </Transition>
 
-    <!-- Message detail -->
     <div v-if="detailMode && selectedMessage" class="space-y-3">
       <button
         @click="goBackToList"
@@ -161,7 +160,7 @@
                     <span class="font-semibold text-[color:var(--app-text)] text-[11px]">
                       {{ msg.typeLabel }}
                     </span>
-                    <span 
+                    <span
                       v-if="!msg.isRead"
                       class="px-1.5 py-0.2 rounded bg-[color:var(--app-red-100)] text-[color:var(--app-red-600)] text-[10px] font-bold"
                     >
@@ -234,10 +233,10 @@
 
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import { 
-  CheckCheck, 
-  FileText, 
-  ChevronRight, 
+import {
+  CheckCheck,
+  FileText,
+  ChevronRight,
   ChevronLeft,
   Trash2,
   X
@@ -288,7 +287,7 @@ const syncFullscreen = () => {
 onMounted(() => {
   syncFullscreen();
   document.addEventListener('fullscreenchange', syncFullscreen);
-  // 进入消息中心时同步管理端最新已发布公告
+
   loadMessages(true).catch(() => {});
 });
 

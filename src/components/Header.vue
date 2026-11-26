@@ -1,11 +1,10 @@
 <template>
   <header class="app-header" :class="{ 'app-header--admin': isAdmin }">
 
-    <!-- ========== 搜索栏区域（管理端隐藏） ========== -->
     <div v-if="!isAdmin" class="search-zone">
 
       <div class="search-box">
-        <!-- 放大镜图标（CSS 画的） -->
+
         <span class="icon-search"></span>
         <input
           type="text"
@@ -19,7 +18,6 @@
         />
       </div>
 
-      <!-- 搜索结果下拉框 -->
       <template v-if="showSearchModal">
         <div class="backdrop" @click="showSearchModal = false"></div>
         <div class="search-dropdown">
@@ -27,7 +25,6 @@
             {{ searchValue.trim() ? `搜索结果 (${searchResults.length})` : '输入关键词搜索项目内容' }}
           </div>
 
-          <!-- 搜索结果列表 -->
           <div v-if="searchResults.length" class="dropdown-list">
             <button
               v-for="item in searchResults"
@@ -46,7 +43,6 @@
             </button>
           </div>
 
-          <!-- 无结果 -->
           <p v-else-if="searchValue.trim()" class="dropdown-empty">
             没有找到匹配内容
           </p>
@@ -54,22 +50,19 @@
       </template>
     </div>
 
-    <!-- ========== 右侧操作区 ========== -->
     <div class="header-actions">
 
-      <!-- 签到按钮 -->
       <button
         v-if="!isAdmin"
         type="button"
         :class="['checkin-btn', isCheckedIn ? 'checkin-btn--done' : 'checkin-btn--active']"
         @click="$emit('navigate', 'attendance')"
       >
-        <!-- 打勾图标 -->
+
         <span :class="['icon-check', isCheckedIn ? 'icon-check--blue' : 'icon-check--white']">✓</span>
         <span class="checkin-label">{{ isCheckedIn ? '今日培训已签到' : '立即打卡签到' }}</span>
       </button>
 
-      <!-- 用户端工具:全屏 -->
       <button
         v-if="!isAdmin"
         class="tool-btn"
@@ -82,7 +75,6 @@
         <Maximize v-else class="tool-icon" />
       </button>
 
-      <!-- 消息铃铛（管理端隐藏） -->
       <button
         v-if="!isAdmin"
         class="bell-btn"
@@ -91,11 +83,10 @@
         @click="$emit('navigate', 'messages')"
       >
         <MessageSquareText class="message-icon" aria-hidden="true" />
-        <!-- 未读红点 -->
+
         <span v-if="unreadCount > 0" class="unread-dot"></span>
       </button>
 
-      <!-- 管理端工具:全屏 -->
       <button
         v-if="isAdmin"
         class="tool-btn"
@@ -106,7 +97,6 @@
         <Maximize v-else class="tool-icon" />
       </button>
 
-      <!-- 换主题:管理端三套,学员端青蓝/曜黑 -->
       <button
         class="tool-btn"
         title="换主题"
@@ -115,27 +105,25 @@
         <Palette class="tool-icon" />
       </button>
 
-      <!-- 用户头像 + 下拉菜单 -->
       <div class="user-zone">
         <button class="user-btn" @click="showUserDropdown = !showUserDropdown">
-          <!-- 头像 -->
+
           <div class="avatar">
             <img v-if="user.avatarUrl" :src="user.avatarUrl" alt="" class="avatar-img" />
             <span v-else>{{ user.name.charAt(0) }}</span>
           </div>
-          <!-- 用户信息 -->
+
           <div class="user-info">
             <div class="user-name">
               {{ user.name }}
               <span v-if="isAdmin" class="admin-tag">管理端</span>
-              <!-- 小箭头（CSS 画的） -->
+
               <span class="icon-arrow-down"></span>
             </div>
             <div class="user-meta">{{ user.department }} · {{ user.title }}</div>
           </div>
         </button>
 
-        <!-- 下拉菜单 -->
         <template v-if="showUserDropdown">
           <div class="backdrop" @click="showUserDropdown = false"></div>
           <div class="user-dropdown">
@@ -211,7 +199,6 @@ onMounted(() => {
 });
 onBeforeUnmount(() => document.removeEventListener('fullscreenchange', syncFullscreen));
 
-// 选中搜索结果
 function handleSelectSuggestion(item) {
   emit('select-search-result', item);
   showSearchModal.value = false;
@@ -219,7 +206,6 @@ function handleSelectSuggestion(item) {
   emit('search', '');
 }
 
-// 按回车选第一个结果
 function selectFirstResult() {
   if (props.searchResults.length) {
     handleSelectSuggestion(props.searchResults[0]);
@@ -228,7 +214,7 @@ function selectFirstResult() {
 </script>
 
 <style scoped>
-/* ========== 全局重置 ========== */
+
 * {
   margin: 0;
   padding: 0;
@@ -244,7 +230,6 @@ input {
   font-family: inherit;
 }
 
-/* ========== 顶部导航栏 ========== */
 .app-header {
   position: sticky;
   top: 0;
@@ -260,12 +245,10 @@ input {
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
 }
 
-/* 管理端只有头像,靠右显示 */
 .app-header--admin {
   justify-content: flex-end;
 }
 
-/* 管理端底边:强调色 → 身份色 的渐变条,整条随主题走 */
 .app-header--admin::after {
   content: "";
   position: absolute;
@@ -276,7 +259,6 @@ input {
   background: linear-gradient(90deg, var(--app-accent) 0%, var(--app-brand) 100%);
 }
 
-/* ========== 搜索栏区域 ========== */
 .search-zone {
   position: relative;
   flex: 1;
@@ -315,7 +297,6 @@ input {
   color: var(--app-text-4);
 }
 
-/* --- 放大镜图标（CSS 画） --- */
 .icon-search {
   position: relative;
   width: 16px;
@@ -347,7 +328,6 @@ input {
   transform-origin: right center;
 }
 
-/* ========== 搜索下拉框 ========== */
 .backdrop {
   position: fixed;
   inset: 0;
@@ -451,7 +431,6 @@ input {
   color: var(--app-text-5);
 }
 
-/* ========== 右侧操作区 ========== */
 .header-actions {
   display: flex;
   align-items: center;
@@ -459,7 +438,6 @@ input {
   flex-shrink: 0;
 }
 
-/* ========== 签到按钮 ========== */
 .checkin-btn {
   display: flex;
   align-items: center;
@@ -472,7 +450,6 @@ input {
   transition: background 0.15s, border-color 0.15s;
 }
 
-/* 已签到状态 */
 .checkin-btn--done {
   color: var(--app-accent-deep);
   background: var(--app-accent-soft);
@@ -487,7 +464,6 @@ input {
   cursor: default;
 }
 
-/* 未签到状态 */
 .checkin-btn--active {
   color: var(--app-on-accent-solid);
   background: var(--app-accent);
@@ -498,7 +474,6 @@ input {
   background: var(--app-accent-hover-strong);
 }
 
-/* 打勾图标 */
 .icon-check {
   font-size: 13px;
   font-weight: 700;
@@ -513,7 +488,6 @@ input {
   color: var(--app-on-fill);
 }
 
-/* ========== 铃铛按钮 ========== */
 .bell-btn {
   position: relative;
   display: flex;
@@ -532,7 +506,6 @@ input {
   background: var(--app-surface-3);
 }
 
-/* --- 管理端工具按钮（全屏 / 换主题） --- */
 .tool-btn {
   display: flex;
   align-items: center;
@@ -567,7 +540,6 @@ input {
   stroke-width: 1.8;
 }
 
-/* 未读红点 */
 .unread-dot {
   position: absolute;
   top: 5px;
@@ -578,7 +550,6 @@ input {
   border-radius: 50%;
 }
 
-/* ========== 用户头像区域 ========== */
 .user-zone {
   position: relative;
 }
@@ -599,7 +570,6 @@ input {
   border-color: var(--app-text-6);
 }
 
-/* 头像 */
 .avatar {
   width: 32px;
   height: 32px;
@@ -623,7 +593,6 @@ input {
   object-fit: cover;
 }
 
-/* 用户文字信息 */
 .user-info {
   text-align: left;
 }
@@ -645,7 +614,6 @@ input {
   line-height: 1;
 }
 
-/* --- 小箭头（CSS 画） --- */
 .icon-arrow-down {
   width: 0;
   height: 0;
@@ -654,7 +622,6 @@ input {
   border-top: 4px solid var(--app-text-5);
 }
 
-/* ========== 用户下拉菜单 ========== */
 .user-dropdown {
   position: absolute;
   right: 0;
@@ -699,7 +666,6 @@ input {
   background: var(--app-surface-2);
 }
 
-/* 下拉菜单按钮 */
 .dropdown-action {
   display: flex;
   align-items: center;
@@ -736,7 +702,6 @@ input {
   color: var(--app-text-5);
 }
 
-/* 退出登录 */
 .dropdown-action--logout {
   color: var(--app-red-600);
 }
@@ -754,7 +719,6 @@ input {
   color: var(--app-red-600);
 }
 
-/* 管理端:下拉浮层跟随主题,深色主题下不出现浅底深字;学员端沿用上面的原色 */
 .app-header--admin .dropdown-user-name {
   color: var(--app-heading);
 }
@@ -784,7 +748,6 @@ input {
   color: var(--app-rose-fg);
 }
 
-/* 管理端标签 */
 .admin-tag {
   display: inline-flex;
   align-items: center;

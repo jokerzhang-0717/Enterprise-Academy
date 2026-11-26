@@ -1,7 +1,6 @@
 <template>
   <div class="admin-exams admin-fit-page">
 
-    <!-- 页头 -->
     <div class="page-head">
       <div>
         <h1 class="page-title">考试管理</h1>
@@ -12,7 +11,6 @@
       </button>
     </div>
 
-    <!-- 概览条 -->
     <div class="overview-strip">
       <div class="overview-item">
         <span class="overview-value">{{ runningCount }}</span>
@@ -58,7 +56,6 @@
       <span class="exam-filter-result">{{ filteredExams.length }} 场考试</span>
     </div>
 
-    <!-- 考试表格 -->
     <div class="table-wrap">
       <table class="data-table">
         <thead>
@@ -159,7 +156,6 @@
       </div>
     </div>
 
-    <!-- 考试详情 -->
     <AdminDetailModal
       v-if="detailExam"
       title="考试详情"
@@ -176,7 +172,6 @@
       @close="detailExam = null"
     />
 
-    <!-- 新建 / 编辑考试弹窗 -->
     <div v-if="modalOpen" class="modal-backdrop" @click.self="closeModal">
       <div class="modal modal--exam-editor">
         <div class="modal-head">
@@ -201,7 +196,6 @@
             </select>
           </label>
 
-          <!-- 时间窗便捷录入 -->
           <div class="field">
             <span class="field-label">考试日期</span>
             <input v-model="form.examDate" type="date" class="field-input" />
@@ -342,11 +336,9 @@ const stateLabelMap = {
 };
 const stateLabel = (state) => stateLabelMap[state] || state;
 
-/* ---------- 考试详情 ---------- */
 const detailExam = ref(null);
 const openDetail = (exam) => { detailExam.value = exam; };
 
-/* ---------- 阅卷 ---------- */
 const gradingExam = ref(null);
 const openGrading = (exam) => { gradingExam.value = exam; };
 
@@ -388,7 +380,6 @@ const saveQuickStatus = async () => {
   }
 };
 
-/* ---------- 新建 / 编辑考试表单 ---------- */
 const modalOpen = ref(false);
 const editingId = ref(null);
 const formError = ref('');
@@ -400,7 +391,6 @@ const defaultDate = () => {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 };
 
-/* 及格分固定为 60 分，不在管理端展示或修改 */
 const form = ref({
   title: '',
   organizer: '',
@@ -438,7 +428,6 @@ const openCreate = () => {
   modalOpen.value = true;
 };
 
-/* 接口返回 ISO 时间则直接取，种子数据只有展示用时间窗时尽力解析 */
 const fromIso = (value) => {
   const m = /^(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2})/.exec(value || '');
   return m ? { date: m[1], time: m[2] } : null;
@@ -579,9 +568,6 @@ const removeExam = (exam) => {
 </script>
 
 <style scoped>
-/* ============================================================
-   AdminExams · 考试管理 · 纯原生 CSS
-   ============================================================ */
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
 button, input { font-family: inherit; }
@@ -594,7 +580,6 @@ button { cursor: pointer; }
   min-height: 100%;
 }
 
-/* ========== 页头 ========== */
 .page-head {
   display: flex;
   align-items: flex-end;
@@ -645,7 +630,6 @@ button { cursor: pointer; }
 }
 .btn--ghost:hover { border-color: var(--app-brand); color: var(--app-brand-ink); }
 
-/* ========== 概览条 ========== */
 .overview-strip {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -676,7 +660,6 @@ button { cursor: pointer; }
   color: var(--app-text-4);
 }
 
-/* ========== 筛选工具栏 ========== */
 .exam-filter-bar {
   display: grid;
   grid-template-columns: minmax(150px, 190px) minmax(130px, 160px) minmax(220px, 1fr) auto;
@@ -795,7 +778,6 @@ button { cursor: pointer; }
   .exam-filter-result { grid-column: 1; }
 }
 
-/* ========== 表格 ========== */
 .table-wrap {
   background: var(--app-surface);
   border: 1px solid var(--app-border);
@@ -843,7 +825,6 @@ button { cursor: pointer; }
 th.num, td.num { text-align: right; }
 th.ops, td.ops { text-align: right; }
 
-/* 表头默认 left 优先级更高,这里提权让数字列/操作列的表头与其内容对齐 */
 .data-table thead th.num,
 .data-table thead th.ops { text-align: right; }
 
@@ -883,7 +864,6 @@ th.ops, td.ops { text-align: right; }
   color: var(--app-text-5);
 }
 
-/* ========== 状态徽标 ========== */
 .status-pill {
   display: inline-flex;
   align-items: center;
@@ -900,7 +880,6 @@ th.ops, td.ops { text-align: right; }
 .status-pill--ended     { color: var(--app-text-4); background: var(--app-chip); }
 .status-pill--draft     { color: var(--app-amber-fg); background: var(--app-amber-bg); }
 
-/* ========== 行操作 ========== */
 .row-actions {
   display: inline-flex;
   align-items: center;
@@ -938,7 +917,6 @@ th.ops, td.ops { text-align: right; }
 .icon-btn svg { width: 14px; height: 14px; }
 .icon-btn--danger:hover { background: var(--app-rose-bg); color: var(--app-rose-fg); border-color: var(--app-rose-line); }
 
-/* ========== 弹窗 ========== */
 .modal-backdrop {
   position: fixed;
   inset: 0;
@@ -1068,7 +1046,6 @@ th.ops, td.ops { text-align: right; }
   box-shadow: 0 0 0 3px var(--app-accent-a12);
 }
 
-/* ========== 时间窗预览 ========== */
 .window-preview {
   display: flex;
   align-items: center;

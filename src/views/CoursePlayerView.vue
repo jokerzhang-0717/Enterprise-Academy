@@ -1,6 +1,6 @@
 <template>
   <div class="player">
-    <!-- 顶部栏 -->
+
     <header class="top-bar">
       <button class="back-btn" type="button" @click="$emit('back')" title="返回课程列表">
         <ArrowLeft class="icon" />
@@ -20,14 +20,12 @@
       </span>
     </header>
 
-    <!-- 主体：视频列 + 目录列 -->
     <div class="layout">
-      <!-- 视频 + 课程详情 -->
+
       <div class="col-main">
         <div class="screen">
           <div class="watermark">{{ watermarkText }}</div>
 
-          <!-- 有片源时直接播管理端为该小节绑定的视频，用原生控件 -->
           <video
             v-if="currentLesson && currentLesson.url"
             ref="videoEl"
@@ -54,7 +52,6 @@
             </p>
           </template>
 
-          <!-- 没有片源时不展示任何模拟控制条；有片源时统一使用浏览器原生控件 -->
         </div>
 
         <section class="card detail-card">
@@ -76,7 +73,6 @@
         </section>
       </div>
 
-      <!-- 视频选集（仿哔哩哔哩：所有小节平铺在一个方框里） -->
       <aside class="col-side">
         <div class="bili-panel">
           <div class="bili-panel-head">
@@ -148,7 +144,6 @@ let shouldTrackStudy = false;
 let studyTrackingErrorShown = false;
 let completionInProgress = false;
 
-/* 基础信息用课程中心的列表缓存，避免来回切页时目录闪烁 */
 const listCourse = computed(() => {
   const list = learnerStore.courses;
   return list.find(c => c.id === props.courseId)
@@ -165,7 +160,6 @@ const markCourseAsStudying = () => {
   cachedCourse.lastStudied = '刚刚';
 };
 
-/* /courses 列表不带 chapters，目录只能按 id 取详情 */
 const detail = ref(null);
 const course = computed(() => {
   const base = listCourse.value;
@@ -178,7 +172,7 @@ const lessonsOf = (ci) => chapters.value[ci]?.lessons || [];
 const totalLessons = computed(() =>
   chapters.value.reduce((n, ch) => n + (ch.lessons || []).length, 0)
 );
-/* 仿哔哩哔哩：所有小节跨章平铺到同一个列表，不带章节分组 */
+
 const flatLessons = computed(() => {
   const items = [];
   chapters.value.forEach((chapter, ci) => {
@@ -188,7 +182,7 @@ const flatLessons = computed(() => {
   });
   return items;
 });
-/* 仿哔哩哔哩选集头部：当前小节在整门课中的序号 */
+
 const currentGlobalIndex = computed(() => {
   if (!totalLessons.value) return 0;
   let count = 0;
@@ -196,7 +190,6 @@ const currentGlobalIndex = computed(() => {
   return count + playing.value.li + 1;
 });
 
-/* 学习位置：进度落在哪一节，所有小节均可直接点开观看，不受进度限制 */
 const positionOfProgress = () => {
   if (!chapters.value.length) return { ci: 0, li: 0 };
   const pct = Math.min(100, Math.max(0, Number(course.value?.progress) || 0));
@@ -210,8 +203,6 @@ const positionOfProgress = () => {
   return { ci: lastCi, li: Math.max(0, lessonsOf(lastCi).length - 1) };
 };
 
-/* progress = 学到哪一节，playing = 正在播哪一节：
-   回看已完成小节不会把进度倒退回滚 */
 const progress = ref(positionOfProgress());
 const playing = ref({ ...progress.value });
 const episodesBox = ref(null);
@@ -222,13 +213,11 @@ const clampSpot = (spot) => {
   return { ci, li: Math.min(spot.li, Math.max(0, lessonsOf(ci).length - 1)) };
 };
 
-/* 管理端删章/删节后，位置可能落到已经不存在的条目上 */
 watch(chapters, () => {
   progress.value = clampSpot(progress.value);
   playing.value = clampSpot(playing.value);
 });
 
-/* 目录是异步补进来的，到位后按课程进度重算学习位置 */
 const syncPosition = () => {
   const spot = positionOfProgress();
   progress.value = spot;
@@ -243,7 +232,7 @@ watch(
     try {
       detail.value = await fetchCourse(id);
     } catch {
-      /* 详情失败时退回列表里的课程信息 */
+
     }
     if (chapters.value.length) syncPosition();
   },
@@ -259,7 +248,6 @@ const courseCover = computed(
     || 'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?auto=format&fit=crop&w=1200&q=80'
 );
 
-/* 视频水印跟随当前登录学员，不再写死姓名和工号 */
 const watermarkText = computed(() => {
   const user = props.user;
   if (!user) return '云舒艺境';
@@ -268,7 +256,6 @@ const watermarkText = computed(() => {
   return employeeId ? `云舒艺境 · ${name} · 工号 ${employeeId}` : `云舒艺境 · ${name}`;
 });
 
-/* 顶栏状态胶囊：不展示播放/暂停标签 */
 const playerStatusLabel = computed(() => {
   if (!currentLesson.value) return '待编排';
   return '课程学习中';
@@ -455,7 +442,6 @@ const handleVideoEnded = async () => {
   await playNextLesson();
 };
 
-/* 视频播完后自动切到下一小节继续播放；只切换播放器，不重复保存进度 */
 const playNextLesson = async () => {
   const { ci, li } = playing.value;
   let nextCi = ci;
@@ -464,7 +450,7 @@ const playNextLesson = async () => {
     nextCi = ci + 1;
     nextLi = 0;
   }
-  if (nextCi >= chapters.value.length) return; // 已是最后一节
+  if (nextCi >= chapters.value.length) return;
   playing.value = { ci: nextCi, li: nextLi };
   videoErrorLessonId = '';
   await nextTick();
@@ -472,7 +458,7 @@ const playNextLesson = async () => {
     try {
       await videoEl.value.play();
     } catch {
-      /* 浏览器拦截自动播放时，保留手动点击播放即可 */
+
     }
   }
 };
@@ -515,10 +501,8 @@ const completeCurrentLesson = async () => {
 
 const isCurrent = (ci, li) => playing.value.ci === ci && playing.value.li === li;
 
-/* 仿哔哩哔哩：选集标题只显示小节名，去掉数据里自带的 "3.1" 章节编号 */
 const lessonLabel = (name) => String(name || '').replace(/^\d+\.\d+\s*/, '');
 
-/* 仿哔哩哔哩：选集时长直接取 duration_seconds（已与 MP4 真实时长同步） */
 const formatDuration = (seconds) => {
   const total = Number(seconds);
   if (!Number.isFinite(total) || total <= 0) return '--:--';
@@ -537,27 +521,26 @@ const openLesson = async (ci, li) => {
   }
   playing.value = { ci, li };
   videoErrorLessonId = '';
-  /* 点击小节等同于按下播放键：切到该小节后直接开始播放 */
+
   await nextTick();
   if (videoEl.value) {
     try {
       await videoEl.value.play();
     } catch {
-      /* 浏览器可能拦截自动播放，保留手动点击播放按钮即可 */
+
     }
   }
 };
 
 const handleLessonClick = (ci, li) => {
   if (isCurrent(ci, li)) {
-    // 有片源时点当前小节等同于播放/暂停；无片源时保持选中即可
+
     if (hasVideo.value) void togglePlayback();
     return;
   }
   void openLesson(ci, li);
 };
 
-/* 播放或切换到别的课时，把当前选集对齐到选集方框顶部（只滚方框，不影响整页） */
 const revealActiveEpisode = async () => {
   await nextTick();
   const box = episodesBox.value;
@@ -597,7 +580,7 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-/* ===== 基础 ===== */
+
 .player {
   display: flex;
   flex-direction: column;
@@ -612,14 +595,12 @@ onBeforeUnmount(() => {
   to   { opacity: 1; transform: none; }
 }
 
-/* ===== 图标 ===== */
 .icon { width: 18px; height: 18px; flex-shrink: 0; }
 .icon-small { width: 14px; height: 14px; }
 .icon-fill { fill: currentColor; }
 .icon-blue { color: var(--app-accent-strong); }
 .icon-green { color: var(--app-emerald-fg); }
 
-/* ===== 顶部栏 ===== */
 .top-bar {
   display: flex;
   align-items: center;
@@ -720,8 +701,6 @@ onBeforeUnmount(() => {
   background: var(--app-accent-strong);
 }
 
-
-/* ===== 布局 ===== */
 .layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -740,7 +719,6 @@ onBeforeUnmount(() => {
   min-width: 0;
 }
 
-/* ===== 视频区 ===== */
 .screen {
   position: relative;
   display: flex;
@@ -843,7 +821,6 @@ onBeforeUnmount(() => {
   line-height: 1.6;
 }
 
-/* ===== 卡片 ===== */
 .card {
   padding: 20px 22px;
   background: var(--app-surface);
@@ -921,7 +898,6 @@ onBeforeUnmount(() => {
   box-shadow: none;
 }
 
-/* ===== 视频选集（仿哔哩哔哩：一个方框、小节平铺） ===== */
 .bili-panel {
   overflow: hidden;
   border: 1px solid var(--app-border-soft);
@@ -954,9 +930,8 @@ onBeforeUnmount(() => {
   color: var(--app-text-4);
 }
 
-/* 单个方框内的小节列表：超过 8 条在框内滚动（仿哔哩哔哩选集） */
 .bili-episodes {
-  max-height: 312px; /* 8 行 × 37.5px + 上下内边距 */
+  max-height: 312px;
   overflow-y: auto;
   overscroll-behavior: contain;
   padding: 4px 0 8px;

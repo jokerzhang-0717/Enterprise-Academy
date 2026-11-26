@@ -1,7 +1,6 @@
 <template>
   <div class="admin-depts admin-fit-page">
 
-    <!-- 页头 -->
     <div class="page-head">
       <div>
         <h1 class="page-title">部门管理</h1>
@@ -12,7 +11,6 @@
       </button>
     </div>
 
-    <!-- 统计条 -->
     <div class="overview-strip">
       <div class="overview-item">
         <span class="overview-value">{{ departments.length }}</span>
@@ -57,7 +55,6 @@
       <span class="filter-count">{{ filteredDepartments.length }} 个部门</span>
     </div>
 
-    <!-- 部门表格 -->
     <div class="table-wrap">
       <table class="data-table">
         <thead>
@@ -127,7 +124,6 @@
       :total-pages="totalPages"
     />
 
-    <!-- 部门详细数据弹窗 -->
     <div v-if="detailModalOpen" class="modal-backdrop" @click.self="detailModalOpen = false">
       <div class="modal modal--detail">
         <div class="modal-head">
@@ -178,7 +174,6 @@
       </div>
     </div>
 
-    <!-- 新增 / 编辑弹窗 -->
     <div v-if="modalOpen" class="modal-backdrop" @click.self="closeModal">
       <div class="modal">
         <div class="modal-head">
@@ -277,7 +272,6 @@ const avgLearners = computed(() =>
     : 0
 );
 
-/* ---------- 详情弹窗 ---------- */
 const detailModalOpen = ref(false);
 const selectedDept = ref(null);
 
@@ -292,7 +286,6 @@ const openEditFromDetail = () => {
   if (target) openEdit(target);
 };
 
-/* ---------- 弹窗表单 ---------- */
 const modalOpen = ref(false);
 const editingId = ref(null);
 const formError = ref('');
@@ -395,9 +388,6 @@ const removeDept = (dept) => {
 </script>
 
 <style scoped>
-/* ============================================================
-   AdminDepartments · 部门管理 · 纯原生 CSS
-   ============================================================ */
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
 button, input, select, textarea { font-family: inherit; }
@@ -411,7 +401,6 @@ button { cursor: pointer; }
   height: 100%;
 }
 
-/* ========== 页头 ========== */
 .page-head {
   display: flex;
   align-items: flex-end;
@@ -462,7 +451,6 @@ button { cursor: pointer; }
 }
 .btn--ghost:hover { border-color: var(--app-brand); color: var(--app-brand-ink); }
 
-/* ========== 概览条 ========== */
 .overview-strip {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -492,7 +480,6 @@ button { cursor: pointer; }
   color: var(--app-text-4);
 }
 
-/* ========== 筛选工具栏 ========== */
 .filter-toolbar {
   display: grid;
   grid-template-columns: minmax(140px, 190px) minmax(220px, 1fr) auto;
@@ -596,7 +583,6 @@ button { cursor: pointer; }
   white-space: nowrap;
 }
 
-/* ========== 表格 ========== */
 .table-wrap {
   background: var(--app-surface);
   border: 1px solid var(--app-border);
@@ -647,14 +633,12 @@ button { cursor: pointer; }
 th.num, td.num { text-align: right; white-space: nowrap; }
 th.ops, td.ops { text-align: right; white-space: nowrap; }
 
-/* 表头默认 left 优先级更高,这里提权让数字列/操作列的表头与其内容对齐 */
 .data-table thead th.num,
 .data-table thead th.ops { text-align: right; }
 
 .cell-muted { color: var(--app-text-4); }
 .empty-cell { text-align: center; color: var(--app-text-5); padding: 28px 0 !important; }
 
-/* 部门简介仅显示一行，超出省略号 */
 .desc-cell {
   max-width: 240px;
   color: var(--app-text-3);
@@ -690,7 +674,6 @@ th.ops, td.ops { text-align: right; white-space: nowrap; }
   white-space: nowrap;
 }
 
-/* ========== 状态徽标 ========== */
 .status-pill {
   display: inline-flex;
   align-items: center;
@@ -703,7 +686,6 @@ th.ops, td.ops { text-align: right; white-space: nowrap; }
 .status-pill--on  { color: var(--app-emerald-fg); background: var(--app-emerald-bg); }
 .status-pill--off { color: var(--app-text-4); background: var(--app-chip); }
 
-/* ========== 现代化状态切换按钮（替代原先难看的圆圈按钮） ========== */
 .status-toggle-btn {
   display: inline-flex;
   align-items: center;
@@ -721,7 +703,7 @@ th.ops, td.ops { text-align: right; white-space: nowrap; }
   height: 6px;
   border-radius: 50%;
 }
-/* 启用中 -> 按钮显示停用操作 */
+
 .status-toggle-btn--off {
   background: var(--app-orange-bg);
   color: var(--app-orange-fg);
@@ -738,7 +720,7 @@ th.ops, td.ops { text-align: right; white-space: nowrap; }
 .status-toggle-btn--off:hover .toggle-dot {
   background: #DC2626;
 }
-/* 已停用 -> 按钮显示启用操作 */
+
 .status-toggle-btn--on {
   background: var(--app-emerald-bg);
   color: var(--app-emerald-fg);
@@ -753,7 +735,6 @@ th.ops, td.ops { text-align: right; white-space: nowrap; }
   border-color: var(--app-emerald-line);
 }
 
-/* ========== 行操作 ========== */
 .row-actions {
   display: inline-flex;
   align-items: center;
@@ -778,7 +759,6 @@ th.ops, td.ops { text-align: right; white-space: nowrap; }
 .icon-btn--ok:hover   { background: var(--app-emerald-bg); color: var(--app-emerald-fg); border-color: var(--app-emerald-line); }
 .icon-btn--danger:hover { background: var(--app-rose-bg); color: var(--app-rose-fg); border-color: var(--app-rose-line); }
 
-/* ========== 弹窗 ========== */
 .modal-backdrop {
   position: fixed;
   inset: 0;
@@ -894,7 +874,6 @@ th.ops, td.ops { text-align: right; white-space: nowrap; }
   margin-top: 4px;
 }
 
-/* ========== 部门详情弹窗定制样式 ========== */
 .modal--detail {
   max-width: 520px;
 }

@@ -12,13 +12,6 @@ import {
   fetchAdminUsers,
 } from './api/index.js';
 
-/**
- * 管理端共享响应式状态
- * 课程管理页 → 课程导入页、题库页 → 考试页 之间通过该模块同步数据。
- * 数据源为后端接口；所有列表都通过 splice 原地替换，保证视图里
- * `const courses = adminStore.courses` 这类引用始终是同一数组。
- */
-
 const replaceAll = (target, list) => {
   target.splice(0, target.length, ...(list || []));
 };
@@ -37,8 +30,6 @@ export const adminStore = reactive({
   loaded: false,
   loading: false,
 });
-
-/* ============================== 单个列表加载 ============================== */
 
 export const loadDepartments = async () => {
   const page = await fetchAdminDepartments();
@@ -99,7 +90,6 @@ export const loadDashboard = async () => {
   return adminStore.dashboard;
 };
 
-/** 一次加载管理端全部基础数据（失败的列表保持原值，不阻塞其它页面） */
 export const loadAdminStore = async () => {
   if (adminStore.loading) return adminStore;
   adminStore.loading = true;
@@ -121,7 +111,6 @@ export const loadAdminStore = async () => {
   return adminStore;
 };
 
-/** 退出登录时清空管理端缓存 */
 export const resetAdminStore = () => {
   adminStore.dashboard = null;
   adminStore.departments.splice(0);
@@ -136,6 +125,5 @@ export const resetAdminStore = () => {
   adminStore.loaded = false;
 };
 
-/** 统计某场考试的题目数 */
 export const questionCount = (examId) =>
   adminStore.questions.filter(q => String(q.examId) === String(examId)).length;

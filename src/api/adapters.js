@@ -1,7 +1,3 @@
-/**
- * 后端 DTO → 前端视图模型 适配层
- * 视图模板尽量保持原样，只在这里做字段名/枚举/展示文本的转换。
- */
 
 const pad = (n) => String(n).padStart(2, '0');
 
@@ -13,7 +9,6 @@ const asDate = (value) => {
   return Number.isNaN(d.getTime()) ? null : d;
 };
 
-/** 2025-05-13T09:30:00 → 2025-05-13 */
 export const formatDate = (value) => {
   if (!value) return '';
   const text = String(value);
@@ -23,7 +18,6 @@ export const formatDate = (value) => {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 };
 
-/** 2025-05-13T09:30:00 → 2025-05-13 09:30 */
 export const formatDateTime = (value) => {
   if (!value) return '';
   const d = asDate(value);
@@ -31,7 +25,6 @@ export const formatDateTime = (value) => {
   return `${formatDate(d)} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 };
 
-/** 2025-05-13T09:30:00 → 09:30 */
 export const formatTime = (value) => {
   if (!value) return '';
   const d = asDate(value);
@@ -39,7 +32,6 @@ export const formatTime = (value) => {
   return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
 };
 
-/** 消息列表里的相对时间展示 */
 export const formatMessageTime = (value) => {
   if (!value) return '';
   const d = asDate(value);
@@ -55,7 +47,6 @@ export const formatMessageTime = (value) => {
     : `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 };
 
-/** 最近活跃时间展示 */
 export const relativeTime = (value) => {
   if (!value) return '';
   const d = asDate(value);
@@ -68,7 +59,6 @@ export const relativeTime = (value) => {
   return formatDate(d);
 };
 
-/** 秒 → 12分30秒 */
 export const durationText = (seconds) => {
   const total = Number(seconds);
   if (!Number.isFinite(total) || total <= 0) return '';
@@ -79,8 +69,6 @@ export const durationText = (seconds) => {
 };
 
 export const toId = (value) => (value === undefined || value === null ? '' : String(value));
-
-/* ============================== 用户 ============================== */
 
 export const adaptUser = (user) => {
   if (!user) return null;
@@ -106,8 +94,6 @@ export const adaptUser = (user) => {
     lastActiveAt: user.lastActiveAt || '',
   };
 };
-
-/* ============================== 课程 ============================== */
 
 export const adaptLesson = (lesson) => ({
   ...lesson,
@@ -147,13 +133,12 @@ export const adaptCourse = (course) => {
     completedLessonCount: Number(completedLessons),
     progress: Number(course.progress ?? course.progressPercent ?? 0),
     progressPercent: Number(course.progressPercent ?? course.progress ?? 0),
-    // 管理端 statusCode: 1 草稿 / 2 已上架 / 3 已下架
+
     published: course.statusCode === 2,
     syllabus: (course.chapters || []).map(adaptChapter),
   };
 };
 
-/** 管理端课程：沿用学员端字段，再补上管理状态与目录兜底 */
 export const adaptAdminCourse = (course) => {
   const base = adaptCourse(course);
   if (!base) return null;
@@ -168,21 +153,18 @@ export const adaptAdminCourse = (course) => {
   };
 };
 
-/* ============================== 考试 ============================== */
-
 const assignmentStatusToUi = (assignment) => {
   const examStatus = Number(assignment.examStatusCode);
   const allowed = Number(assignment.attemptsAllowed ?? 1);
   const used = Number(assignment.attemptsUsed ?? 0);
   const remaining = Math.max(0, allowed - used);
 
-  // 考试未开始（2/5）或已结束（4）时不开放入口；后端 start() 同样只放行 status=3
   if (examStatus === 2 || examStatus === 5) return 'not_started';
   if (examStatus === 4) return 'completed';
   if (examStatus === 3) {
-    // 有未交卷 attempt 时优先续考
+
     if (assignment.inProgressAttemptId != null) return 'in_progress';
-    // 交卷只消耗一次机会，剩余机会仍可重考（不再被 assignmentStatus=2 误判为彻底结束）
+
     if (remaining > 0) return 'in_progress';
     return 'completed';
   }
@@ -274,7 +256,7 @@ export const adaptExamQuestion = (question) => {
     ...question,
     id: toId(question.id),
     numericId: question.id,
-    // 考试在管理端统一用字符串 id，题目要按所属考试筛选时必须同类型
+
     examId: question.examId == null ? '' : toId(question.examId),
     questionNumber: question.questionNo,
     questionNo: question.questionNo,
@@ -289,8 +271,6 @@ export const adaptExamQuestion = (question) => {
     analysis: question.analysis || '',
   };
 };
-
-/* ============================== 证书 ============================== */
 
 export const adaptCertificate = (cert) => {
   if (!cert) return null;
@@ -312,9 +292,6 @@ export const adaptCertificate = (cert) => {
   };
 };
 
-/* ============================== 消息中心（公告） ============================== */
-
-/** 学员端公告 → 消息中心视图模型（消息来源于管理端公告管理） */
 export const adaptAnnouncementMessage = (announcement) => {
   if (!announcement) return null;
   const content = announcement.content || '';
@@ -340,8 +317,6 @@ export const adaptAnnouncementMessage = (announcement) => {
     },
   };
 };
-
-/* ============================== 考勤 / 请假 ============================== */
 
 export const adaptLeave = (leave) => {
   if (!leave) return null;
@@ -369,8 +344,6 @@ export const adaptLeave = (leave) => {
     submittedAt: leave.submittedAt,
   };
 };
-
-/* ============================== 管理端 ============================== */
 
 export const adaptAdminDepartment = (dept) => {
   if (!dept) return null;
@@ -426,7 +399,7 @@ export const adaptAdminCertificate = (cert) => {
     ...base,
     templateId: cert.templateId,
     userId: cert.userId,
-    // 管理端列表/弹窗沿用 holder 命名
+
     holder: cert.userName || cert.holder || '',
     userName: cert.userName || cert.holder || '',
     avatarUrl: cert.avatarUrl || '',
@@ -478,8 +451,6 @@ export const adaptAdminCheckin = (checkin) => {
   };
 };
 
-/* ============================== 考试作答 ============================== */
-
 export const adaptAttemptAnswer = (answer) => {
   if (!answer) return null;
   return {
@@ -499,7 +470,6 @@ export const adaptAttemptAnswer = (answer) => {
   };
 };
 
-/** 进行中的作答会话：POST /exams/{id}/start 与 GET /exams/attempts/{id} 共用 */
 export const adaptExamSession = (session) => {
   if (!session) return null;
   const attemptId = session.attemptId ?? session.id;

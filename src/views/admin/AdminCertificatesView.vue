@@ -1,7 +1,6 @@
 <template>
   <div class="admin-certificates admin-fit-page">
 
-    <!-- 页头 -->
     <div class="page-head">
       <div>
         <h1 class="page-title">证书管理</h1>
@@ -12,7 +11,6 @@
       </button>
     </div>
 
-    <!-- 统计条 -->
     <div class="overview-strip">
       <div class="overview-item">
         <span class="overview-value">{{ issuedCount }}</span>
@@ -66,7 +64,6 @@
       <span class="filter-count">{{ filteredCertificates.length }} 张证书</span>
     </div>
 
-    <!-- 证书表格 -->
     <div class="table-wrap">
       <table class="data-table data-table--wide">
         <thead>
@@ -148,7 +145,6 @@
       :total-pages="totalPages"
     />
 
-    <!-- 证书详情 -->
     <AdminDetailModal
       v-if="detailCert"
       title="证书详情"
@@ -166,7 +162,6 @@
       @close="detailCert = null"
     />
 
-    <!-- 发放 / 编辑证书弹窗 -->
     <div v-if="modalOpen" class="modal-backdrop" @click.self="closeModal">
       <div class="modal">
         <div class="modal-head">
@@ -283,7 +278,6 @@ const categoryLabel = (category) => categoryLabels[category] || category || '未
 const { confirmState, askConfirm, cancelConfirm, acceptConfirm } = useConfirm();
 const learners = computed(() => adminStore.users);
 
-/* 证书名称与颁发机构属于模板，接口按 templateId 关联，名称不在模板内时新建一条模板 */
 const templates = ref([]);
 onMounted(async () => {
   templates.value = await fetchAdminCertificateTemplates().catch(() => []) || [];
@@ -354,11 +348,9 @@ const statusLabelMap = {
 };
 const statusLabel = (status) => statusLabelMap[status] || status;
 
-/* ---------- 证书详情 ---------- */
 const detailCert = ref(null);
 const openDetail = (cert) => { detailCert.value = cert; };
 
-/* ---------- 发放 / 编辑弹窗 ---------- */
 const modalOpen = ref(false);
 const editingId = ref(null);
 const formError = ref('');
@@ -496,9 +488,6 @@ const removeCert = (cert) => {
 </script>
 
 <style scoped>
-/* ============================================================
-   AdminCertificates · 证书管理 · 纯原生 CSS
-   ============================================================ */
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
 button, input, select { font-family: inherit; }
@@ -511,7 +500,6 @@ button { cursor: pointer; }
   min-height: 100%;
 }
 
-/* ========== 页头 ========== */
 .page-head {
   display: flex;
   align-items: flex-end;
@@ -562,7 +550,6 @@ button { cursor: pointer; }
 }
 .btn--ghost:hover { border-color: var(--app-brand); color: var(--app-brand-ink); }
 
-/* ========== 概览条 ========== */
 .overview-strip {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -594,7 +581,6 @@ button { cursor: pointer; }
   color: var(--app-text-4);
 }
 
-/* ========== 筛选工具栏 ========== */
 .filter-toolbar {
   display: grid;
   grid-template-columns: minmax(140px, 180px) minmax(150px, 210px) minmax(220px, 1fr) auto;
@@ -643,7 +629,6 @@ button { cursor: pointer; }
   border-radius: 999px; white-space: nowrap;
 }
 
-/* ========== 表格 ========== */
 .table-wrap {
   background: var(--app-surface);
   border: 1px solid var(--app-border);
@@ -692,7 +677,6 @@ button { cursor: pointer; }
 
 th.ops, td.ops { text-align: right; white-space: nowrap; }
 
-/* 表头默认 left 优先级更高,这里提权让操作列的表头与其内容对齐 */
 .data-table thead th.ops { text-align: right; }
 
 .mono { font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 12px; }
@@ -706,7 +690,6 @@ th.ops, td.ops { text-align: right; white-space: nowrap; }
   line-height: 1.5;
 }
 
-/* ========== 持证人单元格 ========== */
 .cell-user {
   display: flex;
   align-items: center;
@@ -751,7 +734,6 @@ th.ops, td.ops { text-align: right; white-space: nowrap; }
   white-space: nowrap;
 }
 
-/* ========== 状态徽标 ========== */
 .status-pill {
   display: inline-flex;
   align-items: center;
@@ -767,7 +749,6 @@ th.ops, td.ops { text-align: right; white-space: nowrap; }
 .status-pill--pending { color: var(--app-amber-fg); background: var(--app-amber-bg); }
 .status-pill--revoked { color: var(--app-text-4); background: var(--app-chip); }
 
-/* ========== 行操作 ========== */
 .row-actions {
   display: inline-flex;
   align-items: center;
@@ -802,7 +783,6 @@ th.ops, td.ops { text-align: right; white-space: nowrap; }
 .icon-btn svg { width: 14px; height: 14px; }
 .icon-btn--danger:hover { background: var(--app-rose-bg); color: var(--app-rose-fg); border-color: var(--app-rose-line); }
 
-/* ========== 弹窗 ========== */
 .modal-backdrop {
   position: fixed;
   inset: 0;

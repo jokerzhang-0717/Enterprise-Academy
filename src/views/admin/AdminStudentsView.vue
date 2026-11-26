@@ -1,7 +1,6 @@
 <template>
   <div class="admin-students admin-fit-page">
 
-    <!-- 页头 -->
     <div class="page-head">
       <div>
         <h1 class="page-title">学员管理</h1>
@@ -12,7 +11,6 @@
       </button>
     </div>
 
-    <!-- 工具栏 -->
     <div class="toolbar">
       <div class="search-box">
         <span class="search-icon"></span>
@@ -45,7 +43,6 @@
       <span class="toolbar-result">{{ filteredLearners.length }} 条结果</span>
     </div>
 
-    <!-- 学员表格 -->
     <div class="table-wrap">
       <table class="data-table">
         <thead>
@@ -118,7 +115,6 @@
       :total-pages="totalPages"
     />
 
-    <!-- 新增 / 编辑弹窗 -->
     <div v-if="modalOpen" class="modal-backdrop" @click.self="closeModal">
       <div class="modal">
         <div class="modal-head">
@@ -230,7 +226,6 @@ import ConfirmDialog from '../../components/ConfirmDialog.vue';
 
 const { show: showToast } = useToast();
 
-/* 学员列表取自共享 store（视图只读，写操作一律走接口后重新加载） */
 const learners = computed(() => adminStore.users);
 
 const { confirmState, askConfirm, cancelConfirm, acceptConfirm } = useConfirm();
@@ -239,7 +234,6 @@ const keyword = ref('');
 const deptFilter = ref('');
 const statusFilter = ref('');
 
-/* 部门数据统一取自「部门管理」的共享 store */
 const allDeptNames = computed(() => adminStore.departments.map(d => d.name));
 
 const activeCount = computed(() => learners.value.filter(l => l.status === 'active').length);
@@ -255,13 +249,10 @@ const filteredLearners = computed(() => {
   });
 });
 
-/* ---------- 分页 ---------- */
 const { page, totalPages, paged: pagedLearners, resetPage } = usePager(filteredLearners);
 
-/* 筛选条件变化时回到第一页 */
 watch([keyword, deptFilter, statusFilter], resetPage);
 
-/* ---------- 弹窗表单 ---------- */
 const modalOpen = ref(false);
 const editingId = ref(null);
 const formError = ref('');
@@ -272,11 +263,9 @@ const form = ref({ name: '', employeeId: '', department: '', title: '', status: 
 
 const accountStatusToCode = (status) => (status === 'inactive' ? 2 : 1);
 
-/* 表单按部门名称选择，接口需要 departmentId */
 const departmentIdOf = (name) =>
   adminStore.departments.find(d => d.name === name)?.numericId ?? null;
 
-/* 只允许分配到启用中的部门；编辑时保留学员原部门，避免下拉回落把部门静默改掉 */
 const assignableDepts = computed(() => {
   const active = adminStore.departments
     .filter(d => d.status === 'active')
@@ -437,9 +426,6 @@ const removeLearner = (learner) => {
 </script>
 
 <style scoped>
-/* ============================================================
-   AdminStudents · 学员管理 · 纯原生 CSS
-   ============================================================ */
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
 button, input, select { font-family: inherit; }
@@ -452,7 +438,6 @@ button { cursor: pointer; }
   min-height: 100%;
 }
 
-/* ========== 页头 ========== */
 .page-head {
   display: flex;
   align-items: flex-end;
@@ -503,7 +488,6 @@ button { cursor: pointer; }
 }
 .btn--ghost:hover { border-color: var(--app-brand); color: var(--app-brand-ink); }
 
-/* ========== 工具栏 ========== */
 .toolbar {
   display: flex;
   align-items: center;
@@ -607,7 +591,6 @@ button { cursor: pointer; }
   color: var(--app-text-5);
 }
 
-/* ========== 表格 ========== */
 .table-wrap {
   background: var(--app-surface);
   border: 1px solid var(--app-border);
@@ -655,11 +638,9 @@ button { cursor: pointer; }
 th.num, td.num { text-align: right; }
 th.ops, td.ops { text-align: right; }
 
-/* 表头默认 left 优先级更高,这里提权让数字列/操作列的表头与其内容对齐 */
 .data-table thead th.num,
 .data-table thead th.ops { text-align: right; }
 
-/* 学时/证书/状态 统一居中 */
 .data-table th.center,
 .data-table td.center { text-align: center; }
 
@@ -692,7 +673,6 @@ th.ops, td.ops { text-align: right; }
 
 .cell-name { font-weight: 600; }
 
-/* ========== 状态徽标 ========== */
 .status-pill {
   display: inline-flex;
   align-items: center;
@@ -706,14 +686,12 @@ th.ops, td.ops { text-align: right; }
 .status-pill--on  { color: var(--app-emerald-fg); background: var(--app-emerald-bg); }
 .status-pill--off { color: var(--app-text-4); background: var(--app-chip); }
 
-/* ========== 行操作 ========== */
 .row-actions {
   display: inline-flex;
   align-items: center;
   gap: 6px;
 }
 
-/* ========== 现代化状态切换按钮（替代原先难看的圆圈按钮） ========== */
 .status-toggle-btn {
   display: inline-flex;
   align-items: center;
@@ -731,7 +709,7 @@ th.ops, td.ops { text-align: right; }
   height: 6px;
   border-radius: 50%;
 }
-/* 正常学习中 -> 按钮显示停用操作 */
+
 .status-toggle-btn--off {
   background: var(--app-orange-bg);
   color: var(--app-orange-fg);
@@ -748,7 +726,7 @@ th.ops, td.ops { text-align: right; }
 .status-toggle-btn--off:hover .toggle-dot {
   background: #DC2626;
 }
-/* 已停用 -> 按钮显示启用操作 */
+
 .status-toggle-btn--on {
   background: var(--app-emerald-bg);
   color: var(--app-emerald-fg);
@@ -782,7 +760,6 @@ th.ops, td.ops { text-align: right; }
 .icon-btn--ok:hover   { background: var(--app-emerald-bg); color: var(--app-emerald-fg); border-color: var(--app-emerald-line); }
 .icon-btn--danger:hover { background: var(--app-rose-bg); color: var(--app-rose-fg); border-color: var(--app-rose-line); }
 
-/* ========== 弹窗 ========== */
 .modal-backdrop {
   position: fixed;
   inset: 0;
@@ -885,7 +862,6 @@ th.ops, td.ops { text-align: right; }
   color: var(--app-rose-fg);
 }
 
-/* 本地头像点击上传区域 */
 .avatar-upload-box {
   display: flex;
   align-items: center;

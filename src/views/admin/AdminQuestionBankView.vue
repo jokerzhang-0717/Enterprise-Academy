@@ -1,7 +1,6 @@
 <template>
   <div class="admin-bank admin-fit-page">
 
-    <!-- 页头 -->
     <div class="page-head">
       <div>
         <h1 class="page-title">题库管理</h1>
@@ -17,7 +16,6 @@
       </div>
     </div>
 
-    <!-- 题型统计 -->
     <div class="stat-strip">
       <div class="stat-item">
         <span class="stat-value">{{ questions.length }}</span>
@@ -41,7 +39,6 @@
       </div>
     </div>
 
-    <!-- 筛选工具栏 -->
     <div class="toolbar">
       <select v-model="typeFilter" class="select">
         <option value="">全部题型</option>
@@ -64,7 +61,6 @@
       <span class="toolbar-result">{{ filteredQuestions.length }} 道题</span>
     </div>
 
-    <!-- 题目列表 -->
     <div class="question-list">
       <article
         v-for="(q, idx) in pagedQuestions"
@@ -107,7 +103,6 @@
       :total-pages="totalPages"
     />
 
-    <!-- 新增 / 编辑题目弹窗 -->
     <div v-if="modalOpen" class="modal-backdrop" @click.self="closeModal">
       <div class="modal">
         <div class="modal-head">
@@ -186,7 +181,6 @@
       </div>
     </div>
 
-    <!-- 批量导入题目弹窗 -->
     <div v-if="importModalOpen" class="modal-backdrop" @click.self="closeImportModal">
       <div class="modal modal--import">
         <div class="modal-head">
@@ -215,7 +209,6 @@
             ></textarea>
           </div>
 
-          <!-- 文件上传快捷通道 -->
           <div class="file-drop-area" @click="triggerImportFile">
             <input
               ref="importFileInputRef"
@@ -228,7 +221,6 @@
             <span class="file-drop-text">点击上传本地 .json 或 .txt 题库文件进行快速解析</span>
           </div>
 
-          <!-- 解析状态与预览条 -->
           <div v-if="parsedList.length" class="parsed-preview">
             <div class="parsed-status-badge">
               ✓ 已成功解析 {{ parsedList.length }} 道题目
@@ -334,16 +326,13 @@ const PAGE_SIZE = 5;
 const { page, totalPages, paged: pagedQuestions, resetPage } = usePager(filteredQuestions, PAGE_SIZE);
 watch([typeFilter, keyword], resetPage);
 
-/* 直接进入题库页时也要拉取题目与考试，否则空门店会出现「总题数 0」 */
 onMounted(() => Promise.all([loadExams(), loadQuestions()]));
 
-/* ---------- 弹窗表单 ---------- */
 const modalOpen = ref(false);
 const editingId = ref(null);
 const formError = ref('');
 const saving = ref(false);
 
-/* 分值规则：单选 2 / 多选 4 / 判断 2 / 应用题 8 */
 const defaultScoreFor = (type) => {
   if (type === 'multiple') return 4;
   if (type === 'application') return 8;
@@ -402,7 +391,7 @@ const switchType = () => {
   } else if (type === 'application') {
     form.value.answer = '';
   } else {
-    // 单选/多选始终保证 A/B/C/D；从判断题切回时清掉「正确/错误」文案，其余保留已填文本
+
     const fromJudgment = form.value.options.length === 2
       && form.value.options[0]?.text === '正确'
       && form.value.options[1]?.text === '错误';
@@ -412,17 +401,16 @@ const switchType = () => {
       text: fromJudgment ? '' : (existing.get(key) || '')
     }));
   }
-  // 切换题型后答案必须属于当前选项集合，否则清空，避免残留非法答案
+
   const keys = form.value.options.map(o => o.key);
   const picked = String(form.value.answer || '').toUpperCase().split('').filter(Boolean);
   if (picked.some(k => !keys.includes(k))) form.value.answer = '';
-  // 分值随题型走：切换题型后按新题型的默认分值回填
+
   form.value.score = defaultScoreFor(type);
 };
 
 const typeLabelMap = { single: '单选题', multiple: '多选题', judgment: '判断题', application: '问答题' };
 
-/* 表单里题型是字符串，写入接口要 1~4；选项按 key 存进 question_option */
 const typeCodeMap = { single: 1, multiple: 2, judgment: 3, application: 4 };
 
 const toSavePayload = (source) => {
@@ -440,7 +428,7 @@ const toSavePayload = (source) => {
       : [],
     analysis: String(source.analysis || '').trim()
   };
-  // 应用题的评分依据是参考答案；客观题不提交该字段，避免覆盖历史数据
+
   if (!objective) {
     payload.referenceAnswer = String(source.referenceAnswer || '').trim();
   }
@@ -512,7 +500,6 @@ const removeQ = (q) => {
   });
 };
 
-/* ---------- 批量导入题目逻辑 ---------- */
 const importModalOpen = ref(false);
 const importRawText = ref('');
 const importFileInputRef = ref(null);
@@ -608,7 +595,7 @@ const parseQuestions = () => {
     parsedList.value = [];
     return;
   }
-  // 优先 JSON 解析
+
   if (raw.startsWith('[') || raw.startsWith('{')) {
     try {
       const parsed = JSON.parse(raw);
@@ -628,11 +615,10 @@ const parseQuestions = () => {
       })).filter(q => q.title.trim());
       return;
     } catch (e) {
-      // 容错进入纯文本匹配
+
     }
   }
 
-  // 文本解析
   const items = [];
   const blocks = raw.split(/\n\s*\n+/);
   for (const block of blocks) {
@@ -651,7 +637,7 @@ const parseQuestions = () => {
       score = parseInt(scoreMatch[1], 10);
       titleLine = titleLine.replace(/[\(（]\d+分[\)）]/, '').trim();
     }
-    // 未写“(N分)”时按题型默认分值兜底
+
     if (!score) score = defaultScoreFor(type);
 
     const options = [];
@@ -742,9 +728,6 @@ const confirmImport = async () => {
 </script>
 
 <style scoped>
-/* ============================================================
-   AdminQuestionBank · 题库管理 · 纯原生 CSS
-   ============================================================ */
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
 button, input, select, textarea { font-family: inherit; }
@@ -757,7 +740,6 @@ button { cursor: pointer; }
   min-height: 100%;
 }
 
-/* ========== 页头 ========== */
 .page-head {
   display: flex;
   align-items: flex-end;
@@ -825,7 +807,6 @@ button { cursor: pointer; }
 }
 .btn--ghost:hover { border-color: var(--app-brand); color: var(--app-brand-ink); }
 
-/* ========== 题型统计 ========== */
 .stat-strip {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -859,7 +840,6 @@ button { cursor: pointer; }
   color: var(--app-text-4);
 }
 
-/* ========== 工具栏 ========== */
 .toolbar {
   display: flex;
   align-items: center;
@@ -964,7 +944,6 @@ button { cursor: pointer; }
   color: var(--app-text-5);
 }
 
-/* ========== 题目列表 ========== */
 .question-list {
   display: flex;
   flex-direction: column;
@@ -990,7 +969,7 @@ button { cursor: pointer; }
 .question-item:hover .q-score,
 .question-item:hover .q-exam { color: var(--app-accent-deep); }
 .question-item--locked { cursor: default; }
-/* 卡片底变成青底后,原本同底的序号块与单选 chip 会糊在一起,改用实底卡片色保住边界 */
+
 .question-item:hover .q-index,
 .question-item:hover .q-type-chip--single { background: var(--app-surface); }
 
@@ -1091,7 +1070,6 @@ button { cursor: pointer; }
   color: var(--app-text-5);
 }
 
-/* ========== 弹窗 ========== */
 .modal-backdrop {
   position: fixed;
   inset: 0;
@@ -1210,7 +1188,6 @@ button { cursor: pointer; }
   margin-top: 4px;
 }
 
-/* ========== 批量导入弹窗样式 ========== */
 .modal--import {
   max-width: 600px;
 }

@@ -1,10 +1,9 @@
 <template>
-  <!-- 证书弹窗（有证书数据才显示） -->
+
   <div v-if="certificate" class="modal-overlay" @click.self="closeModal">
 
     <div class="modal-container">
 
-      <!-- 顶部信息栏 -->
       <div class="modal-header">
         <div class="status-group">
           <span class="status-dot"></span>
@@ -15,36 +14,28 @@
         </button>
       </div>
 
-      <!-- 证书画布 -->
       <div class="certificate-stage">
         <div class="certificate-paper">
 
-          <!-- 防伪水印 -->
           <div class="watermark">🛡</div>
 
-          <!-- 页眉 -->
           <div class="certificate-header">
             <div class="header-title">ENTERPRISE TECHNICAL CERTIFICATION</div>
             <div v-if="certificate.issueOrg" class="header-org">{{ certificate.issueOrg }}</div>
           </div>
 
-          <!-- 等级徽章 -->
           <div v-if="certificate.level" class="level-badge">
             <span>🛡</span>
             <span>{{ certificate.level }}</span>
           </div>
 
-          <!-- 证书标题 -->
           <h2 class="certificate-title">{{ certificate.title }}</h2>
 
-          <!-- 获奖人 -->
           <p class="recipient-intro">特此证明</p>
           <div v-if="recipientName" class="recipient-name">{{ recipientName }}</div>
 
-          <!-- 证书说明 -->
           <p class="certificate-desc">{{ certificate.description }}</p>
 
-          <!-- 信息栏 -->
           <div class="info-grid">
             <div class="info-item">
               <span class="info-label">颁发机构</span>
@@ -60,7 +51,6 @@
             </div>
           </div>
 
-          <!-- 底部 -->
           <div class="certificate-footer">
             <div v-if="certificate.blockchainHash || certificate.serialNumber" class="qr-block">
               <div class="qr-text">
@@ -91,7 +81,7 @@ function closeModal() {
 </script>
 
 <style scoped>
-/* ========== 全局重置 ========== */
+
 * {
   margin: 0;
   padding: 0;
@@ -103,7 +93,6 @@ button {
   cursor: pointer;
 }
 
-/* ========== 弹窗遮罩 ========== */
 .modal-overlay {
   position: fixed;
   inset: 0;
@@ -123,7 +112,6 @@ button {
   to   { opacity: 1; }
 }
 
-/* ========== 弹窗主体 ========== */
 .modal-container {
   width: 100%;
   max-width: 768px;
@@ -136,7 +124,6 @@ button {
   flex-direction: column;
 }
 
-/* ========== 顶部信息栏 ========== */
 .modal-header {
   display: flex;
   align-items: center;
@@ -209,7 +196,6 @@ button {
   transform: translate(-50%, -50%) rotate(-45deg);
 }
 
-/* ========== 证书画布 ========== */
 .certificate-stage {
   display: flex;
   justify-content: center;
@@ -217,7 +203,6 @@ button {
   background: linear-gradient(to bottom right, var(--app-surface-2), var(--app-page-bg), var(--app-blue-80));
 }
 
-/* ========== 证书纸张 ========== */
 .certificate-paper {
   position: relative;
   width: 100%;
@@ -244,7 +229,6 @@ button {
   user-select: none;
 }
 
-/* ========== 页眉 ========== */
 .certificate-header {
   margin-bottom: 24px;
   padding-bottom: 16px;
@@ -267,7 +251,6 @@ button {
   color: var(--app-text);
 }
 
-/* ========== 等级徽章 ========== */
 .level-badge {
   display: inline-flex;
   align-items: center;
@@ -282,7 +265,6 @@ button {
   border-radius: 9999px;
 }
 
-/* ========== 证书标题 ========== */
 .certificate-title {
   margin-bottom: 16px;
   font-size: 24px;
@@ -291,7 +273,6 @@ button {
   letter-spacing: -0.025em;
 }
 
-/* ========== 获奖人 ========== */
 .recipient-intro {
   margin-bottom: 8px;
   font-size: 12px;
@@ -308,7 +289,6 @@ button {
   border-bottom: 2px solid var(--app-accent);
 }
 
-/* ========== 证书说明 ========== */
 .certificate-desc {
   max-width: 512px;
   margin: 0 auto 24px;
@@ -317,7 +297,6 @@ button {
   color: var(--app-text-3);
 }
 
-/* ========== 信息栏 ========== */
 .info-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -342,7 +321,6 @@ button {
   color: var(--app-text);
 }
 
-/* ========== 底部 ========== */
 .certificate-footer {
   display: flex;
   align-items: center;

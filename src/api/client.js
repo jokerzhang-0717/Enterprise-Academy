@@ -1,17 +1,10 @@
-/**
- * 统一 API 客户端
- * - 开发环境走 Vite 代理 /api → http://127.0.0.1:8080
- * - 自动附加 Bearer Token
- * - 统一解包 { code, message, data }
- * - 401 时触发全局登出回调
- */
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
 
 const TOKEN_KEY = 'emp_token';
 const REFRESH_TOKEN_KEY = 'emp_refresh_token';
 const USER_KEY = 'emp_user';
-// Keep credentials scoped to this tab so separate accounts can coexist on the same origin.
+
 const authStorage = () => window.sessionStorage;
 
 export class ApiError extends Error {
@@ -25,10 +18,9 @@ export class ApiError extends Error {
 }
 
 let unauthorizedHandler = null;
-// 并发请求可能同时收到 401，只让第一个触发全局登出与提示，避免重复弹窗。
+
 let sessionExpiredNotified = false;
 
-/** 注册 401 处理（由 App.vue 注入，避免 API 层直接依赖路由） */
 export const setUnauthorizedHandler = (handler) => {
   unauthorizedHandler = handler;
 };
@@ -50,7 +42,7 @@ export const setToken = (token) => {
       authStorage().removeItem(TOKEN_KEY);
     }
   } catch {
-    /* ignore */
+
   }
 };
 
@@ -67,7 +59,7 @@ export const setRefreshToken = (token) => {
     if (token) authStorage().setItem(REFRESH_TOKEN_KEY, token);
     else authStorage().removeItem(REFRESH_TOKEN_KEY);
   } catch {
-    /* ignore */
+
   }
 };
 
@@ -85,7 +77,7 @@ export const setStoredUser = (user) => {
     if (user) authStorage().setItem(USER_KEY, JSON.stringify(user));
     else authStorage().removeItem(USER_KEY);
   } catch {
-    /* ignore */
+
   }
 };
 
@@ -122,10 +114,6 @@ const parseBody = async (response) => {
 
 let refreshPromise = null;
 
-/**
- * 使用刷新令牌换发新的访问令牌。
- * 多个并发请求同时收到 401 时共享同一次刷新，避免刷新令牌被重复消费。
- */
 const refreshSession = async () => {
   if (refreshPromise) return refreshPromise;
   refreshPromise = (async () => {
@@ -154,18 +142,6 @@ const refreshSession = async () => {
   return refreshPromise;
 };
 
-/**
- * 发起请求
- * @param {string} path 以 / 开头的接口路径（不含 /api 前缀）
- * @param {object} options
- * @param {string} [options.method]
- * @param {object} [options.query]
- * @param {any} [options.body] JSON body
- * @param {FormData} [options.formData] 表单上传
- * @param {boolean} [options.auth=true]
- * @param {AbortSignal} [options.signal]
- * @returns {Promise<any>} 已解包的 data
- */
 export const request = async (path, options = {}) => {
   const {
     method = 'GET',
@@ -205,7 +181,6 @@ export const request = async (path, options = {}) => {
 
   const payload = await parseBody(response);
 
-  // 访问令牌过期时先用刷新令牌静默续期，再重试一次原请求。
   if (response.status === 401 && auth && !retryAfterRefresh) {
     const refreshed = await refreshSession();
     if (refreshed) {

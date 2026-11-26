@@ -1,12 +1,11 @@
 <template>
   <ToastStack />
   <Transition name="app-view">
-  <!-- ============ 1. 登录全屏视图 ============ -->
+
   <div v-if="currentView === 'login'" class="app-login">
     <LoginView @login-success="handleLoginSuccess" />
   </div>
 
-  <!-- ============ 2. 主应用布局 ============ -->
   <div
     v-else
     class="app-shell"
@@ -14,7 +13,6 @@
   >
     <div class="app-body" :class="{ 'app-body--user': !isAdmin }">
 
-      <!-- 侧边导航:管理员 / 学员 -->
       <AdminSidebar
         v-if="isAdmin"
         :current-view="currentView"
@@ -32,9 +30,8 @@
         @logout="handleLogout"
       />
 
-      <!-- 主内容工作区 -->
       <div class="app-workspace">
-        <!-- 顶部栏:管理端只保留头像 -->
+
         <Header
           :user="currentUser"
           :is-admin="isAdmin"
@@ -48,7 +45,6 @@
           @select-search-result="handleSelectSearchResult"
         />
 
-        <!-- 视图画布 -->
         <main
           ref="mainContent"
           class="app-viewport"
@@ -169,7 +165,6 @@
                 @submit-exam="handleSubmitExam"
               />
 
-              <!-- 答题明细独立页：整页展示逐题作答（成绩结果本身以大弹窗呈现） -->
               <ExamResultDetailView v-else-if="currentView === 'exam-result-details'" />
 
               <AnalyticsView
@@ -218,19 +213,14 @@
       </div>
     </div>
 
-    <!-- ============ 3. 弹窗 / 对话框 ============ -->
-
-    <!-- 1) 证书查看器 -->
     <CertificateModal
       :certificate="selectedCert"
       :recipient-name="currentUser?.name || ''"
       @close="selectedCert = null"
     />
 
-    <!-- 2) 考试成绩大窗口：浮在考评中心之上，不占用独立页面 -->
     <ExamResultView v-if="currentView === 'exam-result'" />
 
-    <!-- 3) 新员工首次登录：强制阅读入职手册 -->
     <OnboardingGate
       v-if="showOnboardingGate"
       :user-name="currentUser?.name || ''"
@@ -244,7 +234,6 @@
 import { computed, onMounted, ref, watch, watchEffect } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
-// Shared Components
 import Sidebar from './components/Sidebar.vue';
 import AdminSidebar from './components/AdminSidebar.vue';
 import Header from './components/Header.vue';
@@ -252,7 +241,6 @@ import ToastStack from './components/ToastStack.vue';
 import CertificateModal from './components/CertificateModal.vue';
 import OnboardingGate from './components/OnboardingGate.vue';
 
-// Views
 import HomeView from './views/HomeView.vue';
 import CoursesView from './views/CoursesView.vue';
 import CoursePlayerView from './views/CoursePlayerView.vue';
@@ -301,35 +289,27 @@ import {
   setUnauthorizedHandler,
 } from './api/client.js';
 
-// 登录态
 const storedUser = getStoredUser();
 const route = useRoute();
 const router = useRouter();
 const { show: showToast } = useToast();
-/* 登录态落地页由角色决定 */
 const landingView = (user) => (user && user.role === 'admin' ? 'admin-dashboard' : 'home');
 const currentUser = ref(storedUser || null);
 const currentView = ref(route.name === 'exam-taking-by-id' ? 'exam-taking' : route.name || 'login');
-/* 成绩弹窗叠在考评中心上，两者共用同一个视图容器，避免开关弹窗时重建页面 */
 const viewTransitionKey = computed(() => (
   currentView.value === 'exam-result' ? 'exams' : currentView.value
 ));
-/* 从详情页返回列表页时取消过渡动画，避免滚动位置被挤回顶部后再跳回 */
 const skipViewTransition = ref(false);
 
-/* 离开列表页时记住滚动位置，从详情页返回时恢复，避免又回到顶部 */
 const scrollPositions = new Map();
 const pendingScrollTop = ref(0);
-/* 在新视图插入的第一帧就恢复位置，避免先显示顶部再跳回 */
 const applyPendingScroll = () => {
-  // 带定位目标的场景交给页面自身的 scrollIntoView 处理
   if (route.query.searchTargetId) return;
   mainContent.value?.scrollTo({ top: pendingScrollTop.value, behavior: 'auto' });
 };
 const onBeforeViewEnter = applyPendingScroll;
 const onViewEntered = applyPendingScroll;
 
-// Navigation State
 const mainContent = ref(null);
 const theme = ref('cyan');
 const { isCheckedIn } = useAttendance();
@@ -349,11 +329,9 @@ watch(
   () => {
     const routeName = route.name === 'exam-taking-by-id' ? 'exam-taking' : route.name;
     const nextView = routeName || 'home';
-    // 成绩弹窗仍叠在考评中心之上，开关弹窗不应改变滚动位置
     const viewGroup = (name) => (name === 'exam-result' ? 'exams' : name);
     const leavingView = currentView.value;
     const leavingGroup = viewGroup(leavingView);
-    // 离开当前视图前记下滚动位置
     if (leavingView && mainContent.value) {
       scrollPositions.set(leavingGroup, mainContent.value.scrollTop || 0);
     }
@@ -364,7 +342,6 @@ watch(
     selectedExamId.value = String(route.params.examId || route.query.examId || '');
     searchTargetId.value = String(route.query.searchTargetId || '');
     if (viewChanged && !searchTargetId.value) {
-      // 仅“详情页 → 对应列表页”的返回才恢复位置；从侧栏正常进入仍从顶部开始
       const detailToParent = {
         'course-player': 'courses',
         'exam-detail': 'exams',
@@ -385,7 +362,6 @@ watch(
   { immediate: true },
 );
 
-// Modals State
 const selectedCert = ref(null);
 
 const searchableRecords = computed(() => {
@@ -520,7 +496,6 @@ const searchResults = computed(() => {
     .slice(0, 10);
 });
 
-/* 考核详情页直接复用考评中心已加载的安排/成绩数据，避免重复请求 */
 const detailAssignment = computed(() =>
   searchAssignments.value.find(item => String(item.examId) === String(selectedExamId.value)) || null);
 const detailPastRecord = computed(() =>
@@ -545,7 +520,6 @@ const handleNavigate = (view, { searchTargetId: targetId = '' } = {}) => {
 
 const THEME_LABELS = { cyan: '青蓝', black: '曜黑', navy: '石墨' };
 
-/* 石墨只给管理端;学员端在青蓝/曜黑之间切 */
 const cycleTheme = () => {
   const keys = isAdmin.value ? Object.keys(THEME_LABELS) : ['cyan', 'black'];
   const next = keys[(keys.indexOf(theme.value) + 1) % keys.length];
@@ -571,7 +545,6 @@ const handleOpenMessage = (messageId) => {
 
 const isAdmin = computed(() => currentUser.value?.role === 'admin');
 
-/* 新员工（学员）首次进入平台时，必须先读完入职手册才能使用。 */
 const showOnboardingGate = computed(() =>
   currentUser.value?.role === 'learner' && currentUser.value?.onboardingCompleted !== true
 );
@@ -600,7 +573,6 @@ const resetSearchData = () => {
   searchCertificates.value = [];
 };
 
-/* 壳层与共享数据：学员端消息/考勤/请假/课程 + 管理端基础字典 */
 const bootstrapData = async () => {
   const tasks = [loadMessages(true), loadAttendance(), loadLeaves(true)];
   if (isAdmin.value) tasks.push(loadAdminStore());
@@ -608,8 +580,6 @@ const bootstrapData = async () => {
   await Promise.allSettled(tasks);
 };
 
-// ToastStack 通过 Teleport 挂在 body 下,取不到 .app-shell 的覆盖变量,
-// 所以把当前主题类同步一份到 body,让浮层跟随主题。
 watchEffect(() => {
   document.body.classList.remove('theme-black', 'theme-navy');
   if (currentView.value !== 'login' && theme.value !== 'cyan') {
@@ -652,7 +622,6 @@ const handleLogout = () => {
   clearLocalSession();
   router.replace({ name: 'login' });
   logoutRequest.catch(() => {
-    /* Local sign-out must not depend on the best-effort server request. */
   });
 };
 
@@ -664,7 +633,6 @@ const handlePasswordChanged = () => {
 onMounted(async () => {
   setUnauthorizedHandler(() => {
     clearLocalSession();
-    // 统一在全局登录态失效处提示一次，页面级请求不再各自弹窗。
     showToast('登录状态已失效，请重新登录', 'error');
     router.replace({ name: 'login' });
   });
@@ -702,15 +670,13 @@ const handleStartExam = (exam) => {
   handleNavigate('exam-taking');
 };
 
-/* 组装好成绩后写入会话存储，再用路由触发考评中心之上的成绩大窗口。
-   同一 attemptId 刷新/新标签打开时都能拿到完整上下文，并自行拉取最新明细。 */
 const openExamResult = (result) => {
   const attemptId = result?.attemptId;
   if (attemptId == null) return;
   try {
     window.sessionStorage.setItem(`emp_exam_result_${attemptId}`, JSON.stringify(result));
   } catch {
-    /* ignore storage failures */
+
   }
   router.push({ name: 'exam-result', params: { attemptId: String(attemptId) } });
 };
@@ -719,7 +685,6 @@ const handleSubmitExam = (payload) => {
   openExamResult({ ...(payload || {}), examId: selectedExamId.value });
 };
 
-/* 从「历史成绩」进入：按 attemptId 拉取答卷与成绩详情 */
 const handleViewResult = async (record) => {
   if (!record?.attemptId) return;
   try {
@@ -747,19 +712,45 @@ const handleViewResult = async (record) => {
 </script>
 
 <style>
-/* ============================================================
-   App.vue 根布局 · 纯手写 CSS
-   ------------------------------------------------------------
-   目录
-     01  全局重置与变量
-     02  主题配色变体
-     03  登录视图
-     04  应用外壳 (app-shell / app-body)
-     05  主工作区与视图画布
-     06  无障碍：减少动效
-   ============================================================ */
+#app [data-scroll-reveal] {
+  animation: none !important;
+}
+#app [data-scroll-reveal='hidden'],
+#app [data-scroll-reveal='visible'] {
+  --reveal-duration: 520ms;
+  --reveal-stagger: 1;
+  --reveal-ease: cubic-bezier(0.25, 0.7, 0.3, 1);
+  opacity: 0;
+  transform: translate3d(var(--reveal-x, 0), var(--reveal-y, var(--reveal-distance, 22px)), 0);
+  transition:
+    opacity var(--reveal-duration) var(--reveal-ease),
+    transform var(--reveal-duration) var(--reveal-ease);
+  transition-delay: calc(var(--reveal-delay, 0ms) * var(--reveal-stagger));
+}
+#app [data-scroll-reveal='visible'] {
+  opacity: 1;
+  transform: none;
+}
+#app [data-scroll-reveal-dir='left'] { --reveal-x: -28px; --reveal-y: 0; }
+#app [data-scroll-reveal-dir='right'] { --reveal-x: 28px; --reveal-y: 0; }
+#app [data-scroll-reveal-dir='down'] { --reveal-x: 0; --reveal-y: -18px; }
+#app [data-scroll-reveal-dir='none'] { --reveal-x: 0; --reveal-y: 0; }
+@media (prefers-reduced-motion: reduce) {
+  #app [data-scroll-reveal='hidden'],
+  #app [data-scroll-reveal='visible'] {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+  }
+}
+@media print {
+  #app [data-scroll-reveal='hidden'],
+  #app [data-scroll-reveal='visible'] {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}
 
-/* ==================== 01 全局重置与变量 ==================== */
 *,
 *::before,
 *::after {
@@ -788,18 +779,13 @@ textarea {
   font-family: inherit;
 }
 
-/* ==================== 02 主题配色变体 ==================== */
-/* :root 基线 = 青蓝主题;theme-black / theme-navy 覆盖同名变量。
-   基线同时挂 :root,是因为 ToastStack 用 Teleport 传送到 body,
-   不在 .app-shell 内,需要能从根节点拿到同一套 token。
-   三组 token 一起换:内容强调色 accent、管理端身份色 brand、深色导航面 nav。 */
 :root,
 .app-shell {
-  /* 内容强调色 */
+
   --app-accent: #83c9f4;
   --app-accent-strong: #2e8bd6;
   --app-accent-deep: #005576;
-  /* 强调色实底上的文字:浅色主题沿用 accent-deep,曜黑下强调色变亮,文字要转成近黑 */
+
   --app-on-accent-solid: var(--app-accent-deep);
   --app-on-accent-muted: var(--app-text-4);
   --app-accent-soft: #d9f0ff;
@@ -808,13 +794,13 @@ textarea {
   --app-accent-hover: #c2e4fa;
   --app-accent-focus: #38a6d4;
   --app-accent-dim: rgba(131, 201, 244, 0.18);
-  /* 实底强调色按钮上的文字 / 悬停填充 */
+
   --app-on-accent-fill: #005576;
   --app-accent-fill-hi: #a3d5ff;
   --app-accent-a10: rgba(46, 139, 214, 0.1);
   --app-accent-a12: rgba(46, 139, 214, 0.12);
   --app-accent-a20: rgba(46, 139, 214, 0.2);
-  /* 管理端身份色(原金色) */
+
   --app-brand: #e9b949;
   --app-brand-deep: #c89a2e;
   --app-brand-soft: #f7d98c;
@@ -828,7 +814,7 @@ textarea {
   --app-brand-a12: rgba(233, 185, 73, 0.12);
   --app-brand-a14: rgba(233, 185, 73, 0.14);
   --app-brand-a45: rgba(233, 185, 73, 0.45);
-  /* 深色导航面 */
+
   --app-nav-1: #0e1b2e;
   --app-nav-2: #122035;
   --app-nav-3: #0d1929;
@@ -837,20 +823,20 @@ textarea {
   --app-nav-text-hi: #e7eef7;
   --app-nav-text-active: #f7d98c;
   --app-nav-muted: #5c7290;
-  /* 内容面 · 卡片/填充/描边/文字 */
+
   --app-surface: #ffffff;
   --app-surface-2: #f8fafc;
   --app-surface-3: #f1f5f9;
   --app-chip: #e2e8f0;
   --app-chip-soft: rgba(226, 232, 240, 0.4);
-  /* 压在彩色/图片面上的浅色磨砂块:深色主题要转成低透明度白纱 */
+
   --app-wash-strong: rgba(255, 255, 255, 0.8);
   --app-wash-hover: rgba(255, 255, 255, 0.7);
   --app-border: #e2e8f0;
   --app-border-soft: #eef2f6;
   --app-border-strong: #cbd5e1;
   --app-overlay-border: #e8edf3;
-  /* 语义色:状态/分类用色,按色相分组,每组 底色/描边/前景 三档 */
+
   --app-emerald-bg: #d1fae5;
   --app-emerald-line: #a7f3d0;
   --app-emerald-fg: #047857;
@@ -869,7 +855,7 @@ textarea {
   --app-blue-bg: #dbeafe;
   --app-blue-line: #bfdbfe;
   --app-blue-fg: #1d4ed8;
-  /* 横幅玻璃层:压在渐变上的半透明块与其上的文字 */
+
   --app-glass-bg: rgb(255 255 255 / 45%);
   --app-glass-bg-strong: rgb(255 255 255 / 50%);
   --app-glass-line: rgb(255 255 255 / 70%);
@@ -883,13 +869,11 @@ textarea {
   --app-text-4: #64748b;
   --app-text-5: #94a3b8;
   --app-text-6: #cbd5e1;
-  /* 学员端扩展色板:学员页面原本逐处写死,统一收进 token 后
-     才能跟着主题走。基线值与原字面量完全一致,青蓝态零变化。 */
-  /* 实底填充上的前景(按钮/徽章文字) */
+
   --app-on-fill: #ffffff;
-  /* 深色蒙版上的前景(视频控件、图片角标):各主题恒为浅色,不随 on-fill 反转 */
+
   --app-on-scrim: #ffffff;
-  /* 中性墨色,由深到浅 */
+
   --app-ink-pure: #000000;
   --app-ink-900: #0f172a;
   --app-ink-850: #111c2d;
@@ -900,7 +884,7 @@ textarea {
   --app-slate-500: #58758a;
   --app-slate-400: #7b8798;
   --app-slate-300: #a0aab8;
-  /* 蓝系浅底 */
+
   --app-blue-25: #f4faff;
   --app-blue-25b: #fbfdff;
   --app-blue-50: #f0f9ff;
@@ -914,18 +898,18 @@ textarea {
   --app-blue-line-110: #e2eaf4;
   --app-blue-line-120: #d3e4f3;
   --app-blue-line-200: #bae6fd;
-  /* 品牌蓝的中间档 */
+
   --app-accent-hover-strong: #6fb9e8;
   --app-accent-sky-400: #63b8e8;
   --app-accent-ink: #0879a5;
   --app-accent-ink-2: #1683a8;
-  /* 紫 */
+
   --app-violet: #9381ff;
   --app-violet-strong: #7866e0;
   --app-violet-deep: #7c3aed;
   --app-violet-50: #f5f3ff;
   --app-violet-line-100: #d8d5f2;
-  /* 绿 */
+
   --app-emerald-strong: #059669;
   --app-emerald-solid: #10b981;
   --app-emerald-deep: #065f46;
@@ -933,7 +917,7 @@ textarea {
   --app-green-600: #16a34a;
   --app-green-300: #86efac;
   --app-green-50: #f0fdf4;
-  /* 红/玫红 */
+
   --app-red-800: #991b1b;
   --app-red-700: #b91c1c;
   --app-red-600: #dc2626;
@@ -945,12 +929,12 @@ textarea {
   --app-rose-600: #e11d48;
   --app-rose-500: #f43f5e;
   --app-rose-100: #fff1f2;
-  /* 琥珀 */
+
   --app-amber-strong: #d97706;
   --app-amber-solid: #fbbf24;
   --app-amber-deep: #92400e;
   --app-amber-50: #fffbeb;
-  /* 个人中心横幅:整块横幅(渐变底/墨色/玻璃块)一起换,曜黑下转成深蓝面板 */
+
   --app-hero-1: var(--app-accent);
   --app-hero-2: var(--app-accent-border);
   --app-hero-3: var(--app-accent-soft);
@@ -966,19 +950,19 @@ textarea {
   --app-hero-orb-ring-b: rgb(255 255 255 / 8%);
   --app-hero-violet-wash: rgb(147 129 255 / 12%);
   --app-hero-stat-div: rgb(131 201 244 / 60%);
-  /* 提示小块:浅蓝底 → 曜黑转深 */
+
   --app-note-wash: rgb(240 249 255 / 70%);
-  /* 焦点环 */
+
   --app-ring-accent: rgb(0 85 118 / 25%);
-  /* 主按钮 hover 底:浅色主题用浅蓝描边色,曜黑要保持在强调色一侧 */
+
   --app-btn-primary-hover: var(--app-accent-border);
-  /* 页面底 */
+
   --app-page-bg: #f4f9fd;
-  /* 弹窗遮罩:浅色主题用藏青半透明,曜黑主题换成中性黑,避免整屏泛蓝 */
+
   --app-scrim: rgba(15, 30, 51, 0.45);
 }
 .theme-black {
-  /* 内容面:深色卡片层,页面底比卡片更暗 */
+
   --app-surface: #16171c;
   --app-surface-2: #1b1d23;
   --app-surface-3: #23262e;
@@ -990,7 +974,7 @@ textarea {
   --app-border-soft: #23252b;
   --app-border-strong: #3a4150;
   --app-overlay-border: #333945;
-  /* 语义色反转:浅底→深底,深前景→亮前景,色相含义不变 */
+
   --app-emerald-bg: #12291f;
   --app-emerald-line: #1e4a38;
   --app-emerald-fg: #6ee7b7;
@@ -1009,7 +993,7 @@ textarea {
   --app-blue-bg: #0d2431;
   --app-blue-line: #155e75;
   --app-blue-fg: #7dd3fc;
-  /* 曜黑下横幅是深银渐变,玻璃块要从"透白"变"透微白",文字翻亮 */
+
   --app-glass-bg: rgb(255 255 255 / 7%);
   --app-glass-bg-strong: rgb(255 255 255 / 10%);
   --app-glass-line: rgb(255 255 255 / 16%);
@@ -1024,10 +1008,9 @@ textarea {
   --app-text-5: #787f8b;
   --app-text-6: #5c626e;
   --app-page-bg: #0e0f12;
-  /* 遮罩:曜黑下不再用藏青,改为中性黑,和深色界面更统一 */
+
   --app-scrim: rgba(0, 0, 0, 0.62);
-  /* 单一亮色:电光青。交互/选中/身份标识全部走它,
-     语义色(成功/警告/危险)仍保留各自色相,只有状态标签带颜色。 */
+
   --app-accent: #38bdf8;
   --app-accent-strong: #0ea5e9;
   --app-accent-deep: #7dd3fc;
@@ -1044,7 +1027,7 @@ textarea {
   --app-accent-a10: rgba(56, 189, 248, 0.1);
   --app-accent-a12: rgba(56, 189, 248, 0.16);
   --app-accent-a20: rgba(56, 189, 248, 0.24);
-  /* 身份色:与强调色同一支,不再另发一种颜色 */
+
   --app-brand: #38bdf8;
   --app-brand-deep: #0284c7;
   --app-brand-soft: #7dd3fc;
@@ -1058,7 +1041,7 @@ textarea {
   --app-brand-a12: rgba(56, 189, 248, 0.13);
   --app-brand-a14: rgba(56, 189, 248, 0.18);
   --app-brand-a45: rgba(56, 189, 248, 0.42);
-  /* 导航面 */
+
   --app-nav-1: #0a0b0d;
   --app-nav-2: #101215;
   --app-nav-3: #08090a;
@@ -1067,7 +1050,7 @@ textarea {
   --app-nav-text-hi: #eef2f6;
   --app-nav-text-active: #38bdf8;
   --app-nav-muted: #626a75;
-  /* 学员端扩展色板的深色对应值 */
+
   --app-on-fill: #041520;
   --app-ink-pure: #e6e8ec;
   --app-ink-900: #f1f5f9;
@@ -1123,7 +1106,7 @@ textarea {
   --app-amber-solid: #d97706;
   --app-amber-deep: #fcd34d;
   --app-amber-50: #2b2314;
-  /* 个人中心横幅:曜黑下改成深蓝面板,文字转亮 */
+
   --app-hero-1: #12303f;
   --app-hero-2: #0f2833;
   --app-hero-3: #10293a;
@@ -1179,7 +1162,7 @@ textarea {
   --app-nav-text-hi: #e9f0f8;
   --app-nav-text-active: #cfe0f2;
   --app-nav-muted: #6b7d92;
-  /* 石墨:语义色降饱和,保持浅底深字 */
+
   --app-emerald-bg: #e6efe9;
   --app-emerald-line: #c9dccf;
   --app-emerald-fg: #2f6b52;
@@ -1203,14 +1186,12 @@ textarea {
   --app-page-bg: #eef2f7;
 }
 
-/* ==================== 03 登录视图 ==================== */
 .app-login {
   position: relative;
   min-height: 100vh;
   background: var(--app-page-bg, #f4f9fd);
 }
 
-/* ==================== 04 应用外壳 ==================== */
 .app-shell {
   display: flex;
   flex-direction: column;
@@ -1229,7 +1210,6 @@ textarea {
   overflow: hidden;
 }
 
-/* ==================== 05 主工作区与视图画布 ==================== */
 .app-workspace {
   display: flex;
   flex: 1;
@@ -1249,15 +1229,14 @@ textarea {
   overflow-y: auto;
 }
 
-/* 管理端:允许整页上下滚动,内容按自然高度铺开 */
 #app .app-viewport--admin {
   display: flex;
   flex-direction: column;
   overflow-y: auto;
   padding-top: 10px;
-  /* 分页条自然排布,页面底部留白统一控制 */
+
   padding-bottom: 0;
-  /* 始终预留滚动条位置，页面切换时内容不会左右抖动 */
+
   scrollbar-gutter: stable;
   scrollbar-width: thin;
   scrollbar-color: var(--app-border-strong, #cbd5e1) transparent;
@@ -1280,7 +1259,6 @@ textarea {
   background-clip: content-box;
 }
 
-/* 管理端视图至少占满可用高度,内容超出时由整个画布自然滚动 */
 #app .app-viewport--admin > .view-transition {
   display: flex;
   flex: 1 0 auto;
@@ -1297,7 +1275,6 @@ textarea {
   gap: 12px;
 }
 
-/* 列表按内容自然展开,纵向滚动交给整个管理端画布 */
 #app .app-viewport--admin .table-wrap,
 #app .app-viewport--admin .notice-list,
 #app .app-viewport--admin .question-list {
@@ -1305,7 +1282,6 @@ textarea {
   min-height: 0;
 }
 
-/* 分页页至少铺满画布,数据较多时由画布滚动,不再裁切或单独滚动列表 */
 #app .app-viewport--admin > .view-transition > .admin-fit-page {
   height: auto;
   min-height: 100%;
@@ -1327,13 +1303,11 @@ textarea {
   min-width: 900px;
 }
 
-/* 分页条在列表后自然排布,随页面内容滚动 */
 #app .app-viewport--admin .pager {
   position: static;
   padding-bottom: 1.25rem;
 }
 
-/* 管理总览没有分页条，单独补底部留白 */
 #app .app-viewport--admin .admin-dashboard {
   padding-bottom: 1.25rem;
 }
@@ -1348,7 +1322,7 @@ textarea {
   transition: opacity 420ms cubic-bezier(0.22, 1, 0.36, 1),
     transform 420ms cubic-bezier(0.22, 1, 0.36, 1);
 }
-/* 从详情页返回时无等待：过渡时长归零，滚动位置在插入首帧即恢复 */
+
 .view-transition--instant.view-enter-active,
 .view-transition--instant.view-leave-active,
 .view-transition--instant.view-enter-from,
@@ -1361,8 +1335,6 @@ textarea {
   transform: translateY(12px);
 }
 
-/* 管理端页面进入时只做淡入，不做位移：
-   位移会让整个视图短暂超出滚动容器底部，触发滚动条闪现 */
 #app .app-viewport--admin .view-enter-from {
   transform: none;
 }
@@ -1451,9 +1423,6 @@ textarea {
   .app-viewport { padding: 2rem; }
 }
 
-/* ==================== 05b 曜黑:共享组件内的浅底语义块 ====================
-   ConfirmDialog 学员端也在用,组件里保留原色;
-   只在管理端深色主题下用更高优先级覆盖,把浅底深字翻成深底亮字。 */
 .app-shell.theme-black .cf-icon--danger,
 .app-shell.theme-black .cf-tip--danger {
   background: var(--app-rose-bg);
@@ -1475,14 +1444,9 @@ textarea {
 .app-shell.theme-black .cf-tip--primary,
 .app-shell.theme-black .cf-tip--warning { border-color: var(--app-amber-line); }
 .app-shell.theme-black .cf-backdrop { background: rgba(0, 0, 0, 0.62); }
-/* 分页当前页压在品牌渐变上,浅色主题是金字深底,曜黑下青底必须换深墨 */
+
 .app-shell.theme-black .pager-btn--active { color: var(--app-brand-on); }
 
-/* ==================== 05c 管理端响应式布局 ====================
-   屏幕变窄时:统计条自动换行、工具栏纵向排布、表格横向滚动、
-   侧边栏收成图标栏,保证管理端各页在小屏下仍然整齐不挤。 */
-
-/* --- 中等屏:收紧内边距,统计卡自动换行 --- */
 @media (max-width: 1280px) {
   #app .app-viewport--admin {
     padding-left: 1.25rem;
@@ -1493,13 +1457,12 @@ textarea {
   }
 }
 
-/* --- 窄屏:侧边栏收成图标栏,给内容让出宽度 --- */
 @media (max-width: 1080px) {
   #app .app-viewport--admin {
     padding-left: 1rem;
     padding-right: 1rem;
   }
-  /* 窄屏下压缩表格内边距，尽量让常见列数在可视区内放下 */
+
   #app .app-viewport--admin .data-table {
     font-size: 12.5px;
   }
@@ -1510,7 +1473,7 @@ textarea {
     padding-top: 8px;
     padding-bottom: 8px;
   }
-  /* 表格横向滚动条做细一点，不抢内容 */
+
   #app .app-viewport--admin .table-wrap {
     scrollbar-width: thin;
   }
@@ -1558,7 +1521,6 @@ textarea {
   }
 }
 
-/* --- 小屏:页头/工具栏/统计条纵向或两列排布,表格横向滚动 --- */
 @media (max-width: 820px) {
   #app .app-viewport--admin {
     padding: 10px 0.75rem 0;
@@ -1622,7 +1584,6 @@ textarea {
   }
 }
 
-/* --- 超窄屏:留白再收紧,分页按钮允许换行 --- */
 @media (max-width: 560px) {
   #app .app-viewport--admin {
     padding-left: 0.625rem;
@@ -1640,7 +1601,6 @@ textarea {
   }
 }
 
-/* --- 用户端:桌面使用完整宽度,窄屏导航改为可横向浏览的菜单栏 --- */
 #app .app-viewport--user {
   width: 100%;
   max-width: none;
@@ -1655,7 +1615,6 @@ textarea {
   min-height: 100%;
 }
 
-/* --- 用户端中等窄屏:侧栏收成与管理端相同的图标栏 --- */
 @media (max-width: 1080px) and (min-width: 821px) {
   #app .app-body--user .sidebar {
     width: 76px;
@@ -1731,7 +1690,6 @@ textarea {
   }
 }
 
-/* --- 矮屏:适度收紧纵向间距,减少首屏滚动距离 --- */
 @media (max-height: 800px) {
   #app .app-viewport--admin .view-transition > * {
     gap: 10px;
@@ -1784,7 +1742,6 @@ textarea {
   }
 }
 
-/* --- 弹窗:矮屏/窄屏下顶部对齐并可滚动,内容不会溢出屏幕 --- */
 @media (max-width: 640px), (max-height: 720px) {
   html body .modal-backdrop.modal-backdrop {
     align-items: flex-start;
@@ -1797,7 +1754,6 @@ textarea {
   }
 }
 
-/* ==================== 06 无障碍：减少动效 ==================== */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

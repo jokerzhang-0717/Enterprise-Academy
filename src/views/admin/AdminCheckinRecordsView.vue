@@ -1,7 +1,6 @@
 <template>
   <div class="admin-checkin admin-fit-page">
 
-    <!-- 页头 -->
     <div class="page-head">
       <div>
         <h1 class="page-title">签到记录</h1>
@@ -12,7 +11,6 @@
       </div>
     </div>
 
-    <!-- 统计条 -->
     <div class="overview-strip">
       <div class="overview-item">
         <span class="overview-value overview-value--green">{{ normalCount }}</span>
@@ -66,7 +64,6 @@
       <span class="filter-count">{{ filteredRecords.length }} 条记录</span>
     </div>
 
-    <!-- 签到明细表 -->
     <div class="table-wrap">
       <table class="data-table">
         <thead>
@@ -135,7 +132,6 @@
       :total-pages="totalPages"
     />
 
-    <!-- 签到详情 -->
     <AdminDetailModal
       v-if="detailRecord"
       title="签到详情"
@@ -316,7 +312,6 @@ const statusLabelMap = {
 };
 const statusLabel = (status) => statusLabelMap[status] || status;
 
-/* ---------- 签到详情 ---------- */
 const detailRecord = ref(null);
 const openDetail = (record) => { detailRecord.value = record; };
 
@@ -397,9 +392,6 @@ const saveRecord = async () => {
 </script>
 
 <style scoped>
-/* ============================================================
-   AdminCheckinRecords · 签到记录 · 纯原生 CSS
-   ============================================================ */
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -410,7 +402,6 @@ const saveRecord = async () => {
   min-height: 100%;
 }
 
-/* ========== 页头 ========== */
 .page-head {
   display: flex;
   align-items: flex-end;
@@ -432,7 +423,6 @@ const saveRecord = async () => {
   color: var(--app-text-4);
 }
 
-/* ========== 概览条 ========== */
 .overview-strip {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -465,7 +455,6 @@ const saveRecord = async () => {
   color: var(--app-text-4);
 }
 
-/* ========== 筛选工具栏 ========== */
 .filter-toolbar {
   display: grid;
   grid-template-columns: minmax(160px, 190px) minmax(140px, 180px) minmax(130px, 160px) minmax(180px, 1fr) auto;
@@ -515,7 +504,6 @@ const saveRecord = async () => {
   border-radius: 999px; white-space: nowrap;
 }
 
-/* ========== 表格 ========== */
 .table-wrap {
   background: var(--app-surface);
   border: 1px solid var(--app-border);
@@ -569,7 +557,6 @@ const saveRecord = async () => {
   font-variant-numeric: tabular-nums;
 }
 
-/* ========== 员工单元格 ========== */
 .cell-user {
   display: flex;
   align-items: center;
@@ -613,7 +600,6 @@ const saveRecord = async () => {
   white-space: nowrap;
 }
 
-/* ========== 状态徽标 ========== */
 .status-pill {
   display: inline-flex;
   align-items: center;

@@ -1,6 +1,6 @@
 <template>
   <div class="crs-page">
-    <!-- 0. 视频课程分类筛选条 -->
+
     <section class="crs-toolbar" v-reveal aria-label="课程筛选">
       <div class="crs-toolbar__top">
         <div class="crs-toolbar__heading">
@@ -64,7 +64,6 @@
       </div>
     </section>
 
-    <!-- 1. Course Cards Grid -->
     <div class="crs-grid" v-reveal-rows>
       <article
         v-for="course in filteredCourses"
@@ -73,7 +72,7 @@
         class="crs-card"
         :class="{ 'crs-card--search-target': searchTargetId === `course-card-${course.id}` }"
       >
-        <!-- Thumbnail -->
+
         <div class="crs-card__thumb">
           <img :src="course.thumbnail" :alt="course.title" class="crs-card__img" />
           <span v-if="course.categoryLabel" class="crs-card__category-tag">
@@ -81,7 +80,6 @@
           </span>
         </div>
 
-        <!-- Content -->
         <div class="crs-card__body">
           <div>
             <h3 class="crs-card__title">{{ course.title }}</h3>
@@ -89,7 +87,7 @@
           </div>
 
           <div>
-            <!-- Instructor -->
+
             <div class="crs-card__instructor">
               <div class="crs-card__avatar">
                 {{ course.instructor.name.charAt(0) }}
@@ -99,9 +97,8 @@
               </span>
             </div>
 
-            <!-- Action -->
             <div class="crs-card__actions">
-              <!-- 未开始：立即学习 -->
+
               <button
                 v-if="course.status === 'not_started'"
                 type="button"
@@ -111,7 +108,6 @@
                 <span>立即学习</span>
               </button>
 
-              <!-- 进行中 / 已结课：继续学习 -->
               <button
                 v-else
                 type="button"
@@ -130,7 +126,6 @@
       </div>
     </div>
 
-    <!-- 2. Pagination Footer -->
     <footer class="crs-footer">
       <div>
         显示 {{ filteredCourses.length }} 门课程，课程库共 {{ courses.length }} 门
@@ -160,7 +155,6 @@ const canScrollCategoryLeft = ref(false);
 const canScrollCategoryRight = ref(false);
 let categoryResizeObserver;
 
-/** 学员端只看到已上架课程；管理端下架后这里跟着消失 */
 const courses = computed(() => learnerStore.courses.filter(c => c.published));
 
 const categoryTabs = computed(() => {
@@ -238,7 +232,7 @@ watch(
 </script>
 
 <style scoped>
-/* ============ Design tokens ============ */
+
 .crs-page {
   --c-text: var(--app-text);
   --c-text-sub: var(--app-text-2);
@@ -260,7 +254,6 @@ watch(
   font-family: 'PingFang SC', 'Microsoft YaHei', 'Helvetica Neue', sans-serif;
 }
 
-/* ============ Course search and categories ============ */
 .crs-toolbar {
   display: flex;
   flex-direction: column;
@@ -489,7 +482,6 @@ watch(
   font-size: 14px;
 }
 
-/* ============ Icons (lucide) ============ */
 .crs-icon {
   width: 18px;
   height: 18px;
@@ -503,7 +495,6 @@ watch(
   fill: currentColor;
 }
 
-/* ============ Grid ============ */
 .crs-grid {
   display: grid;
   grid-template-columns: 1fr;
@@ -516,7 +507,6 @@ watch(
   .crs-grid { grid-template-columns: repeat(3, 1fr); }
 }
 
-/* ============ Card ============ */
 .crs-card {
   display: flex;
   flex-direction: column;
@@ -536,7 +526,6 @@ watch(
   box-shadow: 0 0 0 3px var(--app-accent-soft), 0 8px 20px rgba(15, 23, 42, 0.08);
 }
 
-/* ---- Thumbnail ---- */
 .crs-card__thumb {
   position: relative;
   height: 176px;
@@ -554,7 +543,6 @@ watch(
   transform: scale(1.05);
 }
 
-/* ---- Body ---- */
 .crs-card__body {
   display: flex;
   flex: 1;
@@ -594,7 +582,6 @@ watch(
   overflow: hidden;
 }
 
-/* ---- Instructor ---- */
 .crs-card__instructor {
   display: flex;
   align-items: center;
@@ -633,7 +620,6 @@ watch(
   color: var(--c-purple);
 }
 
-/* ---- Action buttons ---- */
 .crs-card__actions {
   margin-top: 12px;
 }
@@ -651,7 +637,6 @@ watch(
   transition: background-color 0.2s ease, border-color 0.2s ease;
 }
 
-/* 未开始：立即学习 */
 .crs-btn--start {
   border: 1px solid rgba(131, 201, 244, 0.4);
   background: var(--c-blue-bg);
@@ -661,7 +646,6 @@ watch(
   border-color: var(--c-sky);
 }
 
-/* 进行中：继续学习 */
 .crs-btn--continue {
   border: 1px solid transparent;
   background: var(--c-sky);
@@ -672,7 +656,6 @@ watch(
   background: var(--c-sky-hover);
 }
 
-/* ============ Footer ============ */
 .crs-footer {
   display: flex;
   align-items: center;

@@ -1,6 +1,4 @@
-/**
- * 后端接口封装（与 emp-server/docs/openapi.yaml 一一对应）
- */
+
 import { ApiError, getRefreshToken, http } from './client.js';
 import {
   adaptAdminAnnouncement,
@@ -22,8 +20,6 @@ import {
   adaptUser,
 } from './adapters.js';
 
-/* ============================== 认证 ============================== */
-
 export const login = async (employeeNo, password) => {
   const data = await http.post('/auth/login', { employeeNo, password }, { auth: false });
   return {
@@ -43,13 +39,9 @@ export const changePassword = (oldPassword, newPassword) =>
 export const logoutApi = () =>
   http.post('/auth/logout', { refreshToken: getRefreshToken() });
 
-/* ============================== 个人资料 ============================== */
-
 export const fetchProfile = () => http.get('/profile').then(adaptUser);
 
 export const updateProfile = (payload) => http.put('/profile', payload).then(adaptUser);
-
-/* ============================== 学员端 ============================== */
 
 export const fetchDashboard = () => http.get('/dashboard');
 
@@ -94,8 +86,6 @@ export const saveExamAnswer = (attemptId, payload) =>
 export const submitExam = (attemptId) =>
   http.post(`/exams/attempts/${attemptId}/submit`).then(adaptExamSession);
 
-/* ---------- 请假 / 考勤 ---------- */
-
 export const fetchLeaves = () => http.get('/leaves').then((list) => (list || []).map(adaptLeave));
 
 export const createLeave = (payload) => http.post('/leaves', payload);
@@ -106,29 +96,20 @@ export const checkIn = () => http.post('/checkins/check-in');
 
 export const checkOut = () => http.post('/checkins/check-out');
 
-/* ---------- 证书 ---------- */
-
 export const fetchMyCertificates = () =>
   http.get('/certificates/my').then((list) => (list || []).map(adaptCertificate));
-
-/* ---------- 公告 ---------- */
 
 export const fetchAnnouncement = (id) => http.get(`/announcements/${id}`);
 
 export const markAllAnnouncementsRead = () => http.put('/announcements/read-all', {});
 
-/** 学员端消息中心：直接读取管理端已发布的公告 */
 export const fetchAnnouncementMessages = (params = { page: 1, size: 100 }) =>
   http.get('/announcements', params).then((page) => ({
     ...page,
     records: (page?.records || []).map(adaptAnnouncementMessage),
   }));
 
-/* ============================== 管理端 ============================== */
-
 export const fetchAdminDashboard = () => http.get('/admin/dashboard');
-
-/* ---------- 用户 ---------- */
 
 export const fetchAdminUsers = (params = {}) =>
   http.get('/admin/users', { page: 1, size: 200, ...params }).then((page) => ({
@@ -148,8 +129,6 @@ export const updateAdminUserStatus = (id, accountStatus) =>
 export const resetAdminUserPassword = (id, password = '123456') =>
   http.post(`/admin/users/${id}/reset-password`, { newPassword: password });
 
-/* ---------- 部门 ---------- */
-
 export const fetchAdminDepartments = (params = {}) =>
   http.get('/admin/departments', { page: 1, size: 200, ...params }).then((page) => ({
     ...page,
@@ -164,8 +143,6 @@ export const deleteAdminDepartment = (id) => http.delete(`/admin/departments/${i
 
 export const updateAdminDepartmentStatus = (id, status) =>
   http.put(`/admin/departments/${id}/status`, { status });
-
-/* ---------- 课程 ---------- */
 
 export const fetchAdminCourses = (params = {}) =>
   http.get('/admin/courses', { page: 1, size: 200, ...params }).then((page) => ({
@@ -208,8 +185,6 @@ export const updateAdminLesson = (courseId, chapterId, lessonId, payload) =>
 export const deleteAdminLesson = (courseId, chapterId, lessonId) =>
   http.delete(`/admin/courses/${courseId}/chapters/${chapterId}/lessons/${lessonId}`);
 
-/* ---------- 考试 ---------- */
-
 export const fetchAdminExams = (params = {}) =>
   http.get('/admin/exams', { page: 1, size: 200, ...params }).then((page) => ({
     ...page,
@@ -235,8 +210,6 @@ export const fetchAdminExamAttempt = (id) => http.get(`/admin/exam-attempts/${id
 export const gradeAdminExamAttempt = (id, payload) =>
   http.post(`/admin/exam-attempts/${id}/grade`, payload);
 
-/* ---------- 题库 ---------- */
-
 export const fetchAdminQuestions = (params = {}) => {
   const query = typeof params === 'number' ? { examId: params } : params;
   return http.get('/admin/questions', query).then((data) => {
@@ -250,8 +223,6 @@ export const createAdminQuestion = (payload) => http.post('/admin/questions', pa
 export const updateAdminQuestion = (id, payload) => http.put(`/admin/questions/${id}`, payload);
 
 export const deleteAdminQuestion = (id) => http.delete(`/admin/questions/${id}`);
-
-/* ---------- 请假 ---------- */
 
 export const fetchAdminLeaves = (params = {}) =>
   http.get('/admin/leaves', { page: 1, size: 200, ...params }).then((page) => ({
@@ -267,8 +238,6 @@ export const approveAdminLeave = (id, status, remark = '') =>
     remark,
   });
 
-/* ---------- 签到 ---------- */
-
 export const fetchAdminCheckins = (params = {}) =>
   http.get('/admin/checkins', { page: 1, size: 200, ...params }).then((page) => ({
     ...page,
@@ -278,8 +247,6 @@ export const fetchAdminCheckins = (params = {}) =>
 export const createAdminCheckin = (payload) => http.post('/admin/checkins', payload);
 
 export const updateAdminCheckin = (id, payload) => http.put(`/admin/checkins/${id}`, payload);
-
-/* ---------- 证书 ---------- */
 
 export const fetchAdminCertificates = (params = {}) =>
   http.get('/admin/certificates', { page: 1, size: 200, ...params }).then((page) => ({
@@ -306,8 +273,6 @@ export const deleteAdminCertificate = (id) => http.delete(`/admin/certificates/$
 export const updateAdminCertificateStatus = (id, status) =>
   http.put(`/admin/certificates/${id}/status`, { status });
 
-/* ---------- 公告 ---------- */
-
 export const fetchAdminAnnouncements = (params = {}) =>
   http.get('/admin/announcements', { page: 1, size: 200, ...params }).then((page) => ({
     ...page,
@@ -327,8 +292,6 @@ export const updateAdminAnnouncementStatus = (id, status) =>
 export const toggleAdminAnnouncementTop = (id, isTop) =>
   http.put(`/admin/announcements/${id}/top`, { isTop });
 
-/* ---------- 文件 ---------- */
-
 export const uploadFile = async (file, folder = 'common') => {
   const formData = new FormData();
   formData.append('file', file);
@@ -336,7 +299,6 @@ export const uploadFile = async (file, folder = 'common') => {
   return http.upload('/files/upload', formData);
 };
 
-/** 浏览器侧计算文件 SHA-256，用于预签名直传的服务端去重判定。 */
 export const sha256Hex = async (file) => {
   if (!window.crypto?.subtle) {
     throw new Error('当前浏览器不支持 Web Crypto，无法计算文件摘要');
@@ -347,7 +309,6 @@ export const sha256Hex = async (file) => {
     byte.toString(16).padStart(2, '0')).join('');
 };
 
-/** 大文件直传：内容已存在时服务端不返回 uploadUrl，这里直接跳过 PUT。 */
 export const presignUploadFile = async (file, folder = 'common') => {
   const sha256 = await sha256Hex(file);
   const result = await http.post('/files/presign-upload', {

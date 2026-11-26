@@ -13,11 +13,11 @@
     </div>
 
     <template v-else>
-      <!-- 头部：标题与状态 -->
+
       <section class="exd-hero">
         <div class="exd-hero__top">
           <span class="exd-badge" :class="statusClass">{{ statusText }}</span>
-          <!-- 已考过仍可重考：主入口放在顶部，无需滚动到页面底部 -->
+
           <button
             v-if="hasAttempt && canStart"
             type="button"
@@ -36,7 +36,6 @@
         </p>
       </section>
 
-      <!-- 考过试：直接展示成绩；没考过：显示考试入口 -->
       <section
         v-if="hasAttempt"
         class="exd-result"
@@ -85,7 +84,7 @@
       </section>
 
       <div class="exd-grid">
-        <!-- 基本信息 -->
+
         <section class="exd-card">
           <h2 class="exd-card__title">考核信息</h2>
           <dl class="exd-info">
@@ -116,7 +115,6 @@
           </dl>
         </section>
 
-        <!-- 题型分布 -->
         <section class="exd-card">
           <h2 class="exd-card__title">题型分布</h2>
           <div v-if="typeGroups.length" class="exd-types">
@@ -128,7 +126,6 @@
           <p v-else class="exd-empty">本场考核暂未编排题目</p>
         </section>
 
-        <!-- 考试须知 -->
         <section class="exd-card exd-card--wide">
           <h2 class="exd-card__title">考试须知</h2>
           <ol class="exd-rules">
@@ -222,7 +219,6 @@ const canStart = computed(() => {
 const startLabel = computed(() =>
   Number(exam.value.attemptsUsed) > 0 ? '重新作答' : '开始考试');
 
-/* 有成绩就展示成绩，没考过才展示考试入口 */
 const hasAttempt = computed(() => props.pastRecord?.attemptId != null);
 const resultScore = computed(() =>
   props.pastRecord?.pendingReview ? '待评分' : Number(props.pastRecord?.score ?? 0));
@@ -344,7 +340,6 @@ const typeGroups = computed(() => {
   color: var(--c-muted);
 }
 
-/* 考过试：成绩概览（整块可点击查看明细） */
 .exd-result {
   display: flex;
   flex-direction: column;
@@ -385,7 +380,6 @@ const typeGroups = computed(() => {
 }
 .exd-result__link { color: var(--c-blue); font-weight: 600; }
 
-/* 没考过试：考试入口 */
 .exd-noattempt {
   display: flex;
   flex-direction: column;

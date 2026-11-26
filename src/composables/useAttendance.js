@@ -19,7 +19,7 @@ const formatTime = (time) => {
     if (!match) return time;
     return `${match[1].padStart(2, '0')}:${match[2]}:${(match[3] || '00').padStart(2, '0')}`;
   }
-  // 如果是对象（LocalTime），格式化为 HH:mm:ss
+
   if (typeof time === 'object' && time !== null) {
     const hours = String(time.hours || 0).padStart(2, '0');
     const minutes = String(time.minutes || 0).padStart(2, '0');

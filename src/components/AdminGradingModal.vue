@@ -129,7 +129,6 @@ const gradeError = ref('');
 
 const examId = computed(() => props.exam.numericId ?? props.exam.id);
 
-// 题目列表接口返回 type 标签字符串（application），答卷明细返回数字 4
 const isSubjective = (type) => Number(type) === 4 || type === 'application' || type === 'essay';
 
 const subjectiveRows = ref([]);
@@ -166,7 +165,6 @@ const selectAttempt = async (item) => {
     ]);
     detail.value = data;
 
-    // 未作答的主观题在 attempt_answer 中没有行，需按试卷题目补出来才能评分
     const answerByQuestion = new Map();
     for (const answer of data?.answers || []) {
       answerByQuestion.set(String(answer.questionId), answer);
@@ -231,7 +229,7 @@ onMounted(loadAttempts);
 </script>
 
 <style scoped>
-/* 组件内部的 modal 结构样式必须自带：父组件的 scoped 样式只作用在子组件根节点上 */
+
 .grading-modal {
   display: flex;
   flex-direction: column;
