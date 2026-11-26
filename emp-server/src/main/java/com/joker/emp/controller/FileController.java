@@ -69,7 +69,8 @@ public class FileController {
   public ApiResponse<Map<String, Object>> presignUpload(@Valid @RequestBody PresignUploadRequest request) {
     String baseUrl = ServletUriComponentsBuilder.fromCurrentContextPath().build().toUriString();
     return ApiResponse.ok(storageService.presignUpload(request.fileName(), request.contentType(),
-        request.folder(), request.sha256(), request.size(), baseUrl));
+        request.folder(), request.sha256(), request.size(), baseUrl,
+        request.courseCode(), request.episode()));
   }
 
   @AdminOnly
@@ -185,6 +186,8 @@ public class FileController {
                                      String sha256,
                                      @NotNull(message = "缺少文件大小")
                                      @Positive(message = "文件大小必须大于 0")
-                                     Long size) {
+                                     Long size,
+                                     String courseCode,
+                                     Integer episode) {
   }
 }

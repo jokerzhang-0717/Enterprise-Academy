@@ -36,8 +36,6 @@ public class Course {
   /** 1 草稿 2 已上架 3 已下架 */
   private Integer status;
 
-  private Long createdBy;
-
   @TableField(fill = FieldFill.INSERT)
   private LocalDateTime createdAt;
 

@@ -144,6 +144,7 @@ public class CourseService {
         li.put("sortNo", lesson.getSortNo());
         li.put("completed", lp != null && Boolean.TRUE.equals(lp.getIsCompleted()));
         li.put("watchedSeconds", lp == null ? 0 : lp.getWatchedSeconds());
+        li.put("lastStudiedAt", lp == null ? null : lp.getUpdatedAt());
         lessonItems.add(li);
       }
       ci.put("lessons", lessonItems);
@@ -162,7 +163,6 @@ public class CourseService {
     Course course = new Course();
     apply(course, request);
     course.setStatus(request.status() == null ? 1 : request.status());
-    course.setCreatedBy(AuthContext.userId());
     courseMapper.insert(course);
     logService.record("course", "新增课程 " + course.getTitle(), "course", course.getId());
     return detail(course.getId(), null);
@@ -498,6 +498,44 @@ public class CourseService {
         }).toList();
   }
 
+  /** 管理端新建课程时按名称创建分类（已存在则直接返回），返回可提交的分类信息。 */
+  @Transactional
+  public Map<String, Object> createCategory(String label) {
+    String name = label == null ? "" : label.trim();
+    if (name.isEmpty()) {
+      throw new BizException("分类名称不能为空");
+    }
+    if (name.length() > 64) {
+      throw new BizException("分类名称不能超过 64 个字符");
+    }
+    CourseCategory existing = categoryMapper.selectOne(
+        Wrappers.<CourseCategory>lambdaQuery().eq(CourseCategory::getLabel, name).last("limit 1"));
+    if (existing != null) {
+      return categoryItem(existing);
+    }
+    // code 用拼音无关的通用前缀 + 时间戳，保证唯一且不与内置 code 冲突
+    String code = "custom-" + System.currentTimeMillis();
+    int maxSort = categoryMapper.selectList(Wrappers.<CourseCategory>lambdaQuery())
+        .stream().map(CourseCategory::getSortNo).filter(java.util.Objects::nonNull)
+        .mapToInt(Integer::intValue).max().orElse(0);
+    CourseCategory created = new CourseCategory();
+    created.setCode(code);
+    created.setLabel(name);
+    created.setSortNo(maxSort + 1);
+    categoryMapper.insert(created);
+    logService.record("course", "创建课程分类：" + name, "course_category", created.getId());
+    return categoryItem(created);
+  }
+
+  private Map<String, Object> categoryItem(CourseCategory c) {
+    Map<String, Object> item = new LinkedHashMap<>();
+    item.put("id", c.getId());
+    item.put("code", c.getCode());
+    item.put("label", c.getLabel());
+    item.put("sortNo", c.getSortNo());
+    return item;
+  }
+
   public List<Map<String, Object>> instructors() {
     return instructorMapper.selectList(Wrappers.<Instructor>lambdaQuery()
             .orderByAsc(Instructor::getId)).stream()
@@ -675,7 +713,6 @@ public class CourseService {
     item.put("summary", course.getSummary());
     item.put("statusCode", course.getStatus());
     item.put("status", statusText(course.getStatus()));
-    item.put("createdBy", course.getCreatedBy());
     item.put("createdAt", course.getCreatedAt());
     item.put("updatedAt", course.getUpdatedAt());
     return item;

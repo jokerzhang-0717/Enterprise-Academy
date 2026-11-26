@@ -104,6 +104,7 @@ export const adaptLesson = (lesson) => ({
   url: lesson.videoUrl || lesson.url || '',
   completed: Boolean(lesson.completed),
   watchedSeconds: Number(lesson.watchedSeconds || 0),
+  lastStudiedAt: lesson.lastStudiedAt || null,
 });
 
 export const adaptChapter = (chapter) => ({

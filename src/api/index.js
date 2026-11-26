@@ -152,6 +152,9 @@ export const fetchAdminCourses = (params = {}) =>
 
 export const fetchAdminCourseCategories = () => http.get('/admin/course-categories');
 
+export const createAdminCourseCategory = (label) =>
+  http.post('/admin/course-categories', { label });
+
 export const fetchAdminInstructors = () => http.get('/admin/instructors');
 
 export const createAdminInstructor = (payload) => http.post('/admin/instructors', payload);
@@ -309,7 +312,7 @@ export const sha256Hex = async (file) => {
     byte.toString(16).padStart(2, '0')).join('');
 };
 
-export const presignUploadFile = async (file, folder = 'common') => {
+export const presignUploadFile = async (file, folder = 'common', courseCode = null, episode = null) => {
   const sha256 = await sha256Hex(file);
   const result = await http.post('/files/presign-upload', {
     fileName: file.name,
@@ -317,6 +320,8 @@ export const presignUploadFile = async (file, folder = 'common') => {
     folder,
     sha256,
     size: file.size,
+    courseCode,
+    episode,
   });
   if (result.deduplicated) return result;
 

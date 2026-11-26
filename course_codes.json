@@ -1,0 +1,98 @@
+{
+  "2022 最新 Android 基础教程，从开发入门到项目实战，看它就够了，更新中": {
+    "code": "android2022",
+    "course_id": 103
+  },
+  "AI+软件测试第四篇_接口测试+Apifox实战（客达天下）_2026最新发布超详细教程": {
+    "code": "apitest2026",
+    "course_id": 104
+  },
+  "MinIO分布式文件存储,Spring Boot整合MinIO,MinIO集群,MinIO上传,MinIO下载": {
+    "code": "minio2026",
+    "course_id": 105
+  },
+  "SpringCloud+RabbitMQ+Docker+Redis+搜索+分布式，系统详解springcloud微服务技术栈课程丨黑马程序员Java微服务": {
+    "code": "springcloud2026",
+    "course_id": 106
+  },
+  "trae使用教程【B站最详细，零基础必看！】trae小白入门到精通traeCN教程traeexceltrae项目实战trae安装教程用教程trae开发小程序": {
+    "code": "trae2026",
+    "course_id": 107
+  },
+  "【2026最新Cursor使用教程】史上最强 AI 编程工具Cursor！Cursor保姆级使用教程！从入门到实战，零基础小白也能学会": {
+    "code": "cursor2026",
+    "course_id": 108
+  },
+  "【2026最新】这绝对是b站讲的最好的Python爬虫JS逆向保姆级全套教程！企业级大厂逆向加密与标准算法实战，建议先收藏，谨防下架！": {
+    "code": "crawler2026",
+    "course_id": 109
+  },
+  "【2026最新版】AI Agent智能体零基础全套教程（MCP+Agent Skills+多智能体+工作流自动化+项目实战）手把手教你从0搭建能干活的AI智能体": {
+    "code": "agent2026",
+    "course_id": 110
+  },
+  "【2026最新版】ChatGPT+Codex 零基础全套教程｜从入门到 AI 开发实战全流程": {
+    "code": "chatgpt2026",
+    "course_id": 111
+  },
+  "【全26集】从零开始打造满配的DeepSeek Harness官方桌面端！浏览器+手机自动化，能力扩大10倍！": {
+    "code": "deepseekharness2026",
+    "course_id": 112
+  },
+  "【无逆向难爬虫】爬虫高手进阶之路，JS逆向技术深度剖析与实战教程，还学不会咱们就转行吧！！": {
+    "code": "crawlerpro2026",
+    "course_id": 113
+  },
+  "全网首发AI+JavaWeb开发入门，Tlias教学管理系统项目实战全套视频教程，从需求分析、设计、前后端开发、测试、程序优化到项目部署一套搞定": {
+    "code": "javaweb2026",
+    "course_id": 114
+  },
+  "尚硅谷Vue2.0+Vue3.0全套教程丨vuejs从入门到精通": {
+    "code": "vue2026",
+    "course_id": 115
+  },
+  "零基础入门uniapp Vue3组合式API版本到咸虾米壁纸项目实战，开发打包微信小程序、抖音小程序、H5、安卓APP客户端等": {
+    "code": "uniapp2026",
+    "course_id": 116
+  },
+  "黑马程序员 MySQL数据库入门到精通，从mysql安装到mysql高级、mysql优化全囊括": {
+    "code": "mysql2026",
+    "course_id": 117
+  },
+  "黑马程序员2026全网最夯VibeCoding零基础入门到实战项目开发全套视频教程，AI辅助编程从入门到实战，涵盖Claude Code、DeepSeek等内容": {
+    "code": "javabar2026",
+    "course_id": 118
+  },
+  "黑马程序员2026版AI+Java零基础全套视频课程，Java入门到大神AI智能应用开发，涵盖Java核心语法、大量力扣、牛客网算法训练及Java项目开发": {
+    "code": "java2026b",
+    "course_id": 119
+  },
+  "黑马程序员ClaudeCode全流程项目实战，VibeCoding+ClaudeCode+SDD开发规范，手把手带你告别手敲代码搞定企业级项目AI开发全流程": {
+    "code": "claudecode2026",
+    "course_id": 120
+  },
+  "黑马程序员DeepSeek+Cursor+Devbox+Sealos带你零代码搞定实战项目开发部署视频教程，基于AI完成项目的设计、开发、测试、联调、部署全流程": {
+    "code": "devbox2026",
+    "course_id": 121
+  },
+  "黑马程序员Git全套教程，完整的git项目管理工具教程，一套精通git": {
+    "code": "git2026",
+    "course_id": 122
+  },
+  "黑马程序员Java项目实战《瑞吉外卖》，轻松掌握springboot + mybatis plus开发核心技术的真java实战项目": {
+    "code": "ruiji2026",
+    "course_id": 123
+  },
+  "黑马程序员Java项目实战微服务项目《黑马头条》开发全套视频教程，基于SpringBoot+SpringCloud+Nacos等企业级微服务架构项目解决方案": {
+    "code": "toutiao2026",
+    "course_id": 124
+  },
+  "黑马程序员Redis入门到实战教程，深度透析redis底层原理+redis分布式锁+企业解决方案+黑马点评实战项目": {
+    "code": "redis2026",
+    "course_id": 125
+  },
+  "黑马程序员SpringBoot3+Vue3全套视频教程，springboot+vue企业级全栈开发从基础、实战到面试一套通关": {
+    "code": "springbootvue2026",
+    "course_id": 126
+  }
+}

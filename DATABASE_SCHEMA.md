@@ -237,7 +237,6 @@ UNIQUE KEY uk_course_category_code (code)
 | `thumbnail_url` | `VARCHAR(512)    NULL` | 是 | 封面图地址 |
 | `summary` | `VARCHAR(500)    NULL` | 是 | 一句话简介 |
 | `status` | `TINYINT         NOT NULL DEFAULT 1` | 否 | 1 草稿 2 已上架 3 已下架 |
-| `created_by` | `BIGINT UNSIGNED NULL` | 是 | 创建人用户 ID |
 | `created_at` | `DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP` | 否 | 创建时间 |
 | `updated_at` | `DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP` | 否 | 更新时间 |
 | `deleted_at` | `DATETIME        NULL` | 是 | 软删除时间，NULL = 未删除 |

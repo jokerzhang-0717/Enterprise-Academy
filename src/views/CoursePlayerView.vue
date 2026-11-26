@@ -36,6 +36,7 @@
             @play="handleVideoPlay"
             @pause="handleVideoPause"
             @timeupdate="handleVideoTimeUpdate"
+            @loadedmetadata="handleVideoLoaded"
             @ended="handleVideoEnded"
             @error="handleVideoError"
           />
@@ -192,6 +193,56 @@ const currentGlobalIndex = computed(() => {
 
 const positionOfProgress = () => {
   if (!chapters.value.length) return { ci: 0, li: 0 };
+  const watchedLessons = [];
+  for (let ci = 0; ci < chapters.value.length; ci += 1) {
+    const lessons = lessonsOf(ci);
+    for (let li = 0; li < lessons.length; li += 1) {
+      const lesson = lessons[li];
+      const watched = Number(lesson.watchedSeconds || 0);
+      if (watched <= 0 && !lesson.lastStudiedAt) continue;
+      const ts = lesson.lastStudiedAt ? new Date(lesson.lastStudiedAt).getTime() : 0;
+      watchedLessons.push({
+        ci, li,
+        stamp: Number.isFinite(ts) ? ts : 0,
+        watched,
+        completed: Boolean(lesson.completed),
+      });
+    }
+  }
+  // 优先用更新时间排序（精确）；旧接口没有时间字段时退化为按观看秒数近似
+  const useTimestamp = watchedLessons.some((item) => item.stamp > 0);
+  let latest = null;
+  for (const item of watchedLessons) {
+    const rank = useTimestamp ? item.stamp : item.watched;
+    // 排序键相同（如批量导入的时间戳一致）时，优先未完成的课时
+    const better = !latest || rank > latest.rank
+      || (rank === latest.rank && latest.completed && !item.completed);
+    if (better) latest = { ...item, rank };
+  }
+  if (latest) {
+    if (!latest.completed) return { ci: latest.ci, li: latest.li };
+    // 刚看完最后一节，顺延到下一节（跨章时回到下一章首节）
+    const size = lessonsOf(latest.ci).length;
+    if (latest.li + 1 < size) return { ci: latest.ci, li: latest.li + 1 };
+    if (latest.ci + 1 < chapters.value.length) return { ci: latest.ci + 1, li: 0 };
+    return { ci: latest.ci, li: latest.li };
+  }
+  // 回退：按已完成课时数定位到下一节
+  let completedCount = 0;
+  for (const chapter of chapters.value) {
+    for (const lesson of (chapter.lessons || [])) {
+      if (lesson.completed) completedCount += 1;
+    }
+  }
+  if (completedCount > 0 && completedCount < totalLessons.value) {
+    let remaining = completedCount;
+    for (let ci = 0; ci < chapters.value.length; ci += 1) {
+      const size = lessonsOf(ci).length;
+      if (remaining < size) return { ci, li: remaining };
+      remaining -= size;
+    }
+  }
+  // 最后回退：按课程总进度百分比
   const pct = Math.min(100, Math.max(0, Number(course.value?.progress) || 0));
   let remaining = Math.round((totalLessons.value * pct) / 100);
   for (let ci = 0; ci < chapters.value.length; ci += 1) {
@@ -222,6 +273,8 @@ const syncPosition = () => {
   const spot = positionOfProgress();
   progress.value = spot;
   playing.value = { ...spot };
+  // 计时基准同步为当前课时已观看秒数，避免初次进入后从 0 覆盖已有进度
+  elapsedSeconds.value = Math.floor(Number(lessonsOf(spot.ci)[spot.li]?.watchedSeconds || 0));
 };
 
 watch(
@@ -304,6 +357,25 @@ const saveCurrentProgress = async (completed = false, seconds = elapsedSeconds.v
     return null;
   } finally {
     savingProgress.value = false;
+  }
+};
+
+// 断点续学：视频元数据加载完成后，跳到上次观看位置（未看完且位置有效时）。
+const handleVideoLoaded = (event) => {
+  const video = event.target;
+  const lesson = currentLesson.value;
+  if (!video || !lesson) return;
+  const watched = Math.floor(Number(lesson.watchedSeconds || 0));
+  const duration = Number(video.duration || lesson.durationSeconds || 0);
+  // 看到接近结尾（留 5 秒容差）视为已看完，不回退
+  if (lesson.completed || watched <= 0 || !Number.isFinite(duration) || duration <= 0) return;
+  const resumeAt = Math.min(watched, Math.max(0, duration - 5));
+  if (resumeAt <= 0) return;
+  elapsedSeconds.value = resumeAt;
+  try {
+    video.currentTime = resumeAt;
+  } catch {
+    // 某些浏览器在元数据阶段设置 currentTime 会失败，忽略即可
   }
 };
 
@@ -521,6 +593,8 @@ const openLesson = async (ci, li) => {
   }
   playing.value = { ci, li };
   videoErrorLessonId = '';
+  // 切换课时后，计时基准重置为该课时已观看的时长，避免沿用上一课时的秒数
+  elapsedSeconds.value = Math.floor(Number(lessonsOf(ci)[li]?.watchedSeconds || 0));
 
   await nextTick();
   if (videoEl.value) {

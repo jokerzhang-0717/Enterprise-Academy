@@ -73,51 +73,24 @@
         :class="{ 'crs-card--search-target': searchTargetId === `course-card-${course.id}` }"
       >
 
-        <div class="crs-card__thumb">
-          <img :src="course.thumbnail" :alt="course.title" class="crs-card__img" />
-          <span v-if="course.categoryLabel" class="crs-card__category-tag">
-            {{ course.categoryLabel }}
-          </span>
+        <div class="crs-card__thumb" @click="$emit('open-course', course)">
+          <img :src="course.thumbnail" :alt="course.title" class="crs-card__img" loading="lazy" />
         </div>
 
-        <div class="crs-card__body">
-          <div>
-            <h3 class="crs-card__title">{{ course.title }}</h3>
-            <p class="crs-card__summary">{{ course.summary }}</p>
+        <div class="crs-card__body" @click="$emit('open-course', course)">
+          <h3 class="crs-card__title">{{ course.title }}</h3>
+
+          <div class="crs-card__meta">
+            <span class="crs-card__up">
+              <span class="crs-card__avatar">{{ (course.instructor.name || '云').charAt(0) }}</span>
+              <span class="crs-card__up-name">{{ course.instructor.name || '云舒艺境' }}</span>
+            </span>
+
           </div>
 
-          <div>
-
-            <div class="crs-card__instructor">
-              <div class="crs-card__avatar">
-                {{ course.instructor.name.charAt(0) }}
-              </div>
-              <span class="crs-card__instructor-name">
-                {{ course.instructor.name }} · {{ course.instructor.title }}
-              </span>
-            </div>
-
-            <div class="crs-card__actions">
-
-              <button
-                v-if="course.status === 'not_started'"
-                type="button"
-                class="crs-btn crs-btn--start"
-                @click="$emit('open-course', course)"
-              >
-                <span>立即学习</span>
-              </button>
-
-              <button
-                v-else
-                type="button"
-                class="crs-btn crs-btn--continue"
-                @click="$emit('open-course', course)"
-              >
-                <Play class="crs-icon crs-icon--sm crs-icon--fill" />
-                <span>继续学习</span>
-              </button>
-            </div>
+          <div class="crs-card__tags" v-if="course.categoryLabel">
+            <span class="crs-card__tag">{{ course.categoryLabel }}</span>
+            <span class="crs-card__tag crs-card__tag--plain">{{ course.subcategoryLabel || '视频课程' }}</span>
           </div>
         </div>
       </article>
@@ -136,7 +109,7 @@
 
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref, nextTick, watch } from 'vue';
-import { ArrowLeft, ArrowRight, Play, Search, X } from 'lucide-vue-next';
+import { ArrowLeft, ArrowRight, Search, X } from 'lucide-vue-next';
 import { learnerStore } from '../learnerStore.js';
 
 const props = defineProps({
@@ -497,105 +470,105 @@ watch(
 
 .crs-grid {
   display: grid;
-  grid-template-columns: 1fr;
-  gap: 20px;
-}
-@media (min-width: 768px) {
-  .crs-grid { grid-template-columns: repeat(2, 1fr); }
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 20px 16px;
 }
 @media (min-width: 1024px) {
-  .crs-grid { grid-template-columns: repeat(3, 1fr); }
+  .crs-grid { grid-template-columns: repeat(4, 1fr); }
+}
+@media (min-width: 1440px) {
+  .crs-grid { grid-template-columns: repeat(5, 1fr); }
 }
 
 .crs-card {
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
   overflow: hidden;
-  border: 1px solid var(--c-border);
-  border-radius: 12px;
-  background: var(--app-surface);
-  transition: border-color 0.25s ease, box-shadow 0.25s ease;
+  border-radius: 6px;
+  background: transparent;
+  cursor: pointer;
 }
-.crs-card:hover {
-  border-color: var(--c-sky);
-  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08);
-}
-.crs-card--search-target {
-  border-color: var(--c-sky);
-  box-shadow: 0 0 0 3px var(--app-accent-soft), 0 8px 20px rgba(15, 23, 42, 0.08);
+.crs-card--search-target .crs-card__thumb {
+  box-shadow: 0 0 0 3px var(--c-sky);
 }
 
+/* 封面：16:9，圆角，B 站式 hover 上浮 + 阴影 */
 .crs-card__thumb {
   position: relative;
-  height: 176px;
+  width: 100%;
+  aspect-ratio: 16 / 9;
   overflow: hidden;
+  border-radius: 6px;
   background: var(--app-ink-900);
+  transition: transform 0.22s ease, box-shadow 0.22s ease;
+}
+.crs-card:hover .crs-card__thumb {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.16);
 }
 .crs-card__img {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  opacity: 0.9;
+  display: block;
   transition: transform 0.3s ease;
 }
 .crs-card:hover .crs-card__img {
-  transform: scale(1.05);
+  transform: scale(1.04);
 }
+
 
 .crs-card__body {
   display: flex;
   flex: 1;
   flex-direction: column;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 16px;
+  gap: 6px;
+  padding: 9px 2px 0;
 }
 
 .crs-card__title {
-  margin: 0 0 8px;
-  font-size: 14px;
-  font-weight: 700;
-  line-height: 1.4;
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.45;
   color: var(--c-text);
   display: -webkit-box;
-  -webkit-line-clamp: 1;
-  line-clamp: 1;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
-  text-overflow: ellipsis;
   transition: color 0.2s ease;
 }
 .crs-card:hover .crs-card__title {
   color: var(--c-blue);
 }
 
-.crs-card__summary {
-  margin: 0 0 16px;
-  font-size: 12px;
-  line-height: 1.625;
-  color: var(--c-muted);
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.crs-card__instructor {
+/* UP 主一行：头像 + 名称 + 时间 */
+.crs-card__meta {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 8px;
-  padding-top: 12px;
-  border-top: 1px solid var(--c-border-soft);
   font-size: 12px;
+  color: var(--c-muted);
+}
+.crs-card__up {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.crs-card__up-name {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 .crs-card__avatar {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 24px;
+  width: 18px;
+  height: 18px;
   flex-shrink: 0;
   border-radius: 50%;
   background: var(--c-blue-bg);
@@ -603,57 +576,24 @@ watch(
   font-size: 10px;
   font-weight: 700;
 }
-.crs-card__instructor-name {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--c-text-sub);
-}
-.crs-card__cert {
-  flex-shrink: 0;
-  font-family: 'SFMono-Regular', Consolas, monospace;
-  font-size: 10px;
-  color: var(--c-purple);
-}
 
-.crs-card__actions {
-  margin-top: 12px;
-}
-.crs-btn {
+.crs-card__tags {
   display: flex;
-  align-items: center;
-  justify-content: center;
+  flex-wrap: wrap;
   gap: 6px;
-  width: 100%;
-  padding: 8px 0;
-  border-radius: 8px;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background-color 0.2s ease, border-color 0.2s ease;
+  margin-top: 2px;
 }
-
-.crs-btn--start {
-  border: 1px solid rgba(131, 201, 244, 0.4);
+.crs-card__tag {
+  padding: 1px 6px;
+  border-radius: 3px;
   background: var(--c-blue-bg);
   color: var(--c-blue);
+  font-size: 11px;
+  line-height: 1.5;
 }
-.crs-btn--start:hover {
-  border-color: var(--c-sky);
-}
-
-.crs-btn--continue {
-  border: 1px solid transparent;
-  background: var(--c-sky);
-  color: var(--app-on-fill);
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
-}
-.crs-btn--continue:hover {
-  background: var(--c-sky-hover);
+.crs-card__tag--plain {
+  background: var(--app-surface-3);
+  color: var(--c-text-sub);
 }
 
 .crs-footer {

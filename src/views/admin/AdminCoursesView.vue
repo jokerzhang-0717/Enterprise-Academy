@@ -132,9 +132,17 @@
               <div class="field-row">
                 <label class="field">
                   <span class="field-label">所属分类</span>
-                  <select v-model="form.category" class="field-input" @change="syncCategoryLabel">
-                    <option v-for="cat in categories" :key="cat.id" :value="cat.code">{{ cat.label }}</option>
-                  </select>
+                  <input
+                    v-model.trim="form.categoryLabel"
+                    list="course-category-options"
+                    type="text"
+                    class="field-input"
+                    placeholder="选择或输入新分类"
+                    @input="onCategoryInput"
+                  />
+                  <datalist id="course-category-options">
+                    <option v-for="cat in categories" :key="cat.id" :value="cat.label"></option>
+                  </datalist>
                 </label>
                 <label class="field">
                   <span class="field-label">主讲讲师</span>
@@ -263,6 +271,7 @@ import {
   deleteAdminCourse,
   deleteAdminLesson,
   fetchAdminCourse,
+  createAdminCourseCategory,
   fetchAdminCourseCategories,
   fetchAdminInstructors,
   updateAdminChapter,
@@ -350,8 +359,23 @@ const lessonCount = computed(() =>
   form.value.syllabus.reduce((sum, ch) => sum + (ch.lessons ? ch.lessons.length : 0), 0)
 );
 
-const syncCategoryLabel = () => {
-  form.value.categoryLabel = categories.value.find(c => c.code === form.value.category)?.label || '';
+const onCategoryInput = () => {
+  // 输入即同步 label（datalist 选择也会触发 input）；保存时再按 label 解析/创建分类
+};
+
+const resolveCategoryId = async (label) => {
+  const name = (label || '').trim();
+  if (!name) return null;
+  // 先按 label 精确匹配已有分类
+  const hit = categories.value.find(c => c.label === name || c.code === name);
+  if (hit) return Number(hit.id);
+  // 不存在则新建，后端按名称去重
+  const created = await createAdminCourseCategory(name);
+  if (created?.id) {
+    categories.value = [...categories.value, created];
+    return Number(created.id);
+  }
+  return null;
 };
 
 const toEditorChapters = (chapters = []) => chapters.map(ch => ({
@@ -461,15 +485,18 @@ const saveCourse = async () => {
   if (!form.value.title) { formError.value = '请输入课程名称。'; return; }
   if (!form.value.instructorName) { formError.value = '请输入讲师姓名。'; return; }
 
-  const categoryId = categoryIdOf(form.value.category);
-  if (categoryId == null) {
-    formError.value = '未找到该分类的编号，请刷新页面后重试。';
+  if (!form.value.categoryLabel) {
+    formError.value = '请输入或选择课程分类。';
     return;
   }
 
   saving.value = true;
   formError.value = '';
   try {
+    const categoryId = await resolveCategoryId(form.value.categoryLabel);
+    if (categoryId == null) {
+      throw new Error('课程分类保存失败，请重试。');
+    }
     const instructorId = await resolveInstructorId(form.value.instructorName);
     const payload = {
       title: form.value.title,

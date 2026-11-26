@@ -136,11 +136,17 @@ public class StorageService {
    */
   public Map<String, Object> presignUpload(String fileName, String contentType, String folder,
       String sha256, Long size, String publicBaseUrl) {
+    return presignUpload(fileName, contentType, folder, sha256, size, publicBaseUrl, null, null);
+  }
+
+  /** 指定课程代号与集数时，按 video/import/<code>/P<n><ext> 命名；否则沿用内容寻址。 */
+  public Map<String, Object> presignUpload(String fileName, String contentType, String folder,
+      String sha256, Long size, String publicBaseUrl, String courseCode, Integer episode) {
     String resolvedContentType = resolveContentType(fileName);
     normalizeFolder(folder);
     String normalizedSha256 = normalizeSha256(sha256);
     long fileSize = requireSize(size);
-    String objectName = buildObjectName(fileName, normalizedSha256, fileSize);
+    String objectName = buildObjectName(fileName, normalizedSha256, fileSize, courseCode, episode);
     boolean deduplicated = reuseExisting(objectName, fileSize);
 
     Map<String, Object> result = describe(objectName, fileName, fileSize, resolvedContentType,
@@ -287,13 +293,25 @@ public class StorageService {
   }
 
   /**
-   * 内容寻址对象名：sha256/前两位/<完整哈希>-<字节数><扩展名>。
-   * 同一内容 + 同一扩展名在整个存储桶内只有一个对象；扩展名参与 key 是为了保证 Content-Type
-   * 与内联展示策略可按后缀正确解析。
+   * 内容寻址对象名：video/sha256/前两位/<完整哈希>-<字节数><扩展名>。
+   * 统一放在 video 目录下，和早期 video/import 视频保持一致；扩展名参与 key
+   * 是为了保证 Content-Type 与内联展示策略可按后缀正确解析。
    */
   private String buildObjectName(String originalName, String sha256, long size) {
+    return buildObjectName(originalName, sha256, size, null, null);
+  }
+
+  /** 指定课程代号与集数：video/import/<code>/P<n><ext>；否则 video/sha256/xx/<hash>-<size><ext>。 */
+  private String buildObjectName(String originalName, String sha256, long size,
+      String courseCode, Integer episode) {
     String ext = extension(originalName);
-    return "sha256/" + sha256.substring(0, 2) + "/" + sha256 + "-" + size + ext;
+    if (courseCode != null && !courseCode.isBlank() && episode != null && episode > 0) {
+      String code = courseCode.trim().replaceAll("[^A-Za-z0-9_-]", "");
+      if (!code.isEmpty()) {
+        return "video/import/" + code + "/P" + String.format("%03d", episode) + ext;
+      }
+    }
+    return "video/sha256/" + sha256.substring(0, 2) + "/" + sha256 + "-" + size + ext;
   }
 
   /** 已存在同内容对象时直接复用；大小不一致视为对象损坏或哈希冲突，禁止覆盖共享文件。 */
@@ -361,7 +379,7 @@ public class StorageService {
   }
 
   private boolean isDeduplicatedObject(String objectName) {
-    return objectName.startsWith("sha256/");
+    return objectName.startsWith("video/sha256/");
   }
 
   private String normalizeFolder(String folder) {

@@ -115,6 +115,14 @@ public class AdminCourseController {
     return ApiResponse.ok(courseService.categories());
   }
 
+  @PostMapping("/course-categories")
+  public ApiResponse<Map<String, Object>> createCategory(@Valid @RequestBody CategoryRequest request) {
+    return ApiResponse.ok(courseService.createCategory(request.label()));
+  }
+
+  public record CategoryRequest(@NotNull(message = "请输入分类名称") String label) {
+  }
+
   @GetMapping("/instructors")
   public ApiResponse<List<Map<String, Object>>> instructors() {
     return ApiResponse.ok(courseService.instructors());
