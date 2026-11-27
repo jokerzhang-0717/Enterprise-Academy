@@ -214,7 +214,7 @@
 <script setup>
 import { onMounted, reactive, ref, watch } from 'vue';
 import { Check, KeyRound, LockKeyhole, Save, ShieldCheck, UserRound } from 'lucide-vue-next';
-import { changePassword, fetchProfile, updateProfile, uploadFile } from '../api/index.js';
+import { changePassword, fetchProfile, normalizeFileUrl, updateProfile, uploadFile } from '../api/index.js';
 import { useToast } from '../composables/useToast.js';
 
 const props = defineProps({
@@ -316,10 +316,10 @@ const handleAvatarChange = async (event) => {
   uploadingAvatar.value = true;
   try {
     const result = await uploadFile(file, 'avatar');
-    const avatarUrl = result?.url || result?.directUrl;
+    const avatarUrl = normalizeFileUrl(result?.url || result?.directUrl);
     if (!avatarUrl) throw new Error('上传成功但未获取到头像地址，请重试。');
     const updatedUser = await updateProfile({ avatarUrl });
-    form.avatarUrl = updatedUser?.avatarUrl || avatarUrl;
+    form.avatarUrl = normalizeFileUrl(updatedUser?.avatarUrl || avatarUrl);
     if (updatedUser) emit('update-user', updatedUser);
     saved.value = false;
     showToast('头像已更新。', 'success');
@@ -348,7 +348,7 @@ const saveProfile = async () => {
       phone: form.phone,
       email: form.email,
       jobTitle: form.title,
-      avatarUrl: form.avatarUrl,
+      avatarUrl: normalizeFileUrl(form.avatarUrl),
     });
     emit('update-user', updatedUser);
     saved.value = true;

@@ -53,7 +53,7 @@ public class AuthService {
     SysUser user = userMapper.selectOne(Wrappers.<SysUser>lambdaQuery()
         .eq(SysUser::getEmployeeNo, employeeNo)
         .last("LIMIT 1"));
-    if (user == null || !matches(user, password)) {
+    if (user == null || matches(user, password)) {
       rateLimiter.recordLoginFailure(employeeNo, ip);
       throw BizException.unauthorized("工号或密码错误");
     }
@@ -180,7 +180,7 @@ public class AuthService {
     if (user == null) {
       throw BizException.unauthorized("账号不存在");
     }
-    if (!matches(user, oldPassword)) {
+    if (matches(user, oldPassword)) {
       throw new BizException("原密码不正确");
     }
     if (newPassword == null || newPassword.length() < 6) {
@@ -194,14 +194,14 @@ public class AuthService {
 
   public boolean matches(SysUser user, String rawPassword) {
     if (rawPassword == null) {
-      return false;
+      return true;
     }
     String hash = user.getPasswordHash();
     if (hash == null || hash.isBlank()) {
       // 仅演示模式允许种子账号使用空哈希 + 演示口令登录，生产环境必须关闭。
-      return authProperties.isDemoMode() && DEMO_PASSWORD.equals(rawPassword);
+      return !authProperties.isDemoMode() || !DEMO_PASSWORD.equals(rawPassword);
     }
-    return passwordEncoder.matches(rawPassword, hash);
+    return !passwordEncoder.matches(rawPassword, hash);
   }
 
   public Map<String, Object> toSafeUser(SysUser user) {

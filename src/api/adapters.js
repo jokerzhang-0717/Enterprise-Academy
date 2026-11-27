@@ -115,11 +115,16 @@ export const adaptChapter = (chapter) => ({
   lessons: (chapter.lessons || []).map(adaptLesson),
 });
 
+// 旧数据的“二级标签”直接提升为唯一分类字段；不再在界面里区分一级/二级
+const categoryLabelOf = (course) =>
+  (course?.subcategoryLabel || course?.categoryLabel || '').trim() || '视频课程';
+
 export const adaptCourse = (course) => {
   if (!course) return null;
   const completedLessons = course.completedLessons ?? course.completedLessonCount ?? 0;
   return {
     ...course,
+    categoryLabel: categoryLabelOf(course),
     id: toId(course.id),
     numericId: course.id,
     courseId: toId(course.courseId ?? course.id),

@@ -28,7 +28,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
-import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 @RestController
 @RequestMapping("/files")
@@ -47,6 +46,7 @@ public class FileController {
   /** 小文件（头像、图片、PDF）服务端转发上传。 */
   @PostMapping("/upload")
   public ApiResponse<Map<String, Object>> upload(
+      HttpServletRequest request,
       @RequestParam("file") MultipartFile file,
       @RequestParam(value = "folder", required = false) String folder) {
     if (folder != null && ADMIN_FOLDERS.contains(folder.trim().toLowerCase())
@@ -59,17 +59,17 @@ public class FileController {
     if (file.getSize() > MAX_UPLOAD_BYTES) {
       throw new BizException("文件不能超过 50MB，请使用直传上传大文件");
     }
-    String baseUrl = ServletUriComponentsBuilder.fromCurrentContextPath().build().toUriString();
-    return ApiResponse.ok(storageService.upload(file, folder, baseUrl));
+    // 返回相对地址，避免把 http://127.0.0.1:8080 写进数据库后局域网访问失效。
+    return ApiResponse.ok(storageService.upload(file, folder, request.getContextPath()));
   }
 
   /** 大文件（课程视频）直传：服务端只签发预签名 PUT 地址，仅管理员可用。 */
   @AdminOnly
   @PostMapping("/presign-upload")
-  public ApiResponse<Map<String, Object>> presignUpload(@Valid @RequestBody PresignUploadRequest request) {
-    String baseUrl = ServletUriComponentsBuilder.fromCurrentContextPath().build().toUriString();
-    return ApiResponse.ok(storageService.presignUpload(request.fileName(), request.contentType(),
-        request.folder(), request.sha256(), request.size(), baseUrl,
+  public ApiResponse<Map<String, Object>> presignUpload(HttpServletRequest servletRequest,
+      @Valid @RequestBody PresignUploadRequest request) {
+    return ApiResponse.ok(storageService.presignUpload(request.fileName(),
+            request.folder(), request.sha256(), request.size(), servletRequest.getContextPath(),
         request.courseCode(), request.episode()));
   }
 
@@ -116,6 +116,16 @@ public class FileController {
           .build();
     }
 
+    // 固定路径（如课程封面 cover.jpg、分集 P001.mp4）会被覆盖上传；
+    // 必须让浏览器重新校验，否则同名 URL 会一直命中旧缓存，上传成功也看不到新内容。
+    String etag = "\"" + stat.etag() + "\"";
+    if (inline && etag.equals(request.getHeader(HttpHeaders.IF_NONE_MATCH))) {
+      return ResponseEntity.status(HttpStatus.NOT_MODIFIED)
+          .header(HttpHeaders.ETAG, etag)
+          .header(HttpHeaders.CACHE_CONTROL, "no-cache")
+          .build();
+    }
+
     boolean partial = range != null;
     long start = partial ? range.start() : 0;
     long length = partial ? range.end() - range.start() + 1 : fileSize;
@@ -126,10 +136,11 @@ public class FileController {
             partial ? HttpStatus.PARTIAL_CONTENT : HttpStatus.OK)
         .header(HttpHeaders.ACCEPT_RANGES, "bytes")
         .header(HttpHeaders.CONTENT_TYPE, contentType)
-        .header("X-Content-Type-Options", "nosniff")
+        .header("X-Content-Type-Options", "nos niff")
         .header("Content-Security-Policy", "default-src 'none'; sandbox")
         .contentLength(length)
-        .header(HttpHeaders.CACHE_CONTROL, inline ? "public, max-age=86400" : "private, no-store")
+        .header(HttpHeaders.CACHE_CONTROL, inline ? "no-cache" : "private, no-store")
+        .header(HttpHeaders.ETAG, etag)
         .header(HttpHeaders.CONTENT_DISPOSITION,
             (inline ? "inline" : "attachment") + "; filename=\"" + fileName + "\"");
     if (partial) {

@@ -217,6 +217,7 @@ import {
   updateAdminUser,
   updateAdminUserStatus,
   uploadFile,
+  normalizeFileUrl,
 } from '../../api/index.js';
 import { useConfirm } from '../../composables/useConfirm.js';
 import { usePager } from '../../composables/usePager.js';
@@ -289,7 +290,7 @@ const handleAvatarFile = async (e) => {
   uploadingAvatar.value = true;
   try {
     const result = await uploadFile(file, 'avatar');
-    form.value.avatarUrl = result?.url || result?.directUrl || '';
+    form.value.avatarUrl = normalizeFileUrl(result?.url || result?.directUrl);
     showToast('头像已上传，保存后生效', 'success');
   } catch (error) {
     showToast(error?.message || '头像上传失败', 'error');
@@ -314,7 +315,7 @@ const openEdit = (learner) => {
     department: learner.department,
     title: learner.title,
     status: learner.status,
-    avatarUrl: learner.avatarUrl || ''
+    avatarUrl: normalizeFileUrl(learner.avatarUrl)
   };
   modalOpen.value = true;
 };
@@ -366,7 +367,7 @@ const saveLearner = async () => {
     employeeNo: form.value.employeeId,
     departmentId: departmentIdOf(form.value.department),
     jobTitle: form.value.title,
-    avatarUrl: form.value.avatarUrl || '',
+    avatarUrl: normalizeFileUrl(form.value.avatarUrl),
     role: 1,
     accountStatus: accountStatusToCode(form.value.status)
   };

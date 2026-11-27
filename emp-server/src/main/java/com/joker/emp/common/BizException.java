@@ -1,8 +1,11 @@
 package com.joker.emp.common;
 
+import lombok.Getter;
+
 /**
  * 业务异常：由全局异常处理器转换成统一响应。
  */
+@Getter
 public class BizException extends RuntimeException {
 
   private final int code;
@@ -16,11 +19,7 @@ public class BizException extends RuntimeException {
     this.code = code;
   }
 
-  public int getCode() {
-    return code;
-  }
-
-  public static BizException unauthorized(String message) {
+    public static BizException unauthorized(String message) {
     return new BizException(401, message);
   }
 

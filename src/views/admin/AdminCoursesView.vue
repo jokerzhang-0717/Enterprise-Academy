@@ -33,7 +33,7 @@
       </div>
       <select v-model="categoryFilter" class="select">
         <option value="">全部分类</option>
-        <option v-for="cat in categories" :key="cat.id" :value="cat.code">{{ cat.label }}</option>
+        <option v-for="label in categoryLabelOptions" :key="label" :value="label">{{ label }}</option>
       </select>
       <select v-model="publishFilter" class="select">
         <option value="">全部状态</option>
@@ -129,6 +129,10 @@
                 <span class="field-label">课程名称</span>
                 <input v-model.trim="form.title" type="text" class="field-input" placeholder="请输入课程名称" />
               </label>
+              <label class="field">
+                <span class="field-label">课程代号（存储目录名，如 java2026）</span>
+                <input v-model.trim="form.courseCode" type="text" class="field-input" placeholder="英文或数字，如 java2026" />
+              </label>
               <div class="field-row">
                 <label class="field">
                   <span class="field-label">所属分类</span>
@@ -137,11 +141,10 @@
                     list="course-category-options"
                     type="text"
                     class="field-input"
-                    placeholder="选择或输入新分类"
-                    @input="onCategoryInput"
+                    placeholder="选择或输入分类，如 Java 开发 / AI 开发"
                   />
                   <datalist id="course-category-options">
-                    <option v-for="cat in categories" :key="cat.id" :value="cat.label"></option>
+                    <option v-for="label in categoryLabelOptions" :key="label" :value="label"></option>
                   </datalist>
                 </label>
                 <label class="field">
@@ -179,54 +182,51 @@
             </div>
           </div>
 
-          <div class="section-block">
+          <div
+            class="section-block syllabus-dropzone"
+            :class="{ 'is-dragover': dragOver }"
+            @dragenter.prevent="dragOver = true"
+            @dragover.prevent="dragOver = true"
+            @dragleave.prevent="onDragLeave"
+            @drop.prevent="handleDrop"
+          >
             <div class="section-header">
               <span class="section-dot section-dot--green"></span>
-              <span class="section-title">课程目录</span>
-              <span class="section-badge">{{ form.syllabus.length }} 章 · {{ lessonCount }} 节</span>
+              <span class="section-title">分集列表</span>
+              <span class="section-badge">{{ lessonCount }} 集</span>
             </div>
 
-            <p v-if="loadingDetail" class="video-empty">正在读取课程目录…</p>
-            <div v-else-if="form.syllabus.length" class="syl-editor">
-              <div v-for="(chapter, ci) in form.syllabus" :key="chapter.id" class="syl-chapter">
-                <div class="syl-chapter-head">
-                  <span class="syl-chapter-index">第 {{ ci + 1 }} 章</span>
-                  <input
-                    v-model.trim="chapter.title"
-                    type="text"
-                    class="field-input syl-chapter-title"
-                    placeholder="章节名称，如：微服务架构选型与升级"
-                  />
-                  <div class="chapter-head-actions">
-                    <button type="button" class="del-chapter-btn" title="删除此章节" @click="removeChapter(chapter)">
-                      <span class="del-icon">✕</span> 删除章节
-                    </button>
-                  </div>
-                </div>
-
-                <div v-if="chapter.lessons.length" class="syl-lessons">
-                  <div v-for="(lesson, li) in chapter.lessons" :key="lesson.id" class="syl-lesson">
-                    <span class="syl-lesson-no">{{ ci + 1 }}.{{ li + 1 }}</span>
-                    <input v-model.trim="lesson.name" type="text" class="field-input syl-lesson-name" placeholder="小节名称" />
-                    <label class="upload-btn upload-btn--video upload-btn--sm">
-                      <input type="file" accept="video/*" class="file-input-hidden" @change="handleLessonFile(lesson, $event)" />
-                      <span>↑</span> {{ isLessonUploading(lesson) ? '上传中…' : '上传视频' }}
-                    </label>
-                    <button type="button" class="del-lesson-btn" title="删除小节" @click="removeLesson(chapter, lesson)">
-                      <Delete class="del-lesson-icon" /> 删除
-                    </button>
-                  </div>
-                </div>
-                <p v-else class="syl-lessons-empty">本章暂无小节，点「＋ 添加小节」先填写小节名称，再在小节行上传视频。</p>
-
-                <button type="button" class="add-lesson-btn" @click="addLesson(chapter)">＋ 添加小节</button>
+            <p v-if="loadingDetail" class="video-empty">正在读取分集列表…</p>
+            <div v-else-if="flatLessons.length" class="syl-editor">
+              <div v-for="item in flatLessons" :key="item.lesson.id" class="syl-episode">
+                <span class="syl-lesson-no">P{{ item.no }}</span>
+                <input
+                  v-model.trim="item.lesson.name"
+                  type="text"
+                  class="field-input syl-lesson-name"
+                  placeholder="分集标题，如：第1章-入门篇-01-初始Java"
+                />
+                <span v-if="item.lesson.duration" class="syl-episode-dur">{{ item.lesson.duration }}</span>
+                <label class="upload-btn upload-btn--video upload-btn--sm">
+                  <input type="file" accept="video/*" multiple class="file-input-hidden" @change="handleLessonFile(item.lesson, $event)" />
+                  <span>↑</span> {{ isLessonUploading(item.lesson) ? '上传中…' : (item.lesson.url ? '替换视频' : '上传视频') }}
+                </label>
+                <button type="button" class="del-lesson-btn" title="删除这一集" @click="removeEpisode(item)">
+                  <Delete class="del-lesson-icon" /> 删除
+                </button>
               </div>
             </div>
-            <p v-else class="video-empty">暂无章节，点击下方「添加章节」创建课程目录。</p>
+            <p v-else class="video-empty">还没有分集，点「批量上传视频」多选文件，或直接把视频拖到这里。</p>
 
             <div class="syl-actions">
-              <button type="button" class="btn btn--ghost btn--small" @click="addChapter">＋ 添加章节</button>
+              <label class="btn btn--primary btn--small batch-upload-btn" :class="{ 'is-busy': batchUploading }">
+                <input type="file" accept="video/*" multiple class="file-input-hidden" @change="handleBatchFiles" />
+                <span>⇪</span> {{ batchUploading ? '批量上传中…' : '批量上传视频（可多选）' }}
+              </label>
+              <button type="button" class="btn btn--ghost btn--small" @click="addEpisode">＋ 添加分集</button>
+              <span class="syl-hint">也可把多个视频直接拖进此区域；按文件名排序生成 P1 / P2 / P3…</span>
             </div>
+            <div v-if="dragOver" class="syl-drop-hint">松开即可添加并上传多个视频</div>
           </div>
 
           <label v-if="!editingId" class="check-row">
@@ -279,6 +279,8 @@ import {
   updateAdminCourseStatus,
   updateAdminLesson,
   uploadFile,
+  presignUploadFile,
+  normalizeFileUrl,
 } from '../../api/index.js';
 import { usePager } from '../../composables/usePager.js';
 import { useConfirm } from '../../composables/useConfirm.js';
@@ -299,6 +301,22 @@ const publishFilter = ref('');
 const categories = ref([]);
 const instructors = ref([]);
 
+// 唯一分类字段：候选项 = 已有 course_category + 课程当前显示的分类
+const isUsableLabel = (label) => {
+  const text = (label || '').trim();
+  return text && text !== '视频课程' && /[\u4e00-\u9fa5a-zA-Z]/.test(text);
+};
+const categoryLabelOptions = computed(() => {
+  const labels = new Set();
+  for (const cat of categories.value) {
+    if (isUsableLabel(cat.label)) labels.add(cat.label.trim());
+  }
+  for (const course of courses) {
+    if (isUsableLabel(course.categoryLabel)) labels.add(course.categoryLabel.trim());
+  }
+  return [...labels].sort((a, b) => a.localeCompare(b, 'zh-CN'));
+});
+
 onMounted(async () => {
   const [cats, insts] = await Promise.all([
     fetchAdminCourseCategories().catch(() => []),
@@ -309,11 +327,6 @@ onMounted(async () => {
 });
 
 const onlineCount = computed(() => courses.filter(c => c.published).length);
-
-const categoryIdOf = (code) => {
-  const hit = categories.value.find(c => c.code === code);
-  return hit ? Number(hit.id) : null;
-};
 
 const resolveInstructorId = async (name) => {
   const found = instructors.value.find(i => i.name === name);
@@ -329,7 +342,7 @@ const filteredCourses = computed(() => {
     const hitKw = !kw || [c.title, c.summary, c.instructor?.name, c.categoryLabel]
       .filter(Boolean)
       .some(v => v.toLowerCase().includes(kw));
-    const hitCat = !categoryFilter.value || c.category === categoryFilter.value;
+    const hitCat = !categoryFilter.value || c.categoryLabel === categoryFilter.value;
     const hitPub = !publishFilter.value ||
       (publishFilter.value === 'online' ? c.published : !c.published);
     return hitKw && hitCat && hitPub;
@@ -348,8 +361,9 @@ const uploadingCover = ref(false);
 
 const uploadingLessons = ref(new Set());
 const isLessonUploading = (lesson) => uploadingLessons.value.has(lesson);
+const batchUploading = ref(false);
 const form = ref({
-  title: '', category: 'tech', categoryLabel: '', instructorName: '', summary: '', published: true,
+  title: '', courseCode: '', categoryLabel: '', instructorName: '', summary: '', published: true,
   thumbnail: '', syllabus: []
 });
 
@@ -359,17 +373,24 @@ const lessonCount = computed(() =>
   form.value.syllabus.reduce((sum, ch) => sum + (ch.lessons ? ch.lessons.length : 0), 0)
 );
 
-const onCategoryInput = () => {
-  // 输入即同步 label（datalist 选择也会触发 input）；保存时再按 label 解析/创建分类
-};
+// 管理端按 B 站方式平铺展示分集；章节仅作为存储的隐藏容器，不暴露给操作界面
+const flatLessons = computed(() => {
+  const list = [];
+  let no = 0;
+  for (const chapter of form.value.syllabus) {
+    for (const lesson of (chapter.lessons || [])) {
+      no += 1;
+      list.push({ lesson, chapter, no });
+    }
+  }
+  return list;
+});
 
 const resolveCategoryId = async (label) => {
   const name = (label || '').trim();
   if (!name) return null;
-  // 先按 label 精确匹配已有分类
   const hit = categories.value.find(c => c.label === name || c.code === name);
   if (hit) return Number(hit.id);
-  // 不存在则新建，后端按名称去重
   const created = await createAdminCourseCategory(name);
   if (created?.id) {
     categories.value = [...categories.value, created];
@@ -388,7 +409,7 @@ const openCreate = () => {
   formError.value = '';
   savedSyllabus = [];
   form.value = {
-    title: '', category: 'tech', categoryLabel: '技术研发', instructorName: '', summary: '', published: true,
+    title: '', courseCode: '', categoryLabel: '技术研发', instructorName: '', summary: '', published: true,
     thumbnail: '', syllabus: []
   };
   modalOpen.value = true;
@@ -400,8 +421,8 @@ const openEdit = async (course) => {
   savedSyllabus = [];
   form.value = {
     title: course.title,
-    category: course.category,
-    categoryLabel: course.categoryLabel,
+    courseCode: course.courseCode || '',
+    categoryLabel: course.categoryLabel || '',
     instructorName: course.instructor?.name || '',
     summary: course.summary || '',
     published: course.published,
@@ -449,7 +470,7 @@ const syncSyllabus = async (courseId, chapters) => {
     for (let li = 0; li < lessons.length; li++) {
       const lesson = lessons[li];
       const payload = {
-        title: (lesson.name || '').trim() || '未命名小节',
+        title: (lesson.name || '').trim() || '未命名分集',
         durationSeconds: Number(lesson.durationSeconds || 0),
         videoUrl: lesson.url || null,
         sortNo: li + 1
@@ -484,11 +505,7 @@ const syncSyllabus = async (courseId, chapters) => {
 const saveCourse = async () => {
   if (!form.value.title) { formError.value = '请输入课程名称。'; return; }
   if (!form.value.instructorName) { formError.value = '请输入讲师姓名。'; return; }
-
-  if (!form.value.categoryLabel) {
-    formError.value = '请输入或选择课程分类。';
-    return;
-  }
+  if (!form.value.categoryLabel) { formError.value = '请选择或输入课程分类。'; return; }
 
   saving.value = true;
   formError.value = '';
@@ -500,6 +517,7 @@ const saveCourse = async () => {
     const instructorId = await resolveInstructorId(form.value.instructorName);
     const payload = {
       title: form.value.title,
+      courseCode: form.value.courseCode || null,
       categoryId,
       instructorId,
       thumbnailUrl: form.value.thumbnail || null,
@@ -539,17 +557,25 @@ const togglePublish = async (course) => {
   }
 };
 
-const addChapter = () => {
-  form.value.syllabus.push({
-    id: `ch-${Date.now()}`,
-    title: `第 ${form.value.syllabus.length + 1} 章: 新章节`,
-    lessons: []
-  });
+// 新增分集统一追加到最后一个隐藏章节，保证全局集数（P1/P2…）始终排在末尾
+const chapterForNewEpisode = () => {
+  if (!form.value.syllabus.length) {
+    form.value.syllabus.push({
+      id: `ch-default-${Date.now()}`,
+      title: '课程视频',
+      lessons: []
+    });
+  }
+  return form.value.syllabus[form.value.syllabus.length - 1];
 };
 
-const addLesson = (chapter) => {
+let localLessonSeq = 0;
+const nextLessonId = () => `ls-${Date.now()}-${++localLessonSeq}`;
+
+const addEpisode = () => {
+  const chapter = chapterForNewEpisode();
   const lessons = chapter.lessons || (chapter.lessons = []);
-  lessons.push({ id: `ls-${Date.now()}`, name: '', duration: '', url: '' });
+  lessons.push({ id: nextLessonId(), name: '', duration: '', url: '' });
 };
 
 const isMeaninglessName = (name) =>
@@ -564,36 +590,7 @@ const formatDuration = (seconds) => {
   return sec ? `${min}分${sec}秒` : `${min}分`;
 };
 
-const handleLessonFile = async (lesson, e) => {
-  const input = e.target;
-  const file = input.files && input.files[0];
-  input.value = '';
-  if (!file || !lesson) return;
-  if (file.size > 30 * 1024 * 1024) {
-    showToast('视频超过 30MB，本演示环境仅支持小文件上传。', 'error');
-    return;
-  }
-  const stem = file.name.replace(/\.[^.]+$/, '').trim();
-  if (!lesson.name || lesson.name === '未命名小节' || isMeaninglessName(lesson.name)) {
-    if (!isMeaninglessName(stem)) {
-      lesson.name = stem;
-    } else if (!lesson.name || lesson.name === '未命名小节') {
-      lesson.name = '未命名小节';
-    }
-  }
-
-  uploadingLessons.value.add(lesson);
-  try {
-    const result = await uploadFile(file, 'video');
-    lesson.url = result?.url || result?.directUrl || '';
-    showToast(`已上传视频：${lesson.name}`, 'success');
-  } catch (error) {
-    showToast(error?.message || '视频上传失败，请重试或换一个小文件。', 'error');
-    return;
-  } finally {
-    uploadingLessons.value.delete(lesson);
-  }
-
+const probeLessonDuration = (lesson, file) => {
   const probeUrl = URL.createObjectURL(file);
   const probe = document.createElement('video');
   probe.preload = 'metadata';
@@ -613,24 +610,124 @@ const handleLessonFile = async (lesson, e) => {
   probe.src = probeUrl;
 };
 
-const removeChapter = (chapter) => {
-  askConfirm({
-    tone: 'danger',
-    title: '删除该章节？',
-    subtitle: chapter.title,
-    rows: [
-      { label: '本章小节', value: `${chapter.lessons?.length || 0} 个` }
-    ],
-    tip: '保存后本章及其所有小节将一并移除，请确认内容已备份。',
-    confirmText: '确认删除',
-    action: () => {
-      form.value.syllabus = form.value.syllabus.filter(ch => ch.id !== chapter.id);
+// 上传单个分集视频；silent 用于批量上传时避免逐条弹提示
+const uploadLessonVideo = async (lesson, file, { silent = false } = {}) => {
+  // 按课程内所有分集的顺序计算全局集数（从 1 开始）
+  let episode = 0;
+  let counter = 0;
+  outer: for (const ch of form.value.syllabus) {
+    for (const ls of (ch.lessons || [])) {
+      counter += 1;
+      if (ls === lesson) { episode = counter; break outer; }
     }
-  });
+  }
+  uploadingLessons.value.add(lesson);
+  let ok = false;
+  try {
+    const code = form.value.courseCode?.trim();
+    // 有代号+集数走 presign，落到 video/import/<code>/P<n>；否则退回普通上传
+    const result = (code && episode)
+      ? await presignUploadFile(file, 'video', code, episode)
+      : await uploadFile(file, 'video');
+    lesson.url = normalizeFileUrl(result?.url || result?.directUrl);
+    ok = true;
+    if (!silent) showToast(`已上传视频：${lesson.name}`, 'success');
+  } catch (error) {
+    if (!silent) showToast(error?.message || '视频上传失败，请重试或换一个小文件。', 'error');
+  } finally {
+    uploadingLessons.value.delete(lesson);
+  }
+  if (ok) probeLessonDuration(lesson, file);
+  return ok;
 };
 
-const removeLesson = (chapter, lesson) => {
-  chapter.lessons = chapter.lessons.filter(ls => ls.id !== lesson.id);
+const MAX_DIRECT_BYTES = 2 * 1024 * 1024 * 1024; // presign 直传 MinIO，不受后端 multipart 限制
+const MAX_MULTIPART_BYTES = 50 * 1024 * 1024; // 无课程代号时走普通上传，对齐后端 50MB 上限
+
+// 统一入口：可一次传入多个视频。firstLesson 存在时第一个文件填入该行，其余追加为新分集
+const addAndUploadFiles = async (picked, firstLesson = null) => {
+  const files = picked.filter((file) => {
+    const useDirect = Boolean(form.value.courseCode?.trim());
+    const limit = useDirect ? MAX_DIRECT_BYTES : MAX_MULTIPART_BYTES;
+    if (file.size > limit) {
+      showToast(`「${file.name}」超过 ${useDirect ? '2GB' : '50MB'}，已跳过。`, 'error');
+      return false;
+    }
+    return true;
+  });
+  if (!files.length || batchUploading.value) return;
+
+  files.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
+
+  const needAppend = files.length > (firstLesson ? 1 : 0);
+  let targetLessons = null;
+  if (needAppend) {
+    const chapter = chapterForNewEpisode();
+    if (!Array.isArray(chapter.lessons)) chapter.lessons = [];
+    targetLessons = chapter.lessons;
+  }
+
+  const items = files.map((file, i) => {
+    const stem = file.name.replace(/\.[^.]+$/, '').trim();
+    const lesson = i === 0 && firstLesson ? firstLesson : {
+      id: nextLessonId(), name: '', duration: '', url: ''
+    };
+    if (!lesson.name || lesson.name === '未命名分集' || isMeaninglessName(lesson.name)) {
+      lesson.name = isMeaninglessName(stem) ? '未命名分集' : stem;
+    }
+    if (lesson !== firstLesson) targetLessons.push(lesson);
+    return { lesson, file };
+  });
+
+  const silent = items.length > 1;
+  batchUploading.value = true;
+  let succeeded = 0;
+  try {
+    for (const { lesson, file } of items) {
+      if (await uploadLessonVideo(lesson, file, { silent })) succeeded += 1;
+    }
+  } finally {
+    batchUploading.value = false;
+  }
+  if (silent && succeeded) showToast(`已添加并上传 ${succeeded} 集视频`, 'success');
+};
+
+// 每一行的上传框也支持多选：第一个文件填当前行，其余自动追加
+const handleLessonFile = (lesson, e) => {
+  const input = e.target;
+  const picked = [...(input.files || [])];
+  input.value = '';
+  if (!picked.length || !lesson) return;
+  addAndUploadFiles(picked, lesson);
+};
+
+// 批量按钮：全部作为新分集追加，按文件名自然排序生成 P1 / P2 / P10…
+const handleBatchFiles = (e) => {
+  const input = e.target;
+  const picked = [...(input.files || [])];
+  input.value = '';
+  if (!picked.length) return;
+  addAndUploadFiles(picked);
+};
+
+const dragOver = ref(false);
+const isVideoFile = (file) =>
+  (file?.type || '').startsWith('video/') || /\.(mp4|webm|mov|m4v|avi|mkv|mpe?g)$/i.test(file?.name || '');
+
+const onDragLeave = (e) => {
+  if (!e.currentTarget.contains(e.relatedTarget)) dragOver.value = false;
+};
+
+// 直接把多个视频拖进分集列表即可批量上传
+const handleDrop = (e) => {
+  dragOver.value = false;
+  const files = [...(e.dataTransfer?.files || [])].filter(isVideoFile);
+  if (files.length) addAndUploadFiles(files);
+};
+
+const removeEpisode = (item) => {
+  if (!item?.lesson || !item?.chapter) return;
+  item.chapter.lessons = item.chapter.lessons.filter(ls => ls.id !== item.lesson.id);
 };
 
 const handleCoverUpload = async (e) => {
@@ -644,8 +741,17 @@ const handleCoverUpload = async (e) => {
   }
   uploadingCover.value = true;
   try {
-    const result = await uploadFile(file, 'cover');
-    form.value.thumbnail = result?.url || result?.directUrl || '';
+    // 有课程代号时走 presign，封面落到 video/import/<code>/cover；否则退回普通上传
+    const code = form.value.courseCode?.trim();
+    const result = code
+      ? await presignUploadFile(file, 'cover', code)
+      : await uploadFile(file, 'cover');
+    // 兼容旧后端返回的绝对地址，统一存相对路径，避免局域网访问指向本机 127.0.0.1。
+    const url = normalizeFileUrl(result?.url || result?.directUrl);
+    // 同名 URL 会被浏览器缓存；带上内容版本让预览和列表立即显示新封面。
+    form.value.thumbnail = url && result?.sha256
+      ? `${url.split('?')[0]}?v=${result.sha256.slice(0, 16)}`
+      : url;
     showToast('封面已上传，保存后生效', 'success');
   } catch (error) {
     showToast(error?.message || '封面上传失败', 'error');
@@ -1103,6 +1209,30 @@ th.ops, td.ops { text-align: right; }
 }
 .section-block:last-of-type { border-bottom: none; }
 
+.syllabus-dropzone {
+  position: relative;
+  transition: background 0.15s, box-shadow 0.15s;
+}
+.syllabus-dropzone.is-dragover {
+  background: var(--app-accent-a10);
+  box-shadow: inset 0 0 0 2px var(--app-accent-border);
+}
+.syl-drop-hint {
+  position: absolute;
+  inset: 8px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--app-accent-deep);
+  background: var(--app-surface-2);
+  border: 2px dashed var(--app-accent);
+  border-radius: 10px;
+  pointer-events: none;
+}
+
 .section-header {
   display: flex;
   align-items: center;
@@ -1334,130 +1464,36 @@ th.ops, td.ops { text-align: right; }
 .syl-editor {
   display: flex;
   flex-direction: column;
-  gap: 10px;
   margin-bottom: 12px;
-}
-
-.syl-chapter {
-  position: relative;
   border: 1px solid var(--app-border);
   border-radius: 12px;
   overflow: hidden;
   background: var(--app-surface);
-  transition: border-color 0.18s, box-shadow 0.18s;
-}
-.syl-chapter:hover {
-  border-color: var(--app-border-strong);
-  box-shadow: 0 2px 10px rgb(15 30 51 / 5%);
-}
-.syl-chapter:focus-within {
-  border-color: var(--app-accent-border);
-  box-shadow: 0 0 0 3px var(--app-accent-a10);
 }
 
-.syl-chapter-head {
+.syl-episode {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 9px 14px;
-  background: linear-gradient(90deg, var(--app-surface) 0%, var(--app-surface-2) 100%);
-  border-bottom: 1px solid var(--app-border);
-  flex-wrap: wrap;
-}
-.syl-chapter-head::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 9px;
-  bottom: 9px;
-  width: 3px;
-  border-radius: 0 3px 3px 0;
-  background: var(--app-accent);
-  opacity: 0.75;
-}
-
-.syl-chapter-index {
-  padding: 2px 7px;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.03em;
-  color: var(--app-accent-deep);
-  background: var(--app-surface);
-  border: 1px solid var(--app-accent-border);
-  border-radius: 6px;
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
-.syl-chapter-title {
-  flex: 1;
-  min-width: 160px;
-  padding: 5px 8px;
-  font-weight: 600;
-  font-size: 13px;
-  color: var(--app-heading);
-  background: transparent;
-  border-color: transparent;
-  border-radius: 7px;
-}
-.syl-chapter-title:hover { background: var(--app-surface-3); }
-.syl-chapter-title:focus {
-  background: var(--app-surface);
-  border-color: var(--app-accent-border);
-  box-shadow: 0 0 0 3px var(--app-accent-a10);
-}
-
-.chapter-head-actions {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-shrink: 0;
-}
-
-.del-chapter-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 4px 8px;
-  font-size: 11px;
-  font-weight: 500;
-  color: var(--app-text-4);
-  background: transparent;
-  border: 1px solid transparent;
-  border-radius: 7px;
-  cursor: pointer;
-  transition: color 0.15s, border-color 0.15s, background 0.15s;
-}
-.del-chapter-btn:hover {
-  color: var(--app-rose-fg);
-  border-color: var(--app-rose-line);
-  background: var(--app-rose-bg);
-}
-.del-icon { font-size: 10px; }
-
-.syl-lessons {
-  display: flex;
-  flex-direction: column;
-}
-
-.syl-lesson {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
+  padding: 9px 12px;
   background: var(--app-surface);
   transition: background 0.12s;
 }
-.syl-lesson:hover { background: var(--app-surface); }
-.syl-lesson + .syl-lesson {
+.syl-episode:hover { background: var(--app-surface-2); }
+.syl-episode + .syl-episode {
   border-top: 1px solid var(--app-border-soft);
 }
 
 .syl-lesson-no {
-  width: 32px;
+  min-width: 36px;
+  padding: 3px 6px;
   font-size: 11px;
   font-weight: 700;
-  color: var(--app-text-5);
+  color: var(--app-accent-deep);
+  background: var(--app-surface-2);
+  border: 1px solid var(--app-border);
+  border-radius: 6px;
+  text-align: center;
   font-variant-numeric: tabular-nums;
   flex-shrink: 0;
 }
@@ -1467,6 +1503,13 @@ th.ops, td.ops { text-align: right; }
   min-width: 0;
   padding: 7px 10px;
   font-size: 12px;
+}
+
+.syl-episode-dur {
+  font-size: 11px;
+  color: var(--app-text-5);
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .upload-btn--sm {
@@ -1498,31 +1541,27 @@ th.ops, td.ops { text-align: right; }
 }
 .del-lesson-icon { width: 12px; height: 12px; }
 
-.syl-lessons-empty {
-  padding: 12px 14px;
-  font-size: 12px;
-  color: var(--app-text-5);
-  background: var(--app-surface);
-}
-
-.add-lesson-btn {
-  width: 100%;
-  padding: 9px 12px;
-  font-size: 12px;
-  color: var(--app-accent-deep);
-  background: var(--app-surface);
-  border: 1px dashed var(--app-accent-border);
-  border-top: none;
-  border-radius: 0 0 10px 10px;
-  transition: background 0.15s, border-color 0.15s;
-}
-.add-lesson-btn:hover { background: var(--app-page-bg); border-color: var(--app-accent); }
-
 .syl-actions {
   display: flex;
   align-items: center;
   gap: 10px;
   flex-wrap: wrap;
+}
+
+.batch-upload-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+}
+.batch-upload-btn.is-busy {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.syl-hint {
+  font-size: 11px;
+  color: var(--app-text-5);
 }
 
 .video-empty {
@@ -1543,8 +1582,7 @@ th.ops, td.ops { text-align: right; }
 
 @media (max-width: 640px) {
   .field-row { grid-template-columns: 1fr; }
-  .syl-chapter-head { flex-direction: column; align-items: stretch; }
-  .chapter-head-actions { justify-content: flex-end; }
-  .syl-lesson { flex-wrap: wrap; }
+  .syl-episode { flex-wrap: wrap; }
+  .syl-lesson-name { flex-basis: 100%; }
 }
 </style>

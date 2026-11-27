@@ -3,6 +3,8 @@ package com.joker.emp.config;
 import com.joker.emp.security.AuthInterceptor;
 import com.joker.emp.security.JwtProperties;
 import java.util.List;
+
+import org.jetbrains.annotations.NotNull;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -63,7 +65,7 @@ public class WebConfig implements WebMvcConfigurer {
   }
 
   @Override
-  public void addCorsMappings(CorsRegistry registry) {
+  public void addCorsMappings(@NotNull CorsRegistry registry) {
     List<String> configured = jwtProperties.getAllowedOrigins();
     List<String> origins = configured == null ? List.of() : configured.stream()
         .filter(origin -> origin != null && !origin.isBlank() && !"*".equals(origin.trim()))

@@ -214,7 +214,6 @@ public class LeaveService {
         try {
           next = Integer.parseInt(latest.substring(dash + 1)) + 1;
         } catch (NumberFormatException ignored) {
-          next = 1;
         }
       }
     }

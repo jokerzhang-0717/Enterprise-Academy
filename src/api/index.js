@@ -295,6 +295,9 @@ export const updateAdminAnnouncementStatus = (id, status) =>
 export const toggleAdminAnnouncementTop = (id, isTop) =>
   http.put(`/admin/announcements/${id}/top`, { isTop });
 
+/** 上传接口可能返回绝对地址；统一归一化为同源相对路径，避免把 127.0.0.1:8080 存进数据库。 */
+export const normalizeFileUrl = (url) => (url || '').replace(/^https?:\/\/[^/]+/, '');
+
 export const uploadFile = async (file, folder = 'common') => {
   const formData = new FormData();
   formData.append('file', file);

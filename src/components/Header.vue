@@ -77,12 +77,12 @@
 
       <button
         v-if="!isAdmin"
-        class="bell-btn"
+        class="tool-btn bell-btn"
         title="消息中心"
         aria-label="消息中心"
         @click="$emit('navigate', 'messages')"
       >
-        <MessageSquareText class="message-icon" aria-hidden="true" />
+        <MessageSquareText class="tool-icon" aria-hidden="true" />
 
         <span v-if="unreadCount > 0" class="unread-dot"></span>
       </button>
@@ -488,22 +488,9 @@ input {
   color: var(--app-on-fill);
 }
 
+/* 消息按钮复用 tool-btn 外观，只额外承载未读红点。 */
 .bell-btn {
   position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 8px;
-  color: var(--app-text-4);
-  background: transparent;
-  border: none;
-  border-radius: 50%;
-  transition: color 0.15s, background 0.15s;
-}
-
-.bell-btn:hover {
-  color: var(--app-text);
-  background: var(--app-surface-3);
 }
 
 .tool-btn {
@@ -532,12 +519,6 @@ input {
 .app-header--admin .avatar {
   background: var(--app-brand);
   color: var(--app-brand-on);
-}
-
-.message-icon {
-  width: 18px;
-  height: 18px;
-  stroke-width: 1.8;
 }
 
 .unread-dot {
@@ -794,7 +775,6 @@ input {
     height: 32px;
     border-radius: 9px;
   }
-  .bell-btn { padding: 6px; }
   .user-btn { gap: 6px; }
   .user-info { display: none; }
   .avatar {

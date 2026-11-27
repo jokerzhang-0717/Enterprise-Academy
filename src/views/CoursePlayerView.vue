@@ -22,6 +22,7 @@
 
     <div class="layout">
 
+      <!-- 左栏：播放器 + 视频信息（B 站结构） -->
       <div class="col-main">
         <div class="screen">
           <div class="watermark">{{ watermarkText }}</div>
@@ -52,30 +53,34 @@
               <span class="notice-dot"></span>本节尚未上传视频
             </p>
           </template>
-
         </div>
 
-        <section class="card detail-card">
+        <!-- 视频信息区：多视频时跟在播放器下方；单视频时移到右栏「更多课程」上方 -->
+        <section v-if="!isSingleLesson" class="video-info">
+          <h2 class="vi-title">{{ courseTitle }}</h2>
+          <p class="vi-desc">{{ courseSummary }}</p>
+          <div class="vi-tags">
+            <span class="vi-tag">{{ course?.categoryLabel || '视频课程' }}</span>
+            <span class="vi-tag">企业培训</span>
+          </div>
+        </section>
+
+        <!-- 多视频时保留原详情卡里的「无视频完成」能力 -->
+        <section v-if="!isSingleLesson && currentLesson && !hasVideo && !currentLesson.completed" class="card detail-card">
           <div class="card-head">
             <h2 class="card-title"><FileText class="icon icon-blue" /> 课程详情</h2>
-            <span class="card-badge">{{ currentLesson ? '当前小节' : '待编排' }}</span>
           </div>
-          <h3 class="detail-title">{{ currentLesson ? lessonLabel(currentLesson.name) : '本课尚未编排小节' }}</h3>
-          <p class="detail-text">{{ courseSummary }}</p>
-          <button
-            v-if="currentLesson && !hasVideo && !currentLesson.completed"
-            class="complete-button"
-            type="button"
-            :disabled="savingProgress"
-            @click="completeCurrentLesson"
-          >
+          <h3 class="detail-title">{{ lessonLabel(currentLesson.name) }}</h3>
+          <button class="complete-button" type="button" :disabled="savingProgress" @click="completeCurrentLesson">
             {{ savingProgress ? '正在保存...' : '完成本节并记录学时' }}
           </button>
         </section>
       </div>
 
+      <!-- 右栏：始终显示。多视频=选集；单视频=课程信息 + 更多课程 -->
       <aside class="col-side">
-        <div class="bili-panel">
+        <!-- 多视频才显示选集面板；单视频时右栏只留推荐 -->
+        <div v-if="!isSingleLesson" class="bili-panel">
           <div class="bili-panel-head">
             <h2 class="bili-head-title">视频选集</h2>
             <span v-if="totalLessons" class="bili-head-count">{{ currentGlobalIndex }}/{{ totalLessons }}</span>
@@ -95,6 +100,35 @@
             >
               <span class="bili-episode-name">{{ lessonLabel(item.lesson.name) }}</span>
               <span class="bili-episode-dur">{{ episodeDuration(item.lesson) }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 单视频课程：课程信息放在推荐列表上方 -->
+        <section v-if="isSingleLesson" class="video-info">
+          <h2 class="vi-title">{{ courseTitle }}</h2>
+          <p class="vi-desc">{{ courseSummary }}</p>
+          <div class="vi-tags">
+            <span class="vi-tag">{{ course?.categoryLabel || '视频课程' }}</span>
+            <span class="vi-tag">企业培训</span>
+          </div>
+        </section>
+
+        <!-- 更多推荐课程 -->
+        <div class="bili-panel rec-panel">
+          <div class="bili-panel-head"><h2 class="bili-head-title">更多课程</h2></div>
+          <div class="rec-list">
+            <div
+              v-for="item in relatedCourses"
+              :key="item.id"
+              class="rec-item"
+              @click="$emit('navigate', 'course-player', { courseId: item.id })"
+            >
+              <div class="rec-cover"><img :src="item.thumbnail" alt="" /><span>{{ item.lessonCount || '' }}</span></div>
+              <div class="rec-text">
+                <span class="rec-title">{{ item.title }}</span>
+                <span class="rec-up">{{ item.instructor?.name || '云舒艺境' }}</span>
+              </div>
             </div>
           </div>
         </div>
@@ -294,12 +328,23 @@ watch(
 
 const currentLesson = computed(() => lessonsOf(playing.value.ci)[playing.value.li] || null);
 const hasVideo = computed(() => !!currentLesson.value?.url);
+// 单视频课程：采用专属的宽屏沉浸布局，不再显示「1/1」的选集侧栏
+const isSingleLesson = computed(() => totalLessons.value === 1);
 const courseTitle = computed(() => course.value?.title || '未命名课程');
 const courseSummary = computed(() => course.value?.summary || '管理端还没有填写课程简介。');
 const courseCover = computed(
   () => course.value?.thumbnail
     || 'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?auto=format&fit=crop&w=1200&q=80'
 );
+
+// 相关课程推荐（排除当前课程）
+const relatedCourses = computed(() => {
+  const list = learnerStore.courses.filter(c => c.published && c.id !== props.courseId);
+  return list.slice(0, 2).map(c => ({
+    ...c,
+    lessonCount: c.syllabus?.reduce((n, ch) => n + (ch.lessons?.length || 0), 0) || 0,
+  }));
+});
 
 const watermarkText = computed(() => {
   const user = props.user;
@@ -360,11 +405,19 @@ const saveCurrentProgress = async (completed = false, seconds = elapsedSeconds.v
   }
 };
 
+// 切换分集时旧 <video> 仍可能派发 timeupdate / pause 等事件。
+// 必须校验事件来源，否则旧视频的播放时间会被写成新分集的进度，导致新分集从旧时间续播。
+const isActiveVideoEvent = (event) => {
+  const video = event?.target;
+  if (!video || video !== videoEl.value) return false;
+  return video.getAttribute('src') === currentLesson.value?.url;
+};
+
 // 断点续学：视频元数据加载完成后，跳到上次观看位置（未看完且位置有效时）。
 const handleVideoLoaded = (event) => {
   const video = event.target;
   const lesson = currentLesson.value;
-  if (!video || !lesson) return;
+  if (!video || !lesson || !isActiveVideoEvent(event)) return;
   const watched = Math.floor(Number(lesson.watchedSeconds || 0));
   const duration = Number(video.duration || lesson.durationSeconds || 0);
   // 看到接近结尾（留 5 秒容差）视为已看完，不回退
@@ -380,6 +433,7 @@ const handleVideoLoaded = (event) => {
 };
 
 const handleVideoTimeUpdate = async (event) => {
+  if (!isActiveVideoEvent(event)) return;
   const seconds = Math.floor(event.target.currentTime || 0);
   elapsedSeconds.value = Math.max(elapsedSeconds.value, seconds);
   if (Date.now() - lastProgressSavedAt >= 15000) {
@@ -478,7 +532,8 @@ const stopStudySession = async () => {
   }
 };
 
-const handleVideoPlay = () => {
+const handleVideoPlay = (event) => {
+  if (!isActiveVideoEvent(event)) return;
   isPlaying.value = true;
   void startStudySession();
 };
@@ -499,6 +554,7 @@ const togglePlayback = async () => {
 };
 
 const handleVideoPause = async (event) => {
+  if (!isActiveVideoEvent(event)) return;
   isPlaying.value = false;
   await stopStudySession();
   const seconds = Math.floor(event.target.currentTime || 0);
@@ -508,7 +564,8 @@ const handleVideoPause = async (event) => {
   }
 };
 
-const handleVideoEnded = async () => {
+const handleVideoEnded = async (event) => {
+  if (!isActiveVideoEvent(event)) return;
   isPlaying.value = false;
   await completeCurrentLesson();
   await playNextLesson();
@@ -524,6 +581,7 @@ const playNextLesson = async () => {
   }
   if (nextCi >= chapters.value.length) return;
   playing.value = { ci: nextCi, li: nextLi };
+  elapsedSeconds.value = Math.floor(Number(lessonsOf(nextCi)[nextLi]?.watchedSeconds || 0));
   videoErrorLessonId = '';
   await nextTick();
   if (videoEl.value) {
@@ -543,7 +601,8 @@ const reportVideoLoadError = (error) => {
   showToast(error?.message || '本节视频加载失败，请检查片源或稍后重试。', 'error');
 };
 
-const handleVideoError = () => {
+const handleVideoError = (event) => {
+  if (!isActiveVideoEvent(event)) return;
   isPlaying.value = false;
   void stopStudySession();
   reportVideoLoadError();
@@ -781,10 +840,13 @@ onBeforeUnmount(() => {
   gap: 20px;
   align-items: start;
 }
-@media (min-width: 1024px) {
-  .layout { grid-template-columns: minmax(0, 2.05fr) minmax(300px, 1fr); }
-  .col-side { position: sticky; top: 16px; }
+/* B 站式两栏：播放器 + 右侧信息/推荐。阈值放在内容区常见宽度，保证侧栏常驻 */
+@media (min-width: 760px) {
+  .layout { grid-template-columns: minmax(0, 1fr) minmax(260px, 0.42fr); }
+  .col-side { position: sticky; top: 16px; align-self: start; }
 }
+
+/* 单视频课程：单列满宽，不留空列 */
 
 .col-main, .col-side {
   display: flex;
@@ -971,6 +1033,40 @@ onBeforeUnmount(() => {
   cursor: not-allowed;
   box-shadow: none;
 }
+
+/* ===== B 站风格：播放器下方视频信息 ===== */
+.video-info {
+  display: flex; flex-direction: column; gap: 14px;
+  padding: 4px 2px;
+}
+.vi-title {
+  margin: 0; font-size: 19px; font-weight: 700; line-height: 1.5;
+  color: var(--app-heading);
+}
+.vi-desc {
+  margin: 0; font-size: 13px; line-height: 1.8; color: var(--app-text-3);
+  display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2;
+  -webkit-box-orient: vertical; overflow: hidden;
+}
+.vi-tags { display: flex; gap: 8px; flex-wrap: wrap; }
+.vi-tag {
+  padding: 4px 11px; border-radius: 6px;
+  background: var(--app-surface-2); color: var(--app-text-3); font-size: 12px;
+}
+
+/* 侧栏：单视频课程信息卡 */
+
+/* 侧栏：更多课程推荐（B 站右栏视频卡片） */
+.rec-panel { margin-top: 16px; }
+.rec-list { display: flex; flex-direction: column; gap: 10px; padding: 4px 0; }
+.rec-item { display: flex; gap: 10px; cursor: pointer; padding: 4px; border-radius: 8px; transition: background .16s ease; }
+.rec-item:hover { background: var(--app-surface-2); }
+.rec-cover { position: relative; width: 128px; flex-shrink: 0; aspect-ratio: 16/9; border-radius: 6px; overflow: hidden; background: var(--app-surface-3); }
+.rec-cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.rec-cover span { position: absolute; right: 4px; bottom: 4px; padding: 1px 5px; border-radius: 3px; background: rgba(0,0,0,.6); color: #fff; font-size: 10px; }
+.rec-text { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.rec-title { font-size: 12.5px; line-height: 1.45; color: var(--app-text); display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.rec-up { font-size: 11px; color: var(--app-text-4); }
 
 .bili-panel {
   overflow: hidden;

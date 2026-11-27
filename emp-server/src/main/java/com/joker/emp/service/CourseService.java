@@ -20,7 +20,6 @@ import com.joker.emp.mapper.EnrollmentMapper;
 import com.joker.emp.mapper.InstructorMapper;
 import com.joker.emp.mapper.LessonProgressMapper;
 import com.joker.emp.security.AuthContext;
-import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -367,28 +366,22 @@ public class CourseService {
   }
 
   @Transactional
+  /* 并发下多个请求可能同时发现没有选课记录；用幂等 INSERT 避免唯一键冲突。 */
+  protected Enrollment ensureEnrollment(Long userId, Long courseId) {
+    enrollmentMapper.insertOrIgnore(userId, courseId);
+    return enrollmentMapper.selectOne(Wrappers.<Enrollment>lambdaQuery()
+        .eq(Enrollment::getUserId, userId)
+        .eq(Enrollment::getCourseId, courseId)
+        .last("LIMIT 1"));
+  }
+
   public Map<String, Object> enroll(Long courseId) {
     Long userId = AuthContext.userId();
     Course course = requireCourse(courseId);
     if (!Integer.valueOf(2).equals(course.getStatus())) {
       throw new BizException("该课程尚未上架");
     }
-    Enrollment enrollment = enrollmentMapper.selectOne(Wrappers.<Enrollment>lambdaQuery()
-        .eq(Enrollment::getUserId, userId)
-        .eq(Enrollment::getCourseId, courseId)
-        .last("LIMIT 1"));
-    if (enrollment == null) {
-      enrollment = new Enrollment();
-      enrollment.setUserId(userId);
-      enrollment.setCourseId(courseId);
-      enrollment.setStatus(2);
-      enrollment.setProgressPercent(0);
-      enrollment.setCompletedLessonCount(0);
-      enrollment.setStudyHours(BigDecimal.ZERO);
-      enrollment.setStartedAt(LocalDateTime.now());
-      enrollment.setLastStudiedAt(LocalDateTime.now());
-      enrollmentMapper.insert(enrollment);
-    }
+    Enrollment enrollment = ensureEnrollment(userId, courseId);
     Map<String, Object> result = new LinkedHashMap<>();
     result.put("enrollmentId", enrollment.getId());
     result.put("courseId", courseId);
@@ -409,21 +402,7 @@ public class CourseService {
     if (chapter == null || !courseId.equals(chapter.getCourseId())) {
       throw new BizException("课时不属于该课程");
     }
-    Enrollment enrollment = enrollmentMapper.selectOne(Wrappers.<Enrollment>lambdaQuery()
-        .eq(Enrollment::getUserId, userId)
-        .eq(Enrollment::getCourseId, courseId)
-        .last("LIMIT 1"));
-    if (enrollment == null) {
-      enrollment = new Enrollment();
-      enrollment.setUserId(userId);
-      enrollment.setCourseId(courseId);
-      enrollment.setStatus(2);
-      enrollment.setProgressPercent(0);
-      enrollment.setCompletedLessonCount(0);
-      enrollment.setStudyHours(BigDecimal.ZERO);
-      enrollment.setStartedAt(LocalDateTime.now());
-      enrollmentMapper.insert(enrollment);
-    }
+    Enrollment enrollment = ensureEnrollment(userId, courseId);
 
     LessonProgress progress = lessonProgressMapper.selectOne(Wrappers.<LessonProgress>lambdaQuery()
         .eq(LessonProgress::getUserId, userId)
@@ -515,7 +494,7 @@ public class CourseService {
     }
     // code 用拼音无关的通用前缀 + 时间戳，保证唯一且不与内置 code 冲突
     String code = "custom-" + System.currentTimeMillis();
-    int maxSort = categoryMapper.selectList(Wrappers.<CourseCategory>lambdaQuery())
+    int maxSort = categoryMapper.selectList(Wrappers.lambdaQuery())
         .stream().map(CourseCategory::getSortNo).filter(java.util.Objects::nonNull)
         .mapToInt(Integer::intValue).max().orElse(0);
     CourseCategory created = new CourseCategory();
@@ -602,6 +581,7 @@ public class CourseService {
 
   private void apply(Course course, CourseSaveRequest request) {
     if (request.title() != null) course.setTitle(request.title());
+    if (request.courseCode() != null) course.setCourseCode(request.courseCode());
     if (request.categoryId() != null) course.setCategoryId(request.categoryId());
     if (request.subcategoryLabel() != null) course.setSubcategoryLabel(request.subcategoryLabel());
     if (request.instructorId() != null) course.setInstructorId(request.instructorId());
@@ -701,6 +681,7 @@ public class CourseService {
     Map<String, Object> item = new LinkedHashMap<>();
     item.put("id", course.getId());
     item.put("title", course.getTitle());
+    item.put("courseCode", course.getCourseCode());
     item.put("categoryId", course.getCategoryId());
     item.put("category", category == null ? null : category.getCode());
     item.put("categoryCode", category == null ? null : category.getCode());
@@ -747,8 +728,8 @@ public class CourseService {
     return item;
   }
 
-  public record CourseSaveRequest(String title, Long categoryId, String subcategoryLabel,
-      Long instructorId, String thumbnailUrl, String summary,
+  public record CourseSaveRequest(String title, String courseCode, Long categoryId,
+      String subcategoryLabel, Long instructorId, String thumbnailUrl, String summary,
       Integer status) {
   }
 

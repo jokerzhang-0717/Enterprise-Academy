@@ -8,8 +8,8 @@ import java.time.Duration;
 import java.util.Base64;
 import java.util.HexFormat;
 import java.util.List;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataAccessException;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
@@ -18,15 +18,15 @@ import org.springframework.stereotype.Component;
 /**
  * Redis 侧会话状态：访问令牌黑名单 + 一次性刷新令牌。
  */
+@Slf4j
 @Component
 public class AuthTokenStore {
 
-  private static final Logger log = LoggerFactory.getLogger(AuthTokenStore.class);
-  private static final String BLACKLIST_PREFIX = "auth:blacklist:access:";
+    private static final String BLACKLIST_PREFIX = "auth:blacklist:access:";
   private static final String REFRESH_PREFIX = "auth:refresh:";
   private static final SecureRandom RANDOM = new SecureRandom();
 
-  /** Redis < 6.2 没有 GETDEL，用 Lua 保证 GET+DEL 原子执行。 */
+  /** Redis < 6.2 没有 GET DEL，用 Lua 保证 GET+DEL 原子执行。 */
   private static final DefaultRedisScript<String> CONSUME_SCRIPT = new DefaultRedisScript<>(
       "local v = redis.call('GET', KEYS[1]); if v then redis.call('DEL', KEYS[1]) end; return v;",
       String.class);
@@ -63,10 +63,7 @@ public class AuthTokenStore {
     try {
       // Lua 脚本原子消费：并发重放同一刷新令牌时只有一个请求能拿到值。
       String value = redis.execute(CONSUME_SCRIPT, List.of(key));
-      if (value == null) {
-        return null;
-      }
-      String[] parts = value.split("\n", 2);
+        String[] parts = value.split("\n", 2);
       if (parts.length != 2) {
         return null;
       }

@@ -26,8 +26,8 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -35,12 +35,11 @@ import org.springframework.web.multipart.MultipartFile;
  * MinIO 文件存储：上传、预签名、下载、删除。
  * 数据库里保存稳定的 /api/files/view/{objectName} 地址，避免预签名 URL 过期。
  */
+@Slf4j
 @Service
 public class StorageService {
 
-  private static final Logger log = LoggerFactory.getLogger(StorageService.class);
-
-  /** 只允许业务需要的文件类型，避免上传 HTML/SVG/脚本后在应用同源执行。 */
+    /** 只允许业务需要的文件类型，避免上传 HTML/SVG/脚本后在应用同源执行。 */
   private static final Map<String, String> ALLOWED_CONTENT_TYPES = Map.ofEntries(
       Map.entry(".jpg", "image/jpeg"),
       Map.entry(".jpeg", "image/jpeg"),
@@ -106,9 +105,10 @@ public class StorageService {
       throw new BizException("请选择要上传的文件");
     }
     String contentType = resolveContentType(file.getOriginalFilename());
-    normalizeFolder(folder);
+    String resolvedFolder = normalizeFolder(folder);
     String sha256 = sha256(file);
-    String objectName = buildObjectName(file.getOriginalFilename(), sha256, file.getSize());
+    String objectName = buildObjectName(file.getOriginalFilename(), sha256, file.getSize(),
+        null, null, resolvedFolder);
     boolean deduplicated = reuseExisting(objectName, file.getSize());
     if (!deduplicated) {
       try (InputStream in = file.getInputStream()) {
@@ -130,24 +130,18 @@ public class StorageService {
     return result;
   }
 
-  /**
-   * 预签名直传。sha256 与 size 由前端计算并传入；若服务端已有同一内容，直接返回复用结果，
-   * 不再下发 uploadUrl，前端应跳过 PUT。
-   */
-  public Map<String, Object> presignUpload(String fileName, String contentType, String folder,
-      String sha256, Long size, String publicBaseUrl) {
-    return presignUpload(fileName, contentType, folder, sha256, size, publicBaseUrl, null, null);
-  }
-
   /** 指定课程代号与集数时，按 video/import/<code>/P<n><ext> 命名；否则沿用内容寻址。 */
-  public Map<String, Object> presignUpload(String fileName, String contentType, String folder,
-      String sha256, Long size, String publicBaseUrl, String courseCode, Integer episode) {
+  public Map<String, Object> presignUpload(String fileName, String folder,
+                                           String sha256, Long size, String publicBaseUrl, String courseCode, Integer episode) {
     String resolvedContentType = resolveContentType(fileName);
-    normalizeFolder(folder);
+    String resolvedFolder = normalizeFolder(folder);
     String normalizedSha256 = normalizeSha256(sha256);
     long fileSize = requireSize(size);
-    String objectName = buildObjectName(fileName, normalizedSha256, fileSize, courseCode, episode);
-    boolean deduplicated = reuseExisting(objectName, fileSize);
+    String objectName = buildObjectName(fileName, normalizedSha256, fileSize,
+        courseCode, episode, resolvedFolder);
+    // 只有内容寻址对象（<hash>-<size><ext>）才做去重复用；课程代号下的 cover/P<n> 是固定路径，
+    // 更换封面或替换分集视频时预期就是覆盖写入，不能因为旧文件大小不同而误报“内容校验冲突”。
+    boolean deduplicated = isDeduplicatedObject(objectName) && reuseExisting(objectName, fileSize);
 
     Map<String, Object> result = describe(objectName, fileName, fileSize, resolvedContentType,
         publicBaseUrl);
@@ -293,25 +287,28 @@ public class StorageService {
   }
 
   /**
-   * 内容寻址对象名：video/sha256/前两位/<完整哈希>-<字节数><扩展名>。
-   * 统一放在 video 目录下，和早期 video/import 视频保持一致；扩展名参与 key
-   * 是为了保证 Content-Type 与内联展示策略可按后缀正确解析。
+   * 所有上传统一放在 video/import 下，不再使用 sha256 目录。
+   * - 指定课程代号 + 集数：video/import/<code>/P<n><ext>
+   * - 未提供代号（如封面、头像）：video/import/<folder>/<hash>-<size><ext>
+   * 扩展名参与 key 保证 Content-Type 与内联展示策略可按后缀正确解析。
    */
-  private String buildObjectName(String originalName, String sha256, long size) {
-    return buildObjectName(originalName, sha256, size, null, null);
-  }
-
-  /** 指定课程代号与集数：video/import/<code>/P<n><ext>；否则 video/sha256/xx/<hash>-<size><ext>。 */
   private String buildObjectName(String originalName, String sha256, long size,
-      String courseCode, Integer episode) {
+      String courseCode, Integer episode, String folder) {
     String ext = extension(originalName);
-    if (courseCode != null && !courseCode.isBlank() && episode != null && episode > 0) {
-      String code = courseCode.trim().replaceAll("[^A-Za-z0-9_-]", "");
-      if (!code.isEmpty()) {
-        return "video/import/" + code + "/P" + String.format("%03d", episode) + ext;
+    String code = courseCode == null ? "" : courseCode.trim().replaceAll("[^A-Za-z0-9_-]", "");
+    if (!code.isEmpty()) {
+      // 只传课程代号、无集数：作为该课程的封面 video/import/<code>/cover<ext>
+      if (episode == null || episode <= 0) {
+        return "video/import/" + code + "/cover" + ext;
       }
+      return "video/import/" + code + "/P" + String.format("%03d", episode) + ext;
     }
-    return "video/sha256/" + sha256.substring(0, 2) + "/" + sha256 + "-" + size + ext;
+    // 头像单独放在 cover/import 下；其余（封面、视频、课件）统一放 video/import
+    if ("avatar".equals(folder)) {
+      return "cover/import/" + sha256 + "-" + size + ext;
+    }
+    String dir = (folder == null || folder.isBlank()) ? "misc" : folder;
+    return "video/import/" + dir + "/" + sha256 + "-" + size + ext;
   }
 
   /** 已存在同内容对象时直接复用；大小不一致视为对象损坏或哈希冲突，禁止覆盖共享文件。 */
@@ -379,7 +376,9 @@ public class StorageService {
   }
 
   private boolean isDeduplicatedObject(String objectName) {
-    return objectName.startsWith("video/sha256/");
+    // 内容寻址对象（<hash>-<size><ext>）可能被多条业务记录共用，删除时需保护
+    String last = objectName.substring(objectName.lastIndexOf('/') + 1);
+    return last.matches("[0-9a-f]{64}-\\d+\\.[a-z0-9]+");
   }
 
   private String normalizeFolder(String folder) {

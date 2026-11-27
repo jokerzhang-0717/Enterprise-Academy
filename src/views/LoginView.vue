@@ -99,14 +99,14 @@
         </div>
 
         <div class="fade-in mb-7" style="--d:.1s">
-          <div class="inline-flex rounded-[11px] border border-[#D6E7F7] bg-[#EAF3FC] p-[3px]">
+          <div class="login-tab-bar">
             <button
               v-for="tab in tabs" :key="tab.key"
               type="button" @click="activeTab = tab.key"
-              class="relative rounded-[9px] px-6 py-[7px] text-[12px] font-semibold tracking-[.04em] transition-colors duration-300"
-              :class="activeTab === tab.key ? 'text-[#9381FF]' : 'text-[#4F627A] hover:text-[#2E8BD6]'"
+              class="login-tab"
+              :class="{ 'login-tab--active': activeTab === tab.key }"
             >
-              <span v-if="activeTab === tab.key" class="tab-active-bg absolute inset-0 -z-10 rounded-[9px]"></span>
+              <span v-if="activeTab === tab.key" class="tab-active-bg"></span>
               {{ tab.label }}
             </button>
           </div>
@@ -617,6 +617,7 @@ const handleRegister = async () => {
 .input-box::placeholder { color: #8497AC; }
 .password-toggle {
   flex: none; padding: 3px; color: #8296AC;
+  border: 0; background: transparent;
   border-radius: 6px; transition: color .18s;
 }
 .password-toggle:hover { color: #2E8BD6; }
@@ -698,7 +699,41 @@ const handleRegister = async () => {
   cursor: default;
 }
 
+.login-tab-bar {
+  display: inline-flex;
+  padding: 3px;
+  border: 1px solid #D6E7F7;
+  border-radius: 11px;
+  background: #EAF3FC;
+}
+
+.login-tab {
+  position: relative;
+  padding: 7px 24px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: #4F627A;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: .04em;
+  cursor: pointer;
+  transition: color .3s;
+}
+
+.login-tab:hover {
+  color: #2E8BD6;
+}
+
+.login-tab--active {
+  color: #9381FF;
+}
+
 .tab-active-bg {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: 9px;
   background: #FFFFFF;
   border: 1px solid rgba(147, 129, 255, .35);
   box-shadow: 0 4px 12px -6px rgba(147, 129, 255, .55);
@@ -713,7 +748,7 @@ const handleRegister = async () => {
   position: relative;
   display: flex; width: 100%;
   align-items: center; justify-content: center; gap: .55rem;
-  height: 46px; border-radius: 11px; overflow: hidden;
+  height: 46px; border: 0; border-radius: 11px; overflow: hidden;
   background: linear-gradient(108deg, #83C9F4 0%, #7BA9F3 46%, #9381FF 100%);
   color: #fff;
   font-family: 'Sora', 'Noto Sans SC', sans-serif;

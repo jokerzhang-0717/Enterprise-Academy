@@ -114,6 +114,4 @@ public class AdminExamController {
   public record StatusRequest(@NotNull(message = "请选择考试状态") Integer status) {
   }
 
-  public record SingleGrade(Long answerId, java.math.BigDecimal scoreGained) {
-  }
 }

@@ -501,9 +501,9 @@ const detailAssignment = computed(() =>
 const detailPastRecord = computed(() =>
   searchPastExams.value.find(item => String(item.examId) === String(selectedExamId.value)) || null);
 
-const handleNavigate = (view, { searchTargetId: targetId = '' } = {}) => {
+const handleNavigate = (view, { searchTargetId: targetId = '', courseId: nextCourseId } = {}) => {
   searchTargetId.value = '';
-  const courseId = selectedCourseId.value || learnerStore.courses[0]?.id;
+  const courseId = nextCourseId || selectedCourseId.value || learnerStore.courses[0]?.id;
   if (view === 'course-player' && !courseId) {
     return router.push(locationForView('courses'));
   }

@@ -10,8 +10,9 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
 import java.util.HexFormat;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+
+import lombok.extern.slf4j.Slf4j;
+import org.jetbrains.annotations.NotNull;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataAccessException;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -25,12 +26,12 @@ import org.springframework.http.converter.HttpMessageConverter;
 import org.springframework.http.server.ServerHttpRequest;
 import org.springframework.http.server.ServerHttpResponse;
 
+@Slf4j
 @Component
 @ControllerAdvice
 public class RedisApiResponseCache implements HandlerInterceptor, ResponseBodyAdvice<Object> {
 
-  private static final Logger log = LoggerFactory.getLogger(RedisApiResponseCache.class);
-  private static final String CACHE_GENERATION_KEY = "api:response-cache:generation";
+    private static final String CACHE_GENERATION_KEY = "api:response-cache:generation";
   private static final String CACHE_KEY_ATTRIBUTE = RedisApiResponseCache.class.getName() + ".key";
 
   private final StringRedisTemplate redis;
@@ -46,7 +47,7 @@ public class RedisApiResponseCache implements HandlerInterceptor, ResponseBodyAd
 
   @Override
   public boolean preHandle(jakarta.servlet.http.HttpServletRequest request,
-      jakarta.servlet.http.HttpServletResponse response, Object handler) throws Exception {
+                           @NotNull jakarta.servlet.http.HttpServletResponse response, @NotNull Object handler) throws Exception {
     if ("GET".equalsIgnoreCase(request.getMethod())) {
       AuthUser user = AuthContext.get();
       if (user == null || !isCacheablePath(request.getRequestURI())) {
@@ -80,7 +81,7 @@ public class RedisApiResponseCache implements HandlerInterceptor, ResponseBodyAd
 
   @Override
   public void afterCompletion(jakarta.servlet.http.HttpServletRequest request,
-      jakarta.servlet.http.HttpServletResponse response, Object handler, Exception exception) {
+                              @NotNull jakarta.servlet.http.HttpServletResponse response, @NotNull Object handler, Exception exception) {
     if (!"GET".equalsIgnoreCase(request.getMethod())
         && response.getStatus() >= 200 && response.getStatus() < 300) {
       try {
@@ -92,15 +93,15 @@ public class RedisApiResponseCache implements HandlerInterceptor, ResponseBodyAd
   }
 
   @Override
-  public boolean supports(MethodParameter returnType,
-      Class<? extends HttpMessageConverter<?>> converterType) {
+  public boolean supports(@NotNull MethodParameter returnType,
+                          @NotNull Class<? extends HttpMessageConverter<?>> converterType) {
     return true;
   }
 
   @Override
-  public Object beforeBodyWrite(Object body, MethodParameter returnType, MediaType selectedContentType,
-      Class<? extends HttpMessageConverter<?>> selectedConverterType, ServerHttpRequest request,
-      ServerHttpResponse response) {
+  public Object beforeBodyWrite(Object body, @NotNull MethodParameter returnType, @NotNull MediaType selectedContentType,
+                                @NotNull Class<? extends HttpMessageConverter<?>> selectedConverterType, @NotNull ServerHttpRequest request,
+                                @NotNull ServerHttpResponse response) {
     if (!(body instanceof ApiResponse<?> apiResponse) || apiResponse.code() != 0
         || !(request instanceof org.springframework.http.server.ServletServerHttpRequest servletRequest)) {
       return body;

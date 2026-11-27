@@ -28,39 +28,21 @@
         </label>
       </div>
       <div class="crs-category-rail">
-        <button
-          v-if="showCategoryArrows"
-          type="button"
-          class="crs-category-arrow"
-          :disabled="!canScrollCategoryLeft"
-          aria-label="向左移动分类"
-          @click="scrollCategories(-1)"
-        >
-          <ArrowLeft class="crs-category-arrow__icon" aria-hidden="true" />
-        </button>
-        <nav ref="categoryNav" class="crs-category-options" aria-label="课程分类" @scroll="updateCategoryScroll">
+        <nav ref="categoryNav" class="crs-category-options" aria-label="课程分类">
           <button
             v-for="tab in categoryTabs"
             :key="tab.key"
             type="button"
             class="crs-category-pill"
             :class="{ 'crs-category-pill--active': activeCategory === tab.key }"
-            @click="activeCategory = tab.key"
+            :title="'分类：' + tab.label + '，共 ' + tab.count + ' 门课程'"
+            :aria-label="'分类：' + tab.label + '，共 ' + tab.count + ' 门课程'"
+            @click="selectCategory(tab.key, $event)"
           >
-            <span>{{ tab.label }}</span>
+            <span class="crs-category-pill__label">{{ tab.label }}</span>
             <span class="crs-category-count">{{ tab.count }}</span>
           </button>
         </nav>
-        <button
-          v-if="showCategoryArrows"
-          type="button"
-          class="crs-category-arrow"
-          :disabled="!canScrollCategoryRight"
-          aria-label="向右移动分类"
-          @click="scrollCategories(1)"
-        >
-          <ArrowRight class="crs-category-arrow__icon" aria-hidden="true" />
-        </button>
       </div>
     </section>
 
@@ -88,9 +70,8 @@
 
           </div>
 
-          <div class="crs-card__tags" v-if="course.categoryLabel">
-            <span class="crs-card__tag">{{ course.categoryLabel }}</span>
-            <span class="crs-card__tag crs-card__tag--plain">{{ course.subcategoryLabel || '视频课程' }}</span>
+          <div class="crs-card__tags">
+            <span class="crs-card__tag">{{ course.categoryLabel || '视频课程' }}</span>
           </div>
         </div>
       </article>
@@ -108,8 +89,8 @@
 </template>
 
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref, nextTick, watch } from 'vue';
-import { ArrowLeft, ArrowRight, Search, X } from 'lucide-vue-next';
+import { computed, ref, nextTick, watch } from 'vue';
+import { Search, X } from 'lucide-vue-next';
 import { learnerStore } from '../learnerStore.js';
 
 const props = defineProps({
@@ -123,10 +104,6 @@ defineEmits(['open-course']);
 const activeCategory = ref('all');
 const keyword = ref('');
 const categoryNav = ref(null);
-const showCategoryArrows = ref(false);
-const canScrollCategoryLeft = ref(false);
-const canScrollCategoryRight = ref(false);
-let categoryResizeObserver;
 
 const courses = computed(() => learnerStore.courses.filter(c => c.published));
 
@@ -143,32 +120,21 @@ const categoryTabs = computed(() => {
   return tabs;
 });
 
-const updateCategoryScroll = () => {
+// 点击分类后把该标签滚到可见区域中间，像 B 站一样跟随选中项
+const scrollCategoryIntoView = (button) => {
   const nav = categoryNav.value;
-  if (!nav) return;
-  const maxScroll = nav.scrollWidth - nav.clientWidth;
-  showCategoryArrows.value = maxScroll > 1;
-  canScrollCategoryLeft.value = nav.scrollLeft > 1;
-  canScrollCategoryRight.value = nav.scrollLeft < maxScroll - 1;
+  if (!nav || !button) return;
+  const navBox = nav.getBoundingClientRect();
+  const btnBox = button.getBoundingClientRect();
+  const targetLeft = nav.scrollLeft + btnBox.left - navBox.left
+    - (nav.clientWidth - btnBox.width) / 2;
+  nav.scrollTo({ left: Math.max(0, targetLeft), behavior: 'smooth' });
 };
 
-const scrollCategories = direction => {
-  const nav = categoryNav.value;
-  if (!nav) return;
-  nav.scrollBy({ left: direction * Math.max(nav.clientWidth * 0.7, 160), behavior: 'smooth' });
+const selectCategory = (key, event) => {
+  activeCategory.value = key;
+  scrollCategoryIntoView(event?.currentTarget);
 };
-
-onMounted(() => {
-  nextTick(() => {
-    updateCategoryScroll();
-    categoryResizeObserver = new ResizeObserver(updateCategoryScroll);
-    if (categoryNav.value) categoryResizeObserver.observe(categoryNav.value);
-  });
-});
-
-onBeforeUnmount(() => categoryResizeObserver?.disconnect());
-
-watch(categoryTabs, () => nextTick(updateCategoryScroll), { flush: 'post' });
 
 const filteredCourses = computed(() => {
   let list = courses.value;
@@ -221,9 +187,10 @@ watch(
   --c-purple: var(--app-violet-fg);
 
   display: flex;
+  flex: 1 0 auto;
   flex-direction: column;
   gap: 20px;
-  padding-bottom: 48px;
+  min-height: 100%;
   font-family: 'PingFang SC', 'Microsoft YaHei', 'Helvetica Neue', sans-serif;
 }
 
@@ -265,20 +232,19 @@ watch(
 .crs-category-rail {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   min-width: 0;
 }
 
 .crs-category-options {
   display: flex;
   align-items: center;
-  gap: 22px;
+  gap: 8px;
   overflow-x: auto;
   overflow-y: hidden;
   min-width: 0;
   flex: 1;
-  padding: 0 2px;
-  border-bottom: 1px solid var(--c-border);
+  padding: 2px 2px 6px;
   scrollbar-width: none;
   overscroll-behavior-x: contain;
   scroll-behavior: smooth;
@@ -286,36 +252,6 @@ watch(
 
 .crs-category-options::-webkit-scrollbar {
   display: none;
-}
-
-.crs-category-arrow {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 30px;
-  height: 30px;
-  flex: 0 0 30px;
-  border: 1px solid var(--c-border);
-  border-radius: 50%;
-  background: var(--app-surface);
-  color: var(--c-text-soft);
-  cursor: pointer;
-  transition: background-color 0.2s ease, color 0.2s ease, opacity 0.2s ease;
-}
-
-.crs-category-arrow:hover:not(:disabled) {
-  background: var(--c-blue-bg);
-  color: var(--c-blue);
-}
-
-.crs-category-arrow:disabled {
-  cursor: default;
-  opacity: 0.4;
-}
-
-.crs-category-arrow__icon {
-  width: 16px;
-  height: 16px;
 }
 
 .crs-search {
@@ -387,33 +323,45 @@ watch(
 .crs-category-pill {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
-  padding: 10px 2px 11px;
+  gap: 6px;
+  padding: 8px 14px;
   flex-shrink: 0;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: var(--app-surface-3);
+  color: var(--c-text-soft);
   font-size: 13px;
   font-weight: 500;
-  color: var(--c-muted);
-  background: transparent;
-  border: 0;
-  border-bottom: 2px solid transparent;
-  margin-bottom: -1px;
+  line-height: 1.2;
   cursor: pointer;
-  transition: color 0.2s ease, border-color 0.2s ease;
+  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
 }
 
 .crs-category-pill:hover {
-  color: var(--c-text);
+  background: var(--c-blue-bg);
+  color: var(--c-blue);
 }
 
 .crs-category-pill--active {
-  border-bottom-color: var(--c-blue);
+  background: var(--c-blue-bg);
+  border-color: var(--app-blue-line-100);
   color: var(--c-blue);
-  font-weight: 700;
+  font-weight: 600;
+}
+
+.crs-category-pill__label {
+  white-space: nowrap;
 }
 
 .crs-category-count {
+  color: inherit;
   font-size: 11px;
-  color: var(--app-text-5);
+  font-weight: 600;
+  opacity: 0.62;
+}
+
+.crs-category-pill--active .crs-category-count {
+  opacity: 0.82;
 }
 
 @media (max-width: 720px) {
@@ -430,7 +378,7 @@ watch(
 
   .crs-category-rail {
     width: 100%;
-    gap: 18px;
+    gap: 6px;
   }
 }
 
@@ -470,14 +418,17 @@ watch(
 
 .crs-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 20px 16px;
 }
-@media (min-width: 1024px) {
-  .crs-grid { grid-template-columns: repeat(4, 1fr); }
+@media (max-width: 1100px) {
+  .crs-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
-@media (min-width: 1440px) {
-  .crs-grid { grid-template-columns: repeat(5, 1fr); }
+@media (max-width: 700px) {
+  .crs-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 480px) {
+  .crs-grid { grid-template-columns: minmax(0, 1fr); }
 }
 
 .crs-card {
@@ -492,18 +443,18 @@ watch(
   box-shadow: 0 0 0 3px var(--c-sky);
 }
 
-/* 封面：16:9，圆角，B 站式 hover 上浮 + 阴影 */
+/* 封面：16:9，圆角，仅轻微上浮，不做整卡高亮 */
 .crs-card__thumb {
   position: relative;
   width: 100%;
+  /* B 站封面为 16:9，图片本身裁剪成 16:9 后完整铺满、不裁边 */
   aspect-ratio: 16 / 9;
   overflow: hidden;
   border-radius: 6px;
   background: var(--app-ink-900);
-  transition: transform 0.22s ease, box-shadow 0.22s ease;
+  transition: box-shadow 0.22s ease;
 }
 .crs-card:hover .crs-card__thumb {
-  transform: translateY(-3px);
   box-shadow: 0 8px 18px rgba(0, 0, 0, 0.16);
 }
 .crs-card__img {
@@ -511,11 +462,13 @@ watch(
   height: 100%;
   object-fit: cover;
   display: block;
-  transition: transform 0.3s ease;
+  transition: transform 0.35s ease, filter 0.35s ease;
 }
+/* hover：封面轻微放大 */
 .crs-card:hover .crs-card__img {
   transform: scale(1.04);
 }
+
 
 
 .crs-card__body {
@@ -537,10 +490,13 @@ watch(
   line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
-  transition: color 0.2s ease;
+  transition: color 0.2s ease, text-shadow 0.2s ease;
 }
+/* 只高亮文字：悬停时标题变成明亮主色并加粗发光 */
 .crs-card:hover .crs-card__title {
-  color: var(--c-blue);
+  color: var(--app-accent-strong);
+  font-weight: 700;
+  text-shadow: 0 0 12px rgba(46, 139, 214, 0.35);
 }
 
 /* UP 主一行：头像 + 名称 + 时间 */
@@ -597,13 +553,16 @@ watch(
 }
 
 .crs-footer {
+  margin-top: auto;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding-top: 16px;
+  padding: 10px 0;
+  background: var(--app-page-bg);
   border-top: 1px solid var(--c-border);
   font-size: 12px;
   color: var(--c-muted);
 }
+
 </style>

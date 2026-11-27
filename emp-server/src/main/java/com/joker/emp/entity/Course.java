@@ -21,6 +21,9 @@ public class Course {
 
   private String title;
 
+  /** 课程代号，对应 MinIO 存储目录 video/import/<courseCode> */
+  private String courseCode;
+
   private Long categoryId;
 
   /** 卡片二级标签，如 研发架构 */

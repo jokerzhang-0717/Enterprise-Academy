@@ -2,8 +2,8 @@ package com.joker.emp.security;
 
 import com.joker.emp.common.BizException;
 import java.time.Duration;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataAccessException;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
@@ -12,11 +12,11 @@ import org.springframework.stereotype.Component;
  * 基于 Redis 的登录 / 注册限流，防止无限次撞库。
  * 只统计失败登录；登录成功后清空该工号的失败计数。
  */
+@Slf4j
 @Component
 public class LoginRateLimiter {
 
-  private static final Logger log = LoggerFactory.getLogger(LoginRateLimiter.class);
-  private static final String LOGIN_ACCOUNT_PREFIX = "auth:limit:login:account:";
+    private static final String LOGIN_ACCOUNT_PREFIX = "auth:limit:login:account:";
   private static final String LOGIN_IP_PREFIX = "auth:limit:login:ip:";
   private static final String REGISTER_IP_PREFIX = "auth:limit:register:ip:";
 

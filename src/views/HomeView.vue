@@ -110,29 +110,21 @@
                   class="course-cover-img"
                 />
                 <BookOpenText v-else class="course-cover-placeholder" aria-hidden="true" />
-                <div class="course-cover-shade"></div>
                 <div class="course-badge" :class="course.status === 'completed' ? 'badge-purple' : 'badge-dark'">
                   {{ course.statusLabel || (course.status === 'completed' ? '已完成' : '学习中') }}
                 </div>
               </div>
               <div class="course-body">
-                <div class="course-teacher">
-                  <span class="course-avatar avatar-blue">
-                    {{ course.instructor.name?.charAt(0) || '课' }}
-                  </span>
-                  <div class="course-teacher-info">
-                    <p class="course-teacher-label">授课讲师</p>
-                    <p class="course-teacher-name">
-                      {{ course.instructor.name || '暂未设置' }}
-                      <template v-if="course.instructor.title"> · {{ course.instructor.title }}</template>
-                    </p>
-                  </div>
-                </div>
                 <h3 class="course-name">{{ course.title }}</h3>
-                <p class="course-progress">
-                  {{ course.status === 'completed' ? '已完成学习' : `学习进度 ${course.progress || 0}%` }}
-                  <span v-if="course.lastStudied"> · {{ course.lastStudied }}</span>
-                </p>
+                <div class="course-meta">
+                  <span class="course-up">
+                    <span class="course-avatar avatar-blue">{{ course.instructor.name?.charAt(0) || '云' }}</span>
+                    <span class="course-up-name">{{ course.instructor.name || '云舒艺境' }}</span>
+                  </span>
+                </div>
+                <div class="course-tags">
+                  <span class="course-tag">{{ course.categoryLabel || '视频课程' }}</span>
+                </div>
               </div>
             </article>
           </div>
@@ -172,8 +164,8 @@
               </div>
               <div class="guide-card-body">
                 <h3 class="guide-title">认识云舒艺境</h3>
-                <p class="guide-description">课程学习、在线考试、通知公告和个人档案，都可以在平台中轻松找到。</p>
-                <div class="guide-tags"><span>课程中心</span><span>学习档案</span><span>消息通知</span></div>
+                <p class="guide-description">课程学习、在线考试、通知公告和个人学习看板，都可以在平台中轻松找到。</p>
+                <div class="guide-tags"><span>课程中心</span><span>学习看板</span><span>消息通知</span></div>
                 <span class="guide-more">点击查看详情 <ArrowRight /></span>
               </div>
             </article>
@@ -201,7 +193,7 @@
               <div class="guide-card-body">
                 <h3 class="guide-title">完成入职必办事项</h3>
                 <p class="guide-description">检查个人资料和部门信息，了解考勤、培训假等日常制度。</p>
-                <div class="guide-tags"><span>个人资料</span><span>考勤规则</span><span>部门信息</span></div>
+                <div class="guide-tags"><span>个人资料</span><span>考勤签到</span><span>部门信息</span></div>
                 <span class="guide-more">点击查看详情 <ArrowRight /></span>
               </div>
             </article>
@@ -225,8 +217,8 @@
               </div>
               <div class="guide-card-body">
                 <h3 class="guide-title">开启学习与成长</h3>
-                <p class="guide-description">从岗位必修课程开始，按计划参加考核，逐步积累学习成果与专业认证。</p>
-                <div class="guide-tags"><span>岗位必修</span><span>在线考核</span><span>专业认证</span></div>
+                <p class="guide-description">从推荐课程开始，按计划参加考核，逐步积累学习成果与专业认证。</p>
+                <div class="guide-tags"><span>推荐课程</span><span>在线考核</span><span>专业认证</span></div>
                 <span class="guide-more">点击查看详情 <ArrowRight /></span>
               </div>
             </article>
@@ -965,18 +957,9 @@ watch(
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  border-radius: 0.75rem;
-  border: 1px solid var(--app-border);
-  background: var(--app-surface);
+  border-radius: 6px;
+  background: transparent;
   cursor: pointer;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-  transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
-  animation: card-reveal 360ms ease-out both;
-}
-.course-card:hover {
-  transform: translateY(-2px);
-  border-color: var(--app-accent);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 .course-card:focus-visible {
   outline: 2px solid var(--app-accent);
@@ -985,17 +968,19 @@ watch(
 
 .course-cover {
   position: relative;
-  height: 10rem;
+  width: 100%;
+  aspect-ratio: 16 / 9;
   overflow: hidden;
-  background: var(--app-ink-solid);
+  border-radius: 6px;
+  background: var(--app-ink-900);
   flex-shrink: 0;
 }
 .course-cover-img {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  opacity: 0.9;
-  transition: transform 0.5s;
+  display: block;
+  transition: transform 0.35s ease, filter 0.35s ease;
 }
 .course-cover-placeholder {
   position: absolute;
@@ -1006,12 +991,7 @@ watch(
   color: var(--app-accent-soft);
 }
 .course-card:hover .course-cover-img {
-  transform: scale(1.05);
-}
-.course-cover-shade {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(to top, rgba(0, 0, 0, 0.25), transparent 60%);
+  transform: scale(1.04);
 }
 .course-badge {
   position: absolute;
@@ -1033,58 +1013,76 @@ watch(
 
 .course-body {
   display: flex;
-  flex-direction: column;
   flex: 1;
-  padding: 1rem;
+  flex-direction: column;
+  gap: 6px;
+  padding: 9px 2px 0;
 }
-.course-teacher {
+.course-name {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.45;
+  color: var(--app-text);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  transition: color 0.2s ease, text-shadow 0.2s ease;
+}
+.course-card:hover .course-name {
+  color: var(--app-accent-strong);
+  font-weight: 700;
+  text-shadow: 0 0 12px rgba(46, 139, 214, 0.35);
+}
+.course-meta {
   display: flex;
   align-items: center;
-  gap: 0.625rem;
-  margin-bottom: 0.75rem;
+  justify-content: flex-start;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--app-text-4);
+}
+.course-up {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
 }
 .course-avatar {
-  width: 2rem;
-  height: 2rem;
-  border-radius: 50%;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.75rem;
-  font-weight: 700;
+  width: 18px;
+  height: 18px;
   flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--app-accent-soft);
+  color: var(--app-accent-deep);
+  font-size: 10px;
+  font-weight: 700;
 }
 .avatar-blue   { background: var(--app-accent-soft); color: var(--app-accent-deep); }
 .avatar-purple { background: var(--app-accent-soft); color: var(--app-violet-fg); }
-.course-teacher-info { min-width: 0; }
-.course-teacher-label {
-  font-size: 0.625rem;
-  line-height: 1;
-  color: var(--app-text-5);
-}
-.course-teacher-name {
-  font-size: 0.75rem;
-  font-weight: 500;
-  color: var(--app-text-3);
-  white-space: nowrap;
+.course-up-name {
   overflow: hidden;
+  white-space: nowrap;
   text-overflow: ellipsis;
 }
-.course-name {
-  font-size: 0.875rem;
-  font-weight: 700;
-  line-height: 1.25;
-  color: var(--app-text);
-  min-height: 2.75rem;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+.course-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 2px;
 }
-.course-progress {
-  margin: 0.5rem 0 0;
-  color: var(--app-text-4);
-  font-size: 0.6875rem;
+.course-tag {
+  padding: 1px 6px;
+  border-radius: 3px;
+  background: var(--app-accent-soft);
+  color: var(--app-accent-deep);
+  font-size: 11px;
+  line-height: 1.5;
 }
 
 .guide-subtitle {
