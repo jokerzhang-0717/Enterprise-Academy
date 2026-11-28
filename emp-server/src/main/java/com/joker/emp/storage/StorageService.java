@@ -108,7 +108,7 @@ public class StorageService {
     String resolvedFolder = normalizeFolder(folder);
     String sha256 = sha256(file);
     String objectName = buildObjectName(file.getOriginalFilename(), sha256, file.getSize(),
-        null, null, resolvedFolder);
+        resolvedFolder);
     boolean deduplicated = reuseExisting(objectName, file.getSize());
     if (!deduplicated) {
       try (InputStream in = file.getInputStream()) {
@@ -130,18 +130,15 @@ public class StorageService {
     return result;
   }
 
-  /** 指定课程代号与集数时，按 video/import/<code>/P<n><ext> 命名；否则沿用内容寻址。 */
+  /** 内容寻址直传：相同文件（sha256 + size + 扩展名）只保留一份，后续上传直接复用。 */
   public Map<String, Object> presignUpload(String fileName, String folder,
-                                           String sha256, Long size, String publicBaseUrl, String courseCode, Integer episode) {
+                                           String sha256, Long size, String publicBaseUrl) {
     String resolvedContentType = resolveContentType(fileName);
     String resolvedFolder = normalizeFolder(folder);
     String normalizedSha256 = normalizeSha256(sha256);
     long fileSize = requireSize(size);
-    String objectName = buildObjectName(fileName, normalizedSha256, fileSize,
-        courseCode, episode, resolvedFolder);
-    // 只有内容寻址对象（<hash>-<size><ext>）才做去重复用；课程代号下的 cover/P<n> 是固定路径，
-    // 更换封面或替换分集视频时预期就是覆盖写入，不能因为旧文件大小不同而误报“内容校验冲突”。
-    boolean deduplicated = isDeduplicatedObject(objectName) && reuseExisting(objectName, fileSize);
+    String objectName = buildObjectName(fileName, normalizedSha256, fileSize, resolvedFolder);
+    boolean deduplicated = reuseExisting(objectName, fileSize);
 
     Map<String, Object> result = describe(objectName, fileName, fileSize, resolvedContentType,
         publicBaseUrl);
@@ -287,28 +284,17 @@ public class StorageService {
   }
 
   /**
-   * 所有上传统一放在 video/import 下，不再使用 sha256 目录。
-   * - 指定课程代号 + 集数：video/import/<code>/P<n><ext>
-   * - 未提供代号（如封面、头像）：video/import/<folder>/<hash>-<size><ext>
-   * 扩展名参与 key 保证 Content-Type 与内联展示策略可按后缀正确解析。
+   * 统一按内容寻址命名，相同文件只存一份：
+   * - 视频、封面等：video/import/<sha256>-<size><ext>
+   * - 头像：cover/import/<sha256>-<size><ext>
+   * 扩展名参与 key，保证 Content-Type 与内联展示策略可按后缀正确解析。
    */
-  private String buildObjectName(String originalName, String sha256, long size,
-      String courseCode, Integer episode, String folder) {
+  private String buildObjectName(String originalName, String sha256, long size, String folder) {
     String ext = extension(originalName);
-    String code = courseCode == null ? "" : courseCode.trim().replaceAll("[^A-Za-z0-9_-]", "");
-    if (!code.isEmpty()) {
-      // 只传课程代号、无集数：作为该课程的封面 video/import/<code>/cover<ext>
-      if (episode == null || episode <= 0) {
-        return "video/import/" + code + "/cover" + ext;
-      }
-      return "video/import/" + code + "/P" + String.format("%03d", episode) + ext;
-    }
-    // 头像单独放在 cover/import 下；其余（封面、视频、课件）统一放 video/import
     if ("avatar".equals(folder)) {
       return "cover/import/" + sha256 + "-" + size + ext;
     }
-    String dir = (folder == null || folder.isBlank()) ? "misc" : folder;
-    return "video/import/" + dir + "/" + sha256 + "-" + size + ext;
+    return "video/import/" + sha256 + "-" + size + ext;
   }
 
   /** 已存在同内容对象时直接复用；大小不一致视为对象损坏或哈希冲突，禁止覆盖共享文件。 */

@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.joker.emp.mapper.EnrollmentMapper">
+
+  <select id="selectProgress" resultType="java.util.Map">
+    SELECT course_id AS courseId, title, status,
+           progress_percent AS progressPercent,
+           completed_lesson_count AS completedLessonCount,
+           study_hours AS studyHours, last_studied_at AS lastStudiedAt,
+           badge_text AS badgeText
+    FROM v_course_progress
+    WHERE user_id = #{userId}
+    ORDER BY last_studied_at DESC
+  </select>
+
+  <!-- 幂等创建选课记录，避免并发请求同时 check-then-insert 触发 uk_enrollment 唯一键冲突 -->
+  <insert id="insertOrIgnore">
+    INSERT INTO enrollment (user_id, course_id, status, progress_percent,
+                            completed_lesson_count, study_hours, started_at, last_studied_at)
+    VALUES (#{userId}, #{courseId}, 2, 0, 0, 0, NOW(), NOW())
+    ON DUPLICATE KEY UPDATE id = LAST_INSERT_ID(id)
+  </insert>
+
+  <select id="sumStudyHours" resultType="java.math.BigDecimal">
+    SELECT COALESCE(SUM(study_hours), 0) FROM enrollment WHERE user_id = #{userId}
+  </select>
+
+</mapper>

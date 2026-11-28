@@ -69,8 +69,7 @@ public class FileController {
   public ApiResponse<Map<String, Object>> presignUpload(HttpServletRequest servletRequest,
       @Valid @RequestBody PresignUploadRequest request) {
     return ApiResponse.ok(storageService.presignUpload(request.fileName(),
-            request.folder(), request.sha256(), request.size(), servletRequest.getContextPath(),
-        request.courseCode(), request.episode()));
+        request.folder(), request.sha256(), request.size(), servletRequest.getContextPath()));
   }
 
   @AdminOnly

@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.joker.emp.mapper.ExamAssignmentMapper">
+
+  <select id="selectByExam" resultType="java.util.Map">
+    SELECT ast.id, ast.exam_id AS examId, ast.user_id AS userId,
+           u.name AS userName, u.employee_no AS employeeNo, d.name AS department,
+           ast.status, ast.attempts_allowed AS attemptsAllowed,
+           ast.attempts_used AS attemptsUsed, ast.deadline_at AS deadlineAt,
+           ast.created_at AS createdAt
+    FROM exam_assignment ast
+    JOIN sys_user u ON u.id = ast.user_id
+    LEFT JOIN department d ON d.id = u.department_id
+    WHERE ast.exam_id = #{examId}
+    <if test="keyword != null and keyword != ''">
+      AND (u.name LIKE CONCAT('%', #{keyword}, '%')
+        OR u.employee_no LIKE CONCAT('%', #{keyword}, '%'))
+    </if>
+    ORDER BY ast.id
+  </select>
+
+  <select id="selectAllByExam" resultType="com.joker.emp.entity.ExamAssignment">
+    SELECT * FROM exam_assignment WHERE exam_id = #{examId}
+  </select>
+
+</mapper>

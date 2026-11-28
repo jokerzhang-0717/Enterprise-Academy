@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.joker.emp.mapper.ExamAttemptMapper">
+
+  <select id="selectAdminPage" resultType="java.util.Map">
+    SELECT a.id, a.exam_id AS examId, x.title AS examTitle, x.code,
+           a.user_id AS userId, u.name AS userName, u.employee_no AS employeeNo,
+           d.name AS department, a.attempt_no AS attemptNo, a.status,
+           a.started_at AS startedAt, a.submitted_at AS submittedAt,
+           a.objective_score AS objectiveScore, a.subjective_score AS subjectiveScore,
+           a.total_score AS totalScore, a.pass_score AS passScore, a.is_passed AS isPassed,
+           a.wrong_count AS wrongCount, a.graded_at AS gradedAt
+    FROM exam_attempt a
+    JOIN exam x ON x.id = a.exam_id
+    JOIN sys_user u ON u.id = a.user_id
+    LEFT JOIN department d ON d.id = u.department_id
+    WHERE 1 = 1
+    <if test="examId != null">AND a.exam_id = #{examId}</if>
+    <if test="status != null">AND a.status = #{status}</if>
+    <if test="keyword != null and keyword != ''">
+      AND (u.name LIKE CONCAT('%', #{keyword}, '%')
+        OR u.employee_no LIKE CONCAT('%', #{keyword}, '%')
+        OR x.title LIKE CONCAT('%', #{keyword}, '%'))
+    </if>
+    ORDER BY a.id DESC
+  </select>
+
+</mapper>

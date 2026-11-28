@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.joker.emp.mapper.DepartmentMapper">
+
+  <select id="selectStats" resultType="java.util.Map">
+    SELECT d.id AS departmentId, d.name, d.manager_name AS managerName, d.status,
+           (SELECT COUNT(*)
+              FROM sys_user u
+             WHERE u.department_id = d.id AND u.role = 1 AND u.deleted_at IS NULL
+           ) AS learnerCount,
+           (SELECT COALESCE(SUM(e.study_hours), 0)
+              FROM sys_user u
+              JOIN enrollment e ON e.user_id = u.id
+             WHERE u.department_id = d.id AND u.role = 1 AND u.deleted_at IS NULL
+           ) AS totalStudyHours
+      FROM department d
+     WHERE d.deleted_at IS NULL
+     ORDER BY d.id
+  </select>
+
+</mapper>
